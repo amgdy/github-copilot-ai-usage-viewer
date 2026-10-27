@@ -1,0 +1,108 @@
+# GitHub Copilot usage viewer: features and value for admins
+
+This app turns the GitHub Copilot usage report (a CSV file from GitHub billing) into clear pages that answer one question: **are we getting good value from GitHub Copilot, and what should we change?**
+
+It is written for managers and admins, not only for technical people. Every number has an info button that explains, in plain words, how it was calculated.
+
+Your files never leave your computer. The app runs in your browser and does not send your data anywhere.
+
+## The key values for admins
+
+Listed from the most valuable to the least.
+
+| # | What you get | Why it matters |
+| --- | --- | --- |
+| 1 | **Usage, split into "covered" and "billed"** | The app shows how much usage was covered by included credits and how much was billed as extra. Seat subscriptions are separate; the usage report is not a full invoice. |
+| 2 | **Seats to review** | Load the license list from GitHub to find seats with no usage in the report, check last activity, and estimate their monthly value. Confirm the person's needs before removing a seat. |
+| 3 | **Early warning on high usage** | The app projects the month end, shows when the included credits will run out, tracks your budget, and lists runaway users (people who use far more than their own included credits). You can act before the bill arrives. |
+| 4 | **Auto model selection and its discount** | GitHub Copilot gives a discount when people let Auto pick the model. The app shows who uses Auto and who picks models by hand, what the discount saved you (paid price vs original price), and how much more you could save. |
+| 5 | **The right model for the job** | See which models cost the most and where to try a lighter model. Check the quality of its work before changing a team's default. |
+| 6 | **One combined savings estimate** | Savings ideas often overlap. The app does not simply add them up. A combined plan and a what-if simulator apply them together, month by month, using the pool and settings you chose. |
+| 7 | **Clear recommendations, most impact first** | Each recommendation says what is happening, the evidence, who should act (management, admins or users), the steps, the expected saving, how sure the app is, and official GitHub and Microsoft links to help you do it. |
+| 8 | **Help each person get more value** | Users are grouped by how much and how often they use GitHub Copilot (for example Champions, New users, Fading users, Runaway users). Each user has a profile with personal tips, so team leads know who needs training and who can coach others. |
+| 9 | **Fair cost sharing** | Split usage and billed cost by organization, cost center, repository or app. Find users without a cost center. Export the numbers for chargeback. |
+| 10 | **Tokens and cache, per user** | See input, output, cache read and cache write tokens for each user and model. Good cache reuse makes the same work cheaper; the app shows who reuses well and who does not. |
+| 11 | **Trends and unusual days** | A daily timeline flags unusual spikes, shows weekday habits, new users joining, and users who stopped. |
+| 12 | **Numbers you can trust** | Every figure has its formula, inputs, an example and its limits, in the app and on the Methodology page. Model prices come from the official GitHub Docs page, with the date of the snapshot, and can be checked live. |
+| 13 | **English and Arabic** | The whole app works in English (the main language) and Arabic, with a right-to-left layout. Switch with the language button at the top. |
+| 14 | **Private and simple to share** | No server and no upload. The app can be built as one HTML file that works offline. |
+| 15 | **Try it first with a sample report** | One click opens a full report made from invented people and numbers, so you can see every page before you load your own file. Every page says it is a sample, and your saved license list is never mixed in. |
+
+## The pages
+
+| Page | What you see | What it helps you decide |
+| --- | --- | --- |
+| **Overview** | A short verdict, the key numbers with their trend, usage over time, the state of the included credits, savings you can still make, the top recommendations and top users. | Where to look first. |
+| **Usage and pool** | Usage by day and month, how fast the included credits are used, a month-end projection, budget tracking and a plain explanation of how billing works. | Whether you will pay extra this month, and how much. |
+| **Users** | Rankings by any number, how concentrated the usage is, users who need attention, a full table and a profile for each user with personal tips. | Who needs help, training, a limit or a different seat. |
+| **Segments** | Users grouped by persona, usage tier, engagement, lifecycle, usage profile and Auto use, with the rules behind each group and live thresholds. | Which groups to target with training or policies. |
+| **Models** | Model ranking, cost by model group and vendor, Auto vs manual choice, the Auto discount (paid price vs original price), right-sizing ideas and the price card in use. | Which models to allow, and where to push Auto. |
+| **Efficiency** | A scorecard, the savings levers and their combined effect, tokens and cache use, cost per active day, and role models to learn from. | How to get the same work done for less. |
+| **Organization** | Usage and billed cost by organization, cost center, repository, app or team from the license list, with chargeback tables and seat coverage. | Who pays for what. |
+| **Patterns** | Daily timeline with unusual days marked, weekday habits, a calendar view, adoption over time, and users who stopped. | Whether usage is healthy and growing. |
+| **Recommendations** | All recommendations, most impact first, with filters, a what-if simulator and seat actions. | What to do next, in what order. |
+| **Licenses** | Seat coverage, last activity, pending cancellations and seats with no usage in the report. | Which seats to review with their owners before removing or moving them. |
+| **Data** | File quality, what each file adds, a row explorer, and other GitHub exports you can add for better results. | Whether the numbers are complete. |
+| **Settings** | Theme, budget, every threshold behind the groups, the seat list, model price overrides and a live price check. | How the app should judge your data. |
+| **Methodology** | Every calculation in one place, searchable. | How a number was made. |
+
+Filters at the top apply to every page: dates, weekdays, users, plans, organizations, cost centers, models, vendors, Auto or manual, products, repositories, covered or billed, and user groups. Clicking a bar, slice or row narrows the whole app to it. Every chart and table can be downloaded.
+
+## Files you can load
+
+| File | Needed? | Where to get it | What it adds |
+| --- | --- | --- | --- |
+| **GitHub Copilot usage report** (CSV) | Yes | In GitHub, open Billing and licensing, then the AI usage page, and choose Get usage report. GitHub emails you a link to the file. | All usage, cost, model, user and token numbers. |
+| **License list** (seat assignments) | Recommended. The activity report CSV is the easiest choice for most admins. | Download the GitHub Copilot activity report in GitHub's organization or enterprise settings. Use the REST API JSON as an advanced option for plans, seat start dates, pending cancellations or repeatable exports. | Better included-credit estimates and activity context for seat review. The activity report has no plan or seat start date. Check its scope and seat count against GitHub; the app cannot identify seats omitted from a CSV. |
+| **Settings file** (JSON) | Optional | Exported from this app's Settings page. | Your budget, thresholds, seat list and price overrides, shared with your team. |
+
+No file yet? Choose **View a sample report** on the start page to look around with invented data first.
+
+## Other GitHub exports that improve the analysis
+
+Listed by how much they add. The Data page shows the same list with links.
+
+1. **GitHub Copilot activity report** (CSV): last activity, sign-in date and last surface per user. The Licenses page uses it to flag seats for review, including people who may use code completions (which the usage report does not include). It has no plan or seat start date. Activity is limited to 90 days, so a blank date can mean a new seat or activity older than 90 days.
+2. **Seat assignments** (REST API, JSON): the advanced option for plans, seat start dates and pending cancellations. It can help check the activity report's seat count, but its activity dates have the same 90-day limit. Include every page and check the scope before using seat-cost estimates.
+
+The app cannot tell whether a CSV omitted licensed users. Compare its scope and seat count with the assigned seats shown in GitHub before acting. A blank activity date is not proof that someone never used GitHub Copilot.
+3. **GitHub Copilot usage metrics** (REST API, NDJSON): per-user activity by editor, feature, language and model, and lines of code accepted. Not yet used by this app, but useful to link cost with real output.
+4. **Cost centers** (REST API): which users belong to which cost center. Not yet used by this app, but it fills in missing cost centers.
+5. **Team membership** (REST API): which users are in which team, for team-level views. Not yet used by this app.
+6. **Budgets** (REST API) and the **audit log**: your budget limits and policy changes. Not yet used by this app.
+
+## How the numbers are calculated
+
+- **1 AI credit = 0.01 USD.** Usage = covered by included credits + billed.
+- **Included credits are shared.** Each seat adds its monthly included credits (Business 19 USD, Enterprise 39 USD) to one shared pool. Usage is paid from the pool first. Only what goes beyond the pool is billed.
+- **Pool size.** The usage report only lists users who used something. If covered usage exceeds what the visible seats can fund, the app hides uncertain pool and seat figures. A complete license list improves the estimate, but a current list is not proof of past seat counts or your contract terms.
+- **Auto discount.** Requests that Auto model selection handles cost less. The app shows the original price (what the same requests would cost without the discount), the price paid, and the difference.
+- **Savings.** Separate savings overlap, so they are never added up. The combined plan and the simulator give the one total.
+- **Prices.** Model prices come from the GitHub Docs page "Models and pricing" (the date of the snapshot is shown). Models without a price are listed, never guessed.
+
+Open the info button next to any number, or the Methodology page, for the full formula, inputs, an example and the limits.
+
+## Limits to keep in mind
+
+- The usage report has AI credits only. **Code completions and next edit suggestions are not in it.** A user who looks idle may still use GitHub Copilot every day. Check the license list's last activity before you remove a seat.
+- Projections follow the recent daily rate. They are a guide, not a promise.
+- Seat prices are the public prices. Your contract may differ.
+- Numbers show with Latin digits in Arabic. Column names of the original export stay in English.
+
+## Official links
+
+- [GitHub Copilot billing](https://docs.github.com/en/enterprise-cloud@latest/billing/concepts/product-billing/github-copilot-billing) (GitHub Docs)
+- [Usage-based billing for organizations and enterprises](https://docs.github.com/en/enterprise-cloud@latest/copilot/concepts/billing-and-usage/organizations-and-enterprises/billing) (GitHub Docs)
+- [Managing your company's spending on GitHub Copilot](https://docs.github.com/en/enterprise-cloud@latest/copilot/how-tos/manage-and-track-spending/manage-company-spending) (GitHub Docs)
+- [Budgets for usage-based billing](https://docs.github.com/en/enterprise-cloud@latest/copilot/concepts/billing-and-usage/organizations-and-enterprises/budgets) (GitHub Docs)
+- [Models and pricing for GitHub Copilot](https://docs.github.com/en/enterprise-cloud@latest/copilot/reference/copilot-billing/models-and-pricing) (GitHub Docs)
+- [About GitHub Copilot auto model selection](https://docs.github.com/en/enterprise-cloud@latest/copilot/concepts/models/auto-model-selection) (GitHub Docs)
+- [A guide to deciding what AI model to use in GitHub Copilot](https://github.blog/ai-and-ml/github-copilot/a-guide-to-deciding-what-ai-model-to-use-in-github-copilot/) (GitHub Blog)
+- [Downloading a GitHub Copilot activity report](https://docs.github.com/en/enterprise-cloud@latest/copilot/how-tos/administer-copilot/download-activity-report) (GitHub Docs)
+- [REST API endpoints for GitHub Copilot user management](https://docs.github.com/en/rest/copilot/copilot-user-management) (GitHub Docs)
+- [Cost centers](https://docs.github.com/en/enterprise-cloud@latest/billing/concepts/cost-centers) (GitHub Docs)
+- [Managing policies and features for GitHub Copilot in your organization](https://docs.github.com/en/enterprise-cloud@latest/copilot/how-tos/administer-copilot/manage-for-organization/manage-policies) (GitHub Docs)
+- [Best practices for using GitHub Copilot](https://docs.github.com/en/enterprise-cloud@latest/copilot/get-started/best-practices) (GitHub Docs)
+- [GitHub Copilot Fundamentals, part 1](https://learn.microsoft.com/en-us/training/paths/copilot/) (Microsoft Learn)
+- [GitHub Copilot Fundamentals, part 2](https://learn.microsoft.com/en-us/training/paths/gh-copilot-2/) (Microsoft Learn)
+- [Introduction to prompt engineering with GitHub Copilot](https://learn.microsoft.com/en-us/training/modules/introduction-prompt-engineering-with-github-copilot/) (Microsoft Learn)

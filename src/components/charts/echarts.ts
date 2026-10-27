@@ -1,0 +1,61 @@
+import * as echarts from 'echarts/core';
+import { BarChart, BoxplotChart, CustomChart, GaugeChart, HeatmapChart, LineChart, PieChart, RadarChart, SankeyChart, ScatterChart, SunburstChart, TreemapChart } from 'echarts/charts';
+import {
+  AriaComponent,
+  AxisPointerComponent,
+  CalendarComponent,
+  DatasetComponent,
+  DataZoomComponent,
+  GraphicComponent,
+  GridComponent,
+  LegendComponent,
+  MarkAreaComponent,
+  MarkLineComponent,
+  MarkPointComponent,
+  RadarComponent,
+  TitleComponent,
+  ToolboxComponent,
+  TooltipComponent,
+  TransformComponent,
+  VisualMapComponent,
+} from 'echarts/components';
+import { LabelLayout, LegacyGridContainLabel, UniversalTransition } from 'echarts/features';
+import { CanvasRenderer } from 'echarts/renderers';
+
+echarts.use([
+  BarChart,
+  BoxplotChart,
+  CustomChart,
+  GaugeChart,
+  HeatmapChart,
+  LineChart,
+  PieChart,
+  RadarChart,
+  SankeyChart,
+  ScatterChart,
+  SunburstChart,
+  TreemapChart,
+  AriaComponent,
+  AxisPointerComponent,
+  CalendarComponent,
+  DatasetComponent,
+  DataZoomComponent,
+  GraphicComponent,
+  GridComponent,
+  LegendComponent,
+  MarkAreaComponent,
+  MarkLineComponent,
+  MarkPointComponent,
+  RadarComponent,
+  TitleComponent,
+  ToolboxComponent,
+  TooltipComponent,
+  TransformComponent,
+  VisualMapComponent,
+  LabelLayout,
+  LegacyGridContainLabel,
+  UniversalTransition,
+  CanvasRenderer,
+]);
+
+export { echarts };

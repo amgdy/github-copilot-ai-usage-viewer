@@ -1,0 +1,120 @@
+# AGENTS.md
+
+A guide for people and AI coding agents who work on this project. Read it before you change anything.
+
+## What this project is
+
+A report viewer for the **GitHub Copilot AI credits usage report** (the CSV you download from GitHub billing). An admin drops the file into the page and gets a management view: how much is used, how much is billed, who uses what, which models cost the most, how the included credits are shared, which seats are idle, and what to do about it.
+
+- Everything runs **in the browser**. There is no server, no database and no login. Files are never uploaded.
+- English is the main language. Arabic is fully supported, with a right-to-left layout.
+- The audience is managers and admins, many of them not technical. Every screen uses short, plain words.
+
+## Commands
+
+| Command | Use it to |
+| --- | --- |
+| `npm install` | Install packages (Node 22.12 or newer). |
+| `npm run dev` | Start the app at http://localhost:5173. |
+| `npm run typecheck` | Check types (`tsc --noEmit`). Run it after every change. |
+| `npm test` | Run all tests (Vitest). Run single files while you work: `npx vitest run tests/users.test.ts`. |
+| `npm run build` | Production build in `dist/`. |
+| `npm run build:single` | One self-contained `dist/index.html` that works offline. |
+| `npm run gen:demo` | Write a made-up usage CSV to `demo-data/` for tests and manual tries. |
+| `npm run check:prices` | Compare the built-in price card with the live GitHub Docs pricing page. |
+
+## Where things are
+
+```
+src/
+  lib/                pure TypeScript, no React, fully unit-tested
+    csv/              reading the usage CSV in a Web Worker (columns, dates, duplicates)
+    analytics/        all math: filters, totals, included credits (pool), users, segments,
+                      Auto discount, savings levers, simulator, seats, anomalies,
+                      recommendations, tips; analyze.ts is the one entry point
+    licenses/         reading the GitHub Copilot license list (seat assignments) and
+                      matching it to the usage report
+    pricing/          model price card (card.ts), model groups, live price check (docsParser.ts)
+    metrics/          how every number is calculated (docs/*.ts), shown in the app
+    demo/             made-up data generator for the sample report, tests and `gen:demo`
+    export/           executive summary (Markdown)
+    links.ts          official GitHub and Microsoft links used across the app
+  i18n/               translation core; ar/*.ts holds the Arabic text
+  state/              store (Zustand), router (hash), analysis provider, theme
+  components/         shared UI: layout, ui kit, charts (ECharts), icons, user drawer
+  pages/              one file per page plus a folder of its parts
+tests/                Vitest suites, including guard tests (naming, i18n, metric docs)
+scripts/              demo data and price check scripts
+docs/FEATURES.md      what the app does and the value it gives admins
+```
+
+Pages: Overview, Usage and pool, Users, Segments, Models, Efficiency, Organization, Patterns, Recommendations, Licenses, Data, Settings, Methodology.
+
+## Key ideas you must keep right
+
+- **1 AI credit = 0.01 USD.** `gross = discount + net`.
+- **Included credits are shared.** Each seat adds its monthly included credits (Business 19 USD, Enterprise 39 USD) to one shared pool. Usage is paid from the pool first; only the rest is **billed**. Usage is the reported gross amount, already reduced by any Auto discount. It is not the price before that discount.
+- **Pool size can be unknown.** The usage file only shows seats that used something. If more credits were covered than the visible seats can fund, the app hides pool and seat statements instead of guessing. A complete license list improves the estimate, but a current list is not proof of past seat counts or billing terms.
+- **Auto model selection** gets a discount (10 percent at the time of writing, `AUTO_DISCOUNT` in `lib/pricing/card.ts`). "Original price" is only used for Auto: what the same tokens would cost without the discount.
+- **Savings overlap.** Never add the savings of separate recommendations. The combined plan and the simulator are the only totals.
+- **Prices** come from the GitHub Docs page "Models and pricing". The snapshot date is `CARD_AS_OF`. Never invent a price; models without a price are listed as "Usage on models without a price".
+- **Code completions are not in the export.** Never call a seat unused on usage data alone; use the license list's last activity when it exists.
+- **Seat import choice.** Recommend the GitHub Copilot activity report CSV for most admins because it downloads in the GitHub UI. Keep the seats API JSON as an advanced option for plan, seat start and pending-cancellation details or repeatable exports. Both have a 90-day activity limit. Tell admins to check the file's scope and seat count against GitHub; a CSV may omit seats, and a blank activity date is not proof that a user never used GitHub Copilot.
+
+## Rules for every change
+
+### Words
+- Always write **GitHub Copilot** (also "GitHub Copilot Chat", "GitHub Copilot CLI", "GitHub Copilot code review"). Never drop the word "GitHub" from the product name. `tests/naming.test.ts` checks `src/`, `docs/`, `README.md` and this file.
+- Very simple language: short sentences, everyday words, no jargon, no marketing words, no exclamation marks, no emojis, no em dashes.
+- American spelling (organization, behavior, optimize).
+- Fixed terms: Usage, Included credits, Included credits used, Billed, Covered by included credits, Auto discount received, Original price (Auto only), price card (never "list price"), Usage profile, Runaway users, Models with prices.
+
+### Order
+- Lists that rate something (efficiency, health, quality) go from **positive to negative**.
+- Dropdowns and filter options are sorted **A to Z**. `Select` and the filter pickers do this through `sortOptions` in `src/components/ui/sortOptions.ts` (it also keeps "All" first). Pass `order="given"` only when the order means something, such as months or tiers.
+- Recommendations and tiles go from the **most impact or value to the least**.
+- When cache data exists, show **both cache read and cache write**.
+
+### Visual design
+- The app should look like a printed company report, not a generic dashboard: ink on warm paper, white panels drawn with thin lines, and one petrol color for the brand, links and the first chart series. No gradients, glows, big shadows or decorative icons.
+- Fonts are bundled so the report looks the same offline (`src/fonts.css`): Mona Sans by GitHub for English and IBM Plex Sans Arabic for Arabic. Titles and big numbers use `font-display` (a wider Mona Sans).
+- Use the shared tokens in `src/index.css`. Corners are small: 2 px marks, 3 px tags, 4 px controls, 6 px blocks and 8 px panels. Bars, dots and labels are square; only switches and info buttons are round.
+- Use the shared pieces: `.eyebrow` for small section labels, Lucide icons for navigation and feature lists, `.card` for panels and `Brand` for the ring mark and name. Do not add palettes for single components.
+- Keep layouts usable in Arabic and right to left, in light and dark. `tests/theme.test.ts` checks the colors, the contrast of every text color, the corner sizes and the bundled fonts.
+
+### Every number explains itself
+- Each figure on a page has a doc in `src/lib/metrics/docs/<area>.ts` (what it is, the formula, the inputs, an example, the limits, links) and shows it through the info button (`CalcInfo`). The Methodology page lists them all.
+- `tests/metric-docs.test.ts` fails when a KPI or chart has no doc.
+
+### Translation (English and Arabic)
+- English text is the key. Use `t('text', { n })` for text, `tp(n, one, other)` for plurals, `msg('text')` for constants that are translated later, and `<T text="..." values={{ link: <a/> }} />` for sentences with elements inside.
+- Arabic goes in `src/i18n/ar/<area>.ts` (and `ar/docs-<area>.ts` for metric docs). A key lives in only one file; shared words go in `ar/common.ts`.
+- Lib code imports from `src/i18n/core.ts`; components import from `src/i18n`.
+- The app remounts when the language changes, so lib code may call `t()` at run time. Text built once at load time is not rebuilt.
+- Layout must work right to left: use logical classes (`ms-`, `me-`, `ps-`, `pe-`, `start-`, `end-`, `text-start`, `text-end`), never `left`/`right`. Digits stay Latin in Arabic.
+- `tests/i18n.test.ts` finds missing Arabic, raw English in JSX and left/right classes.
+
+### Links
+- Use only official links (GitHub Docs, GitHub Blog, GitHub Changelog, GitHub Resources, Microsoft Learn) from `src/lib/links.ts`. Add new ones there and pick them through `TOPIC_LINKS` or the `DocLinks` component.
+
+### Icons
+- Use the vector icons in `src/components/icons` for products and vendors, and `lucide-react` for general icons. No bitmap images.
+
+### Data and privacy
+- Never read, copy, bundle or test with real customer exports. Git ignores a local `samples/` folder, `*.csv` and `seats*.json` because they may hold private files: do not open them. Tests use made-up data (`tests/fixtures.ts`, `makeCsv`, `generateDemo`).
+- The start page has two ways in: choose or drop your own files, or **View a sample report**. The sample is made up in the browser by `src/state/loadSample.ts`, which loads the generator only when clicked and never reads a file. While the sample is open, every page says so (`SampleNotice`), and the saved license list is left out of the analysis (`withoutRoster`), so real names never mix with invented data. Settings and Licenses say why the list is not used (`SampleListNote`), never compare the list with the sample's users, and turn off the button that fills the list from the loaded report, so invented users are never saved as seats. Any new code that reads `useApp((s) => s.dataset)` directly must check `dataset.sample` in the same way. `tests/landing.test.ts`, `tests/sample-report.test.ts`, `tests/sample-license-list.test.ts` and `tests/data-isolation.test.ts` guard this.
+- No network calls, except the live price check that the user starts in Settings.
+- Settings are stored in `localStorage` (`ghcu.settings.v1`); usage data stays in memory only.
+
+## How to add things
+
+- **A page:** add the id to `PAGE_IDS` in `src/state/router.ts`, an entry in `src/components/layout/nav.tsx`, a lazy route in `src/components/layout/AppShell.tsx`, a docs file in `src/lib/metrics/docs/` registered in `registry.ts`, and Arabic in `src/i18n/ar/`.
+- **A number:** compute it in `src/lib/analytics/` (pure, tested), add its doc, show it with `CalcInfo`, translate the label.
+- **A recommendation:** add it in `src/lib/analytics/recommendations.ts` with evidence, actions, audience, confidence, saving and official links; savings must follow the pool rules.
+- **A model price:** update `PRICE_CARD` and `CARD_AS_OF` in `src/lib/pricing/card.ts`, then run `npm run check:prices`.
+
+## Before you finish
+
+1. `npm run typecheck` is clean.
+2. The tests for the files you touched pass, and so do the guards: `npx vitest run tests/naming.test.ts tests/i18n.test.ts tests/metric-docs.test.ts`.
+3. Check the page in the browser in English and Arabic, light and dark, wide and narrow.

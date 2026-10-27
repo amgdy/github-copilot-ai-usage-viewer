@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <title>GitHub Copilot AI Usage Viewer</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cstyle%3E.r%7Bstroke:%231a1a17%7D.f%7Bfill:%230e6e74%7D@media (prefers-color-scheme:dark)%7B.r%7Bstroke:%23edece6%7D.f%7Bfill:%234fc2c4%7D%7D%3C/style%3E%3Ccircle class='r' cx='12' cy='12' r='10.25' fill='none' stroke-width='1.5'/%3E%3Cpath class='f' d='M4.77 10A7.5 7.5 0 1 0 19.23 10Z'/%3E%3C/svg%3E"
+    />
+    <script>
+      // Apply the saved theme and language before first paint to avoid a flash.
+      try {
+        var requested = new URLSearchParams(window.location.search).get('theme');
+        var t = requested === 'light' || requested === 'dark' ? requested : localStorage.getItem('ghcu.theme') || 'system';
+        var dark = t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        if (dark) document.documentElement.classList.add('dark');
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+        if (localStorage.getItem('ghcu.locale') === 'ar') {
+          document.documentElement.lang = 'ar';
+          document.documentElement.dir = 'rtl';
+        }
+      } catch (e) {
+        console.warn('Could not read the saved theme and language.', e);
+      }
+    </script>
+    <script type="text/plain" id="icon-license-notices">
+Octicons: https://github.com/primer/octicons (MIT)
+Copyright (c) 2026 GitHub Inc.
+Lobe Icons: https://github.com/lobehub/lobe-icons (MIT)
+Copyright (c) 2023 LobeHub
+Simple Icons: https://github.com/simple-icons/simple-icons (CC0 1.0)
+Lucide: https://github.com/lucide-icons/lucide (ISC)
+Copyright (c) 2026 Lucide Icons and Contributors
+Some Lucide icons come from Feather: Copyright (c) 2013-present Cole Bemis (MIT)
+Product marks are trademarks of their respective owners.
+
+ISC License
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+MIT License
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

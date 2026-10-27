@@ -1,0 +1,76 @@
+{
+  "name": "github-copilot-ai-usage-viewer",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Interactive viewer for GitHub Copilot AI usage (AI credits) CSV reports: filters, rankings, user classification and cost-optimization recommendations. Runs 100% in the browser.",
+  "license": "MIT",
+  "author": {
+    "name": "amgdy",
+    "url": "https://github.com/amgdy"
+  },
+  "homepage": "https://amgdy.github.io/github-copilot-ai-usage-viewer/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/amgdy/github-copilot-ai-usage-viewer.git"
+  },
+  "bugs": {
+    "url": "https://github.com/amgdy/github-copilot-ai-usage-viewer/issues"
+  },
+  "keywords": [
+    "github-copilot",
+    "ai-credits",
+    "usage-report",
+    "usage-analytics",
+    "cost-optimization",
+    "finops",
+    "dashboard",
+    "csv",
+    "report-viewer",
+    "react",
+    "typescript",
+    "vite",
+    "echarts",
+    "privacy-first",
+    "client-side",
+    "arabic",
+    "rtl",
+    "i18n"
+  ],
+  "engines": {
+    "node": ">=22.12"
+  },
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "build:single": "tsc --noEmit && vite build --mode single",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "gen:demo": "node --experimental-strip-types scripts/generate-demo.ts",
+    "check:prices": "node --experimental-strip-types scripts/check-prices.ts"
+  },
+  "dependencies": {
+    "@fontsource-variable/mona-sans": "^5.3.0",
+    "@fontsource/ibm-plex-sans-arabic": "^5.3.0",
+    "clsx": "^2.1.1",
+    "echarts": "^6.1.0",
+    "lucide-react": "^1.59.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "zustand": "^5.0.15"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/node": "^26.6.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4",
+    "vite-plugin-singlefile": "^2.3.4",
+    "vitest": "^5.0.5"
+  }
+}
