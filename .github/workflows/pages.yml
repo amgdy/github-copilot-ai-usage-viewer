@@ -2,6 +2,7 @@ name: Deploy to GitHub Pages
 
 # The site is published only while the repository is public.
 # The "public" event runs this workflow when a private repository becomes public.
+# Set Settings > Pages > Source to "GitHub Actions" once, before the deploy job starts.
 on:
   push:
     branches:
@@ -24,7 +25,7 @@ jobs:
   build:
     name: Build the site
     needs: ci
-    if: ${{ !github.event.repository.private }}
+    if: ${{ github.event_name == 'public' || !github.event.repository.private }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

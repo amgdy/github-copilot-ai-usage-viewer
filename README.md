@@ -229,7 +229,7 @@ The suite covers the tokenizer and ingest (BOM, quoting, scientific notation, da
 
 ## Publishing the site
 
-The site is built by [.github/workflows/pages.yml](.github/workflows/pages.yml) and published with GitHub Pages. Every push to `main` runs the checks (types, tests, both builds) and then deploys `dist/`. The build uses relative paths, so it works under any repository name. The deploy steps run only while the repository is public. To publish from a fork, open Settings, then Pages, and set the source to **GitHub Actions**.
+The site is built by [.github/workflows/pages.yml](.github/workflows/pages.yml) and published with GitHub Pages. Every push to `main` runs the checks (types, tests, both builds) and then deploys `dist/`. The build uses relative paths, so it works under any repository name. The deploy steps run only while the repository is public. Before the first deploy, open Settings, then Pages, and set the source to **GitHub Actions**. Do this once for each repository, also for a fork.
 
 ## Contributing
 
