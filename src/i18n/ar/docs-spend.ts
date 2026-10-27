@@ -1,7 +1,7 @@
 import type { Dict } from '../core';
 
 /** Arabic for the metric docs of the Usage and pool page in `lib/metrics/docs/spend.ts`. */
-const ar: Dict = {
+const arabic: Dict = {
   // Average per day
   'The average value of the AI credits used on one calendar day of the selected period.':
     'متوسط قيمة أرصدة الذكاء الاصطناعي المستخدمة في يوم تقويمي واحد من الفترة المحددة.',
@@ -295,4 +295,4 @@ const ar: Dict = {
     'أسبوع فيه $400 مشمولة بالخطة و$100 مدفوعة إضافيًا هو عمود واحد قيمته $500. وفي «المجموع التراكمي»، يرفع أسبوع تالٍ قيمته $300 الخط إلى $800.',
 };
 
-export default ar;
+export default arabic;

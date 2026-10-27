@@ -21,12 +21,12 @@ const NO_MODELS: ModelRow[] = [];
 
 export default function ModelsPage() {
   const { analysis, models, store, settings } = useAnalysis();
-  const { agg } = analysis;
+  const { agg: aggregates } = analysis;
 
-  const shift = useMemo(() => modelShiftRatios({ agg, models, settings }, 'same-vendor'), [agg, models, settings]);
-  const rows = useMemo(() => buildModelRows(agg, models, store, shift.rows), [agg, models, store, shift]);
+  const shift = useMemo(() => modelShiftRatios({ agg: aggregates, models, settings }, 'same-vendor'), [aggregates, models, settings]);
+  const rows = useMemo(() => buildModelRows(aggregates, models, store, shift.rows), [aggregates, models, store, shift]);
 
-  if (agg.totals.rows === 0) {
+  if (aggregates.totals.rows === 0) {
     return (
       <>
         <PageHeader title={t('Models')} description={t(DESCRIPTION)} />

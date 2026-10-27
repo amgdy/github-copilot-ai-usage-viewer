@@ -67,7 +67,7 @@ interface SettingsSectionProps {
 export function SettingsSection({ id, title, description, onReset, resetLabel, confirmReset, children }: SettingsSectionProps) {
   const [epoch, setEpoch] = useState(0);
   const page = useContext(PageEpoch);
-  const heading = title ?? t(SECTIONS.find((s) => s.id === id)?.title ?? '');
+  const heading = title ?? t(SECTIONS.find((section) => section.id === id)?.title ?? '');
   return (
     <div id={domId(id)} className="scroll-mt-24 lg:scroll-mt-4">
       <Section
@@ -80,7 +80,7 @@ export function SettingsSection({ id, title, description, onReset, resetLabel, c
               confirm={confirmReset}
               onReset={() => {
                 onReset();
-                setEpoch((e) => e + 1);
+                setEpoch((previous) => previous + 1);
               }}
             />
           ) : undefined

@@ -37,7 +37,7 @@ describe('loading the sample report', () => {
     const dates = naiveRows(sources[0].data).map((row) => row.date);
     const { start, end } = sampleRange();
     expect(dates.length).toBeGreaterThan(0);
-    expect(dates.every((d) => d >= start && d <= end)).toBe(true);
+    expect(dates.every((date) => date >= start && date <= end)).toBe(true);
   });
 });
 

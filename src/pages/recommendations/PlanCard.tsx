@@ -6,17 +6,17 @@ import { useAnalysis } from '../../state/analysis';
 import { buildPlan, PHASE_SIZE, type PlanItem, type PlanPhase } from './plan';
 
 function PlanEntry({ item }: { item: PlanItem }) {
-  const { rec, owners, value, step } = item;
+  const { rec: recommendation, owners, value, step } = item;
   return (
     <li className="rounded-md border border-border-muted bg-surface-2/50 p-3">
-      <div className="text-sm font-medium">{rec.title}</div>
+      <div className="text-sm font-medium">{recommendation.title}</div>
       <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-        {owners.map((o) => (
-          <Badge key={o} tone="neutral" title={t('Who owns this action')}>
-            {audienceLabel(o)}
+        {owners.map((owner) => (
+          <Badge key={owner} tone="neutral" title={t('Who owns this action')}>
+            {audienceLabel(owner)}
           </Badge>
         ))}
-        {value > 0 ? <ImpactChip rec={rec} /> : <span className="text-xs text-fg-subtle">{t('No dollar value')}</span>}
+        {value > 0 ? <ImpactChip rec={recommendation} /> : <span className="text-xs text-fg-subtle">{t('No dollar value')}</span>}
       </div>
       <p className="mt-1.5 line-clamp-3 text-xs text-fg-muted print:line-clamp-none">
         <span className="font-medium text-fg">{t('First step:')}</span> {step}
@@ -33,8 +33,8 @@ function Phase({ phase }: { phase: PlanPhase }) {
         {t(phase.title)}
       </h4>
       <ol className="space-y-2">
-        {phase.items.map((it) => (
-          <PlanEntry key={it.rec.id} item={it} />
+        {phase.items.map((planItem) => (
+          <PlanEntry key={planItem.rec.id} item={planItem} />
         ))}
       </ol>
     </section>
@@ -59,8 +59,8 @@ export function PlanCard() {
       ) : (
         <div className="space-y-3">
           <div className="grid gap-4 md:grid-cols-3">
-            {plan.phases.map((p) => (
-              <Phase key={p.days} phase={p} />
+            {plan.phases.map((phase) => (
+              <Phase key={phase.days} phase={phase} />
             ))}
           </div>
           <p className="text-xs text-fg-muted">

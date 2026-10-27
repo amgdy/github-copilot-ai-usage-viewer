@@ -26,7 +26,7 @@ describe('csvEscape', () => {
   });
 
   it('leaves signed numbers written as text alone', () => {
-    for (const s of ['-5', '+12.5', '-12.5%', '-$3.20', '-1e-7']) expect(csvEscape(s)).toBe(s);
+    for (const signedNumber of ['-5', '+12.5', '-12.5%', '-$3.20', '-1e-7']) expect(csvEscape(signedNumber)).toBe(signedNumber);
     expect(csvEscape('+$1,200.50')).toBe('"+$1,200.50"');
   });
 

@@ -36,7 +36,7 @@ export const NO_AUTO_DISCOUNT: AutoDiscount = { billed: 0, original: 0, discount
 export const MIN_PLAN_MEASURED_USD = 1;
 
 /** The assumed Auto rate, held to a sane range so the gross-up `1 / (1 - rate)` stays finite. */
-export const clampAutoRate = (r: number): number => (Number.isFinite(r) ? Math.min(0.9, Math.max(0, r)) : 0);
+export const clampAutoRate = (rate: number): number => (Number.isFinite(rate) ? Math.min(0.9, Math.max(0, rate)) : 0);
 
 /**
  * Builds an `AutoDiscount` from the sums the aggregation keeps.
@@ -45,9 +45,9 @@ export const clampAutoRate = (r: number): number => (Number.isFinite(r) ? Math.m
  */
 export function autoDiscountOf(billed: number, list: number, measuredBilled: number, rate: number): AutoDiscount {
   if (!(billed > 0)) return NO_AUTO_DISCOUNT;
-  const r = clampAutoRate(rate);
+  const clampedRate = clampAutoRate(rate);
   const measured = Math.min(Math.max(0, measuredBilled), billed);
-  const estimated = (billed - measured) * (r / (1 - r));
+  const estimated = (billed - measured) * (clampedRate / (1 - clampedRate));
   const discount = (measured > 0 ? Math.max(0, list - measured) : 0) + estimated;
   const original = billed + discount;
   return { billed, original, discount, rate: original > 0 ? discount / original : 0, estimated, measuredBilled: measured, measuredShare: measured / billed };
@@ -82,33 +82,33 @@ export interface AutoRates {
 }
 
 /** Rates per plan, measured from the Auto rows of the aggregation. */
-export function buildAutoRates(agg: Pick<Aggregates, 'userAcc'>, assumedRate: number): AutoRates {
+export function buildAutoRates(aggregates: Pick<Aggregates, 'userAcc'>, assumedRate: number): AutoRates {
   const assumed = clampAutoRate(assumedRate);
-  const ua = agg.userAcc;
+  const perUser = aggregates.userAcc;
   const byPlan = new Map<number, AutoPlanRate>();
-  for (let u = 0; u < ua.autoGross.length; u++) {
-    const billed = ua.autoGross[u];
+  for (let user = 0; user < perUser.autoGross.length; user++) {
+    const billed = perUser.autoGross[user];
     if (!(billed > 0)) continue;
-    const credits = ua.quotaMax[u];
-    let p = byPlan.get(credits);
-    if (!p) {
-      p = { credits, label: planLabel(credits), users: 0, billed: 0, measuredBilled: 0, measuredList: 0, observed: Number.NaN, rate: assumed, source: 'assumed' };
-      byPlan.set(credits, p);
+    const credits = perUser.quotaMax[user];
+    let plan = byPlan.get(credits);
+    if (!plan) {
+      plan = { credits, label: planLabel(credits), users: 0, billed: 0, measuredBilled: 0, measuredList: 0, observed: Number.NaN, rate: assumed, source: 'assumed' };
+      byPlan.set(credits, plan);
     }
-    p.users++;
-    p.billed += billed;
-    p.measuredBilled += ua.autoMeasuredGross[u];
-    p.measuredList += ua.autoList[u];
+    plan.users++;
+    plan.billed += billed;
+    plan.measuredBilled += perUser.autoMeasuredGross[user];
+    plan.measuredList += perUser.autoList[user];
   }
   const plans = [...byPlan.values()].sort((a, b) => a.credits - b.credits);
   const byCredits = new Map<number, number>();
-  for (const p of plans) {
-    if (p.measuredBilled > 0 && p.measuredList > 0) p.observed = 1 - p.measuredBilled / p.measuredList;
-    if (p.measuredBilled >= MIN_PLAN_MEASURED_USD && Number.isFinite(p.observed)) {
-      p.rate = clampAutoRate(p.observed);
-      p.source = 'measured';
+  for (const plan of plans) {
+    if (plan.measuredBilled > 0 && plan.measuredList > 0) plan.observed = 1 - plan.measuredBilled / plan.measuredList;
+    if (plan.measuredBilled >= MIN_PLAN_MEASURED_USD && Number.isFinite(plan.observed)) {
+      plan.rate = clampAutoRate(plan.observed);
+      plan.source = 'measured';
     }
-    byCredits.set(p.credits, p.rate);
+    byCredits.set(plan.credits, plan.rate);
   }
   return { assumed, plans, byCredits };
 }
@@ -117,13 +117,13 @@ export function buildAutoRates(agg: Pick<Aggregates, 'userAcc'>, assumedRate: nu
 export const rateForPlan = (rates: AutoRates, credits: number): number => rates.byCredits.get(credits) ?? rates.assumed;
 
 /** The Auto discount of one user, at the rate of the user's plan. */
-export function userAutoDiscount(ua: UserAcc, u: number, rates: AutoRates): AutoDiscount {
-  return autoDiscountOf(ua.autoGross[u], ua.autoList[u], ua.autoMeasuredGross[u], rateForPlan(rates, ua.quotaMax[u]));
+export function userAutoDiscount(perUser: UserAcc, user: number, rates: AutoRates): AutoDiscount {
+  return autoDiscountOf(perUser.autoGross[user], perUser.autoList[user], perUser.autoMeasuredGross[user], rateForPlan(rates, perUser.quotaMax[user]));
 }
 
 /** What a user's hand-picked usage would have earned if the same requests had gone through Auto: that usage times the rate of the user's plan. */
-export function userMissedDiscount(ua: UserAcc, u: number, rates: AutoRates): number {
-  return Math.max(0, ua.gross[u] - ua.autoGross[u]) * rateForPlan(rates, ua.quotaMax[u]);
+export function userMissedDiscount(perUser: UserAcc, user: number, rates: AutoRates): number {
+  return Math.max(0, perUser.gross[user] - perUser.autoGross[user]) * rateForPlan(rates, perUser.quotaMax[user]);
 }
 
 /** Auto usage of one model, as measured. No estimate: rows that could not be priced from tokens are reported in `billed` only. */
@@ -138,10 +138,10 @@ export interface AutoModelDiscount {
   measuredShare: number;
 }
 
-export function modelAutoDiscount(x: Pick<ExtraArrays, 'autoGross' | 'autoList' | 'autoMeasuredGross'>, m: number): AutoModelDiscount {
-  const billed = x.autoGross[m];
-  const measuredBilled = x.autoMeasuredGross[m];
-  const measuredList = x.autoList[m];
+export function modelAutoDiscount(modelExtra: Pick<ExtraArrays, 'autoGross' | 'autoList' | 'autoMeasuredGross'>, model: number): AutoModelDiscount {
+  const billed = modelExtra.autoGross[model];
+  const measuredBilled = modelExtra.autoMeasuredGross[model];
+  const measuredList = modelExtra.autoList[model];
   const discount = measuredBilled > 0 ? Math.max(0, measuredList - measuredBilled) : 0;
   return {
     billed,
@@ -154,9 +154,9 @@ export function modelAutoDiscount(x: Pick<ExtraArrays, 'autoGross' | 'autoList' 
 }
 
 /** Where a user's usage sits between Auto and hand-picked models. */
-export function autoUseOf(autoShare: number, s: Pick<Settings, 'autoFirst' | 'lowAuto'>): Exclude<AutoUseId, 'unknown'> {
-  if (autoShare >= s.autoFirst) return 'autoFirst';
-  if (autoShare < s.lowAuto) return 'direct';
+export function autoUseOf(autoShare: number, settings: Pick<Settings, 'autoFirst' | 'lowAuto'>): Exclude<AutoUseId, 'unknown'> {
+  if (autoShare >= settings.autoFirst) return 'autoFirst';
+  if (autoShare < settings.lowAuto) return 'direct';
   return 'mixed';
 }
 
@@ -182,30 +182,30 @@ export interface AutoSummary extends AutoDiscount {
  * population instead, so a segment without any Auto usage is still priced at what its plan earns.
  */
 export function summarizeAuto(
-  agg: Pick<Aggregates, 'userAcc' | 'totals'>,
+  aggregates: Pick<Aggregates, 'userAcc' | 'totals'>,
   settings: Pick<Settings, 'autoDiscount'>,
   modelsKnown = true,
-  rates: AutoRates = buildAutoRates(agg, settings.autoDiscount),
+  rates: AutoRates = buildAutoRates(aggregates, settings.autoDiscount),
 ): AutoSummary {
-  const ua = agg.userAcc;
+  const perUser = aggregates.userAcc;
   let billed = 0;
   let original = 0;
   let discount = 0;
   let estimated = 0;
   let measuredBilled = 0;
   let missed = 0;
-  for (let u = 0; u < ua.gross.length; u++) {
-    if (!(ua.rows[u] > 0)) continue;
-    const d = userAutoDiscount(ua, u, rates);
-    billed += d.billed;
-    original += d.original;
-    discount += d.discount;
-    estimated += d.estimated;
-    measuredBilled += d.measuredBilled;
+  for (let user = 0; user < perUser.gross.length; user++) {
+    if (!(perUser.rows[user] > 0)) continue;
+    const userDiscount = userAutoDiscount(perUser, user, rates);
+    billed += userDiscount.billed;
+    original += userDiscount.original;
+    discount += userDiscount.discount;
+    estimated += userDiscount.estimated;
+    measuredBilled += userDiscount.measuredBilled;
     // Usage with no user (code quality and security scans) has no seat and no model to pick, so it has no Auto alternative.
-    if (modelsKnown && u !== BLANK_ID) missed += userMissedDiscount(ua, u, rates);
+    if (modelsKnown && user !== BLANK_ID) missed += userMissedDiscount(perUser, user, rates);
   }
-  const total = agg.totals.gross;
+  const total = aggregates.totals.gross;
   return {
     billed,
     original,

@@ -13,7 +13,7 @@ import { Callout } from '../ui';
 export function CoverageNotice() {
   const page = useRoute();
   const { analysis } = useAnalysis();
-  const issues = useMemo(() => coverageIssues(analysis.coverage, analysis.users.fallbackQuotaCredits).filter((i) => i.severity === 'warn'), [analysis.coverage, analysis.users.fallbackQuotaCredits]);
+  const issues = useMemo(() => coverageIssues(analysis.coverage, analysis.users.fallbackQuotaCredits).filter((issue) => issue.severity === 'warn'), [analysis.coverage, analysis.users.fallbackQuotaCredits]);
   if (issues.length === 0 || page === 'data') return null;
   return (
     <Callout
@@ -30,8 +30,8 @@ export function CoverageNotice() {
         issues[0].detail
       ) : (
         <ul className="list-disc space-y-0.5 ps-4">
-          {issues.map((i) => (
-            <li key={i.id}>{i.title}</li>
+          {issues.map((issue) => (
+            <li key={issue.id}>{issue.title}</li>
           ))}
         </ul>
       )}

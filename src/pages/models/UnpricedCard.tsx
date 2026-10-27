@@ -11,18 +11,18 @@ const buildColumns = (): Column<ModelRow>[] => [
   {
     key: 'model',
     header: t('Model'),
-    value: (r) => r.label,
-    render: (r) => (
-      <VendorName vendor={r.vendor} className="font-medium whitespace-nowrap">
-        {r.label}
+    value: (model) => model.label,
+    render: (model) => (
+      <VendorName vendor={model.vendor} className="font-medium whitespace-nowrap">
+        {model.label}
       </VendorName>
     ),
   },
   {
     key: 'tier',
     header: t('Tier'),
-    value: (r) => tierLabel(r.tier),
-    render: (r) => <TierBadge tier={r.tier} />,
+    value: (model) => tierLabel(model.tier),
+    render: (model) => <TierBadge tier={model.tier} />,
     hint: t('A model without a price counts as Unknown until you give it a tier in Settings.'),
     calc: 'model-tier',
   },
@@ -30,42 +30,42 @@ const buildColumns = (): Column<ModelRow>[] => [
     key: 'gross',
     header: t('Usage'),
     align: 'end',
-    value: (r) => r.gross,
-    render: (r) => fmtUSD(r.gross),
+    value: (model) => model.gross,
+    render: (model) => fmtUSD(model.gross),
     hint: t('The amount charged in the report for this model.'),
     calc: 'usage',
-    total: (rs) => fmtUSD(rs.reduce((a, r) => a + r.gross, 0)),
+    total: (models) => fmtUSD(models.reduce((total, model) => total + model.gross, 0)),
   },
   {
     key: 'share',
     header: t('Share of usage'),
     align: 'end',
-    value: (r) => r.share,
-    render: (r) => fmtPct(r.share),
+    value: (model) => model.share,
+    render: (model) => fmtPct(model.share),
     calc: 'model-share',
-    total: (rs) => fmtPct(rs.reduce((a, r) => a + r.share, 0)),
+    total: (models) => fmtPct(models.reduce((total, model) => total + model.share, 0)),
   },
   {
     key: 'requests',
     header: t('Requests'),
     align: 'end',
-    value: (r) => r.requests,
-    render: (r) => fmtInt(r.requests),
+    value: (model) => model.requests,
+    render: (model) => fmtInt(model.requests),
     hint: t('Usage lines in the report.'),
     calc: 'model-requests',
-    total: (rs) => fmtInt(rs.reduce((a, r) => a + r.requests, 0)),
+    total: (models) => fmtInt(models.reduce((total, model) => total + model.requests, 0)),
   },
-  { key: 'users', header: t('Users'), align: 'end', value: (r) => r.users, render: (r) => fmtInt(r.users), calc: 'model-users' },
+  { key: 'users', header: t('Users'), align: 'end', value: (model) => model.users, render: (model) => fmtInt(model.users), calc: 'model-users' },
 ];
 
 export function UnpricedCard({ rows }: { rows: ModelRow[] }) {
-  const unpriced = useMemo(() => rows.filter((r) => !r.priced), [rows]);
+  const unpriced = useMemo(() => rows.filter((model) => !model.priced), [rows]);
   const columns = useMemo(() => buildColumns(), []);
   if (unpriced.length === 0) return null;
 
-  const gross = unpriced.reduce((a, r) => a + r.gross, 0);
-  const share = unpriced.reduce((a, r) => a + r.share, 0);
-  const noName = unpriced.some((r) => r.value === '');
+  const gross = unpriced.reduce((total, model) => total + model.gross, 0);
+  const share = unpriced.reduce((total, model) => total + model.share, 0);
+  const noName = unpriced.some((model) => model.value === '');
 
   return (
     <Card
@@ -94,13 +94,13 @@ export function UnpricedCard({ rows }: { rows: ModelRow[] }) {
         <DataTable
           rows={unpriced}
           columns={columns}
-          rowKey={(r) => r.id}
+          rowKey={(model) => model.id}
           defaultSort={{ key: 'gross', dir: 'desc' }}
           pageSize={10}
           dense
           fixedColumns
           exportName="github-copilot-models-without-price"
-          onRowClick={(r) => drill({ models: [r.value] }, { merge: true })}
+          onRowClick={(model) => drill({ models: [model.value] }, { merge: true })}
         />
         {noName ? (
           <p className="text-xs text-fg-muted">

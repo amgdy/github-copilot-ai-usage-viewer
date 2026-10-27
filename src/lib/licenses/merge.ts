@@ -9,34 +9,34 @@ const SOURCE_RANK: Record<SeatSource, number> = { api: 2, activity: 1, list: 0 }
 function addMissing(target: string[], extra: readonly string[]): void {
   for (const value of extra) {
     const key = value.toLowerCase();
-    if (!target.some((t) => t.toLowerCase() === key)) target.push(value);
+    if (!target.some((existing) => existing.toLowerCase() === key)) target.push(value);
   }
 }
 
 /** Folds `next` into `acc` (both describe the same login). */
-function foldSeat(acc: LicenseSeat, next: LicenseSeat): void {
-  if (acc.name === undefined && next.name !== undefined) acc.name = next.name;
-  if (acc.email === undefined && next.email !== undefined) acc.email = next.email;
-  const plan = higherPlan(acc.plan, next.plan);
-  if (plan !== undefined) acc.plan = plan;
-  addMissing(acc.orgs, next.orgs);
-  addMissing(acc.teams, next.teams);
-  const createdAt = earlierDay(acc.createdAt, next.createdAt);
-  if (createdAt !== undefined) acc.createdAt = createdAt;
-  const lastAuthenticatedAt = laterDay(acc.lastAuthenticatedAt, next.lastAuthenticatedAt);
-  if (lastAuthenticatedAt !== undefined) acc.lastAuthenticatedAt = lastAuthenticatedAt;
-  const pendingCancellation = earlierDay(acc.pendingCancellation, next.pendingCancellation);
-  if (pendingCancellation !== undefined) acc.pendingCancellation = pendingCancellation;
+function foldSeat(merged: LicenseSeat, next: LicenseSeat): void {
+  if (merged.name === undefined && next.name !== undefined) merged.name = next.name;
+  if (merged.email === undefined && next.email !== undefined) merged.email = next.email;
+  const plan = higherPlan(merged.plan, next.plan);
+  if (plan !== undefined) merged.plan = plan;
+  addMissing(merged.orgs, next.orgs);
+  addMissing(merged.teams, next.teams);
+  const createdAt = earlierDay(merged.createdAt, next.createdAt);
+  if (createdAt !== undefined) merged.createdAt = createdAt;
+  const lastAuthenticatedAt = laterDay(merged.lastAuthenticatedAt, next.lastAuthenticatedAt);
+  if (lastAuthenticatedAt !== undefined) merged.lastAuthenticatedAt = lastAuthenticatedAt;
+  const pendingCancellation = earlierDay(merged.pendingCancellation, next.pendingCancellation);
+  if (pendingCancellation !== undefined) merged.pendingCancellation = pendingCancellation;
 
   const nextIsLater =
-    next.lastActivityAt !== undefined && (acc.lastActivityAt === undefined || next.lastActivityAt > acc.lastActivityAt);
+    next.lastActivityAt !== undefined && (merged.lastActivityAt === undefined || next.lastActivityAt > merged.lastActivityAt);
   if (nextIsLater) {
-    acc.lastActivityAt = next.lastActivityAt;
-    if (next.lastSurface !== undefined) acc.lastSurface = next.lastSurface;
-  } else if (acc.lastSurface === undefined && next.lastSurface !== undefined) {
-    acc.lastSurface = next.lastSurface;
+    merged.lastActivityAt = next.lastActivityAt;
+    if (next.lastSurface !== undefined) merged.lastSurface = next.lastSurface;
+  } else if (merged.lastSurface === undefined && next.lastSurface !== undefined) {
+    merged.lastSurface = next.lastSurface;
   }
-  if (SOURCE_RANK[next.source] > SOURCE_RANK[acc.source]) acc.source = next.source;
+  if (SOURCE_RANK[next.source] > SOURCE_RANK[merged.source]) merged.source = next.source;
 }
 
 /**
@@ -60,10 +60,10 @@ export function mergeSeats(seats: readonly LicenseSeat[]): LicenseSeat[] {
 /** The latest date found among the activity, sign-in and creation dates of the seats. */
 export function latestStamp(seats: readonly LicenseSeat[]): string | undefined {
   let latest: string | undefined;
-  for (const s of seats) {
-    latest = laterDay(latest, s.lastActivityAt);
-    latest = laterDay(latest, s.lastAuthenticatedAt);
-    latest = laterDay(latest, s.createdAt);
+  for (const seat of seats) {
+    latest = laterDay(latest, seat.lastActivityAt);
+    latest = laterDay(latest, seat.lastAuthenticatedAt);
+    latest = laterDay(latest, seat.createdAt);
   }
   return latest;
 }

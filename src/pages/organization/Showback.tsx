@@ -56,27 +56,27 @@ const DASH = <span className="text-fg-subtle">–</span>;
 /** Splits the bill between cost centers (or organizations) with a method the reader picks. */
 export function Showback() {
   const { analysis, store } = useAnalysis();
-  const { agg, users, narrowed, range, coverage } = analysis;
+  const { agg: aggregates, users, narrowed, range, coverage } = analysis;
   const billing = coverage.billing;
-  const dim = pickShowbackDim(agg);
+  const dimension = pickShowbackDim(aggregates);
   const [method, setMethod] = useState<ShowbackMethod>('seats');
   // Seat costs need every user of the report, so the method is only on offer without filters.
   const effective: ShowbackMethod = method === 'seats' && narrowed ? 'billed' : method;
-  const offered = narrowed ? METHODS.filter((m) => m.value !== 'seats') : METHODS;
+  const offered = narrowed ? METHODS.filter((methodOption) => methodOption.value !== 'seats') : METHODS;
 
-  const data = useMemo(() => (dim ? buildShowback(store, agg, users, dim, effective) : null), [store, agg, users, dim, effective]);
+  const data = useMemo(() => (dimension ? buildShowback(store, aggregates, users, dimension, effective) : null), [store, aggregates, users, dimension, effective]);
 
   const columns = useMemo<Column<ShowbackRow>[]>(() => {
     if (!data) return [];
     const showSeats = effective === 'seats';
-    const sum = (rows: ShowbackRow[], f: (r: ShowbackRow) => number) => rows.reduce((a, r) => a + f(r), 0);
-    const maxShare = data.rows.reduce((m, r) => (Number.isFinite(r.shareOfTotal) ? Math.max(m, r.shareOfTotal) : m), 0);
+    const sum = (rows: ShowbackRow[], getValue: (row: ShowbackRow) => number) => rows.reduce((total, row) => total + getValue(row), 0);
+    const maxShare = data.rows.reduce((largest, row) => (Number.isFinite(row.shareOfTotal) ? Math.max(largest, row.shareOfTotal) : largest), 0);
     const cols: Column<ShowbackRow>[] = [
       {
         key: 'group',
-        header: t(TEXTS[dim ?? 'org'].header),
-        value: (r) => r.name,
-        render: (r) => <GroupName name={r.name} blank={r.unassigned} />,
+        header: t(TEXTS[dimension ?? 'org'].header),
+        value: (row) => row.name,
+        render: (row) => <GroupName name={row.name} blank={row.unassigned} />,
         total: (rows) => (rows.length === data.rows.length ? t('Total') : t('Total of {n} matching', { n: fmtInt(rows.length) })),
       },
       {
@@ -85,9 +85,9 @@ export function Showback() {
         hint: t('People whose first cost center (or organization) in the report is this group. Each person is counted once.'),
         calc: 'showback-users',
         align: 'end',
-        value: (r) => r.users,
-        render: (r) => fmtInt(r.users),
-        total: (rows) => fmtInt(sum(rows, (r) => r.users)),
+        value: (row) => row.users,
+        render: (row) => fmtInt(row.users),
+        total: (rows) => fmtInt(sum(rows, (row) => row.users)),
       },
       {
         key: 'usage',
@@ -95,9 +95,9 @@ export function Showback() {
         hint: t('Value of all AI credits used on the rows of this group (1 credit = $0.01)'),
         calc: 'usage',
         align: 'end',
-        value: (r) => r.gross,
-        render: (r) => fmtUSD(r.gross),
-        total: (rows) => fmtUSD(sum(rows, (r) => r.gross)),
+        value: (row) => row.gross,
+        render: (row) => fmtUSD(row.gross),
+        total: (rows) => fmtUSD(sum(rows, (row) => row.gross)),
       },
       {
         key: 'share',
@@ -105,9 +105,9 @@ export function Showback() {
         hint: t('Share of all usage'),
         calc: 'org-share',
         align: 'end',
-        value: (r) => r.share,
-        render: (r) => fmtPct(r.share, 1),
-        total: (rows) => fmtPct(sum(rows, (r) => r.share), 1),
+        value: (row) => row.share,
+        render: (row) => fmtPct(row.share, 1),
+        total: (rows) => fmtPct(sum(rows, (row) => row.share), 1),
       },
     ];
     if (showSeats) {
@@ -117,9 +117,9 @@ export function Showback() {
         hint: t('Included credits of the group’s users, in USD. A seat costs as much as its included credits.'),
         calc: 'showback-seat-cost',
         align: 'end',
-        value: (r) => r.seat,
-        render: (r) => fmtUSD(r.seat),
-        total: (rows) => fmtUSD(sum(rows, (r) => r.seat)),
+        value: (row) => row.seat,
+        render: (row) => fmtUSD(row.seat),
+        total: (rows) => fmtUSD(sum(rows, (row) => row.seat)),
       });
     }
     cols.push(
@@ -129,9 +129,9 @@ export function Showback() {
         hint: effective === 'billed' ? t('Overage on the rows of this group, as the report has it') : t('Total overage times the group’s share of usage'),
         calc: 'showback-overage',
         align: 'end',
-        value: (r) => (billing ? r.overage : null),
-        render: (r) => (billing ? fmtUSD(r.overage) : DASH),
-        total: (rows) => (billing ? fmtUSD(sum(rows, (r) => r.overage)) : DASH),
+        value: (row) => (billing ? row.overage : null),
+        render: (row) => (billing ? fmtUSD(row.overage) : DASH),
+        total: (rows) => (billing ? fmtUSD(sum(rows, (row) => row.overage)) : DASH),
       },
       {
         key: 'total',
@@ -139,9 +139,9 @@ export function Showback() {
         hint: showSeats ? t('Seat cost plus overage allocation') : t('Overage allocation'),
         calc: 'showback-total',
         align: 'end',
-        value: (r) => r.total,
-        render: (r) => <span className="font-semibold">{fmtUSD(r.total)}</span>,
-        total: (rows) => fmtUSD(sum(rows, (r) => r.total)),
+        value: (row) => row.total,
+        render: (row) => <span className="font-semibold">{fmtUSD(row.total)}</span>,
+        total: (rows) => fmtUSD(sum(rows, (row) => row.total)),
       },
       {
         key: 'shareOfTotal',
@@ -149,18 +149,18 @@ export function Showback() {
         hint: t('Part of the total allocation that this group carries'),
         calc: 'showback-share-of-total',
         align: 'end',
-        value: (r) => (Number.isFinite(r.shareOfTotal) ? r.shareOfTotal : null),
-        render: (r) => (Number.isFinite(r.shareOfTotal) ? <ShareCell frac={r.shareOfTotal} max={maxShare} text={fmtPct(r.shareOfTotal, 1)} /> : DASH),
+        value: (row) => (Number.isFinite(row.shareOfTotal) ? row.shareOfTotal : null),
+        render: (row) => (Number.isFinite(row.shareOfTotal) ? <ShareCell frac={row.shareOfTotal} max={maxShare} text={fmtPct(row.shareOfTotal, 1)} /> : DASH),
         total: (rows) => {
-          const part = sum(rows, (r) => (Number.isFinite(r.shareOfTotal) ? r.shareOfTotal : 0));
+          const part = sum(rows, (row) => (Number.isFinite(row.shareOfTotal) ? row.shareOfTotal : 0));
           return part > 0 ? fmtPct(part, 1) : DASH;
         },
       },
     );
     return cols;
-  }, [data, dim, effective, billing]);
+  }, [data, dimension, effective, billing]);
 
-  if (!dim || !data) {
+  if (!dimension || !data) {
     return (
       <Card title={t('Showback and chargeback')} subtitle={t('Split the bill between teams')} calc="showback">
         <EmptyState
@@ -172,10 +172,10 @@ export function Showback() {
     );
   }
 
-  const text = TEXTS[dim];
+  const text = TEXTS[dimension];
   const notes: ReactNode[] = [];
-  if (dim === 'org') notes.push(t('This report has no cost centers, so the allocation uses organizations.'));
-  if (data.rows.some((r) => r.unassigned)) notes.push(t(text.unassigned));
+  if (dimension === 'org') notes.push(t('This report has no cost centers, so the allocation uses organizations.'));
+  if (data.rows.some((row) => row.unassigned)) notes.push(t(text.unassigned));
   if (effective === 'seats') {
     notes.push(t('Seat cost counts whole months in which a person has usage in the selected period. People without usage in it are not included.'));
     if (data.splitUsers > 0) notes.push(tp(data.splitUsers, t(text.split), text.splitOther, { n: fmtInt(data.splitUsers) }));
@@ -186,7 +186,7 @@ export function Showback() {
         ? t('This file does not say what was billed, so the overage cannot be allocated. Only the seat cost is allocated.')
         : t('This file does not say what was billed, so the overage cannot be allocated. There is nothing to allocate.'),
     );
-  } else if (effective !== 'seats' && agg.totals.net <= 0.005) {
+  } else if (effective !== 'seats' && aggregates.totals.net <= 0.005) {
     notes.push(t('Nothing was billed on top of seats in this period, so this method has nothing to allocate.'));
   }
   if (narrowed) notes.push(t('Filters are active. The seat-based method is hidden because seat costs need the full user list.'));
@@ -197,7 +197,7 @@ export function Showback() {
       subtitle={t(text.subtitle, { from: fmtDay(range.start, true), to: fmtDay(range.end, true) })}
       calc="showback"
       actions={
-        <Select aria-label={t('Allocation method')} value={effective} onChange={setMethod} options={offered.map((m) => ({ value: m.value, label: t(m.label) }))} />
+        <Select aria-label={t('Allocation method')} value={effective} onChange={setMethod} options={offered.map((methodOption) => ({ value: methodOption.value, label: t(methodOption.label) }))} />
       }
     >
       <div className="space-y-3">
@@ -205,7 +205,7 @@ export function Showback() {
           key={effective}
           rows={data.rows}
           columns={columns}
-          rowKey={(r) => r.id}
+          rowKey={(row) => row.id}
           defaultSort={{ key: 'total', dir: 'desc' }}
           pageSize={25}
           searchable={data.rows.length > 25}
@@ -215,16 +215,16 @@ export function Showback() {
         />
         {notes.length > 0 ? (
           <ul className="space-y-1 text-xs text-fg-muted">
-            {notes.map((n, i) => (
-              <li key={i}>{n}</li>
+            {notes.map((note, index) => (
+              <li key={index}>{note}</li>
             ))}
           </ul>
         ) : null}
         <Callout title={t('How the methods work')}>
           <ul className="mt-1 space-y-1">
-            {offered.map((m) => (
-              <li key={m.value}>
-                <span className={cx('font-medium', m.value === effective ? 'text-fg' : 'text-fg-muted')}>{t(m.label)}.</span> {t(m.how)}
+            {offered.map((methodOption) => (
+              <li key={methodOption.value}>
+                <span className={cx('font-medium', methodOption.value === effective ? 'text-fg' : 'text-fg-muted')}>{t(methodOption.label)}.</span> {t(methodOption.how)}
               </li>
             ))}
           </ul>

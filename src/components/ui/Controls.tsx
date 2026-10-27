@@ -19,7 +19,7 @@ export function Segmented<T extends string | number>({
   label,
 }: {
   value: T;
-  onChange: (v: T) => void;
+  onChange: (value: T) => void;
   options: SegmentedOption<T>[];
   size?: 'sm' | 'md';
   className?: string;
@@ -28,23 +28,23 @@ export function Segmented<T extends string | number>({
 }) {
   return (
     <div role="radiogroup" aria-label={label} className={cx('inline-flex max-w-full flex-wrap gap-0.5 rounded-md border border-border bg-surface p-0.5', className)}>
-      {options.map((o) => {
-        const on = o.value === value;
+      {options.map((option) => {
+        const on = option.value === value;
         return (
           <button
-            key={String(o.value)}
+            key={String(option.value)}
             type="button"
             role="radio"
             aria-checked={on}
-            title={o.title}
-            onClick={() => onChange(o.value)}
+            title={option.title}
+            onClick={() => onChange(option.value)}
             className={cx(
               'whitespace-nowrap rounded-sm font-medium transition-colors',
               size === 'sm' ? 'px-2 py-0.5 text-xs' : 'px-2.5 py-1 text-xs',
               on ? 'bg-primary text-primary-fg' : 'text-fg-muted hover:bg-surface-3 hover:text-fg',
             )}
           >
-            {o.label}
+            {option.label}
           </button>
         );
       })}
@@ -52,7 +52,7 @@ export function Segmented<T extends string | number>({
   );
 }
 
-export function Toggle({ checked, onChange, label, description, disabled }: { checked: boolean; onChange: (v: boolean) => void; label?: ReactNode; description?: ReactNode; disabled?: boolean }) {
+export function Toggle({ checked, onChange, label, description, disabled }: { checked: boolean; onChange: (checked: boolean) => void; label?: ReactNode; description?: ReactNode; disabled?: boolean }) {
   return (
     <label className={cx('flex items-start gap-2.5', disabled ? 'opacity-50' : 'cursor-pointer')}>
       <button
@@ -87,7 +87,7 @@ export function Field({ label, hint, children, className }: { label?: ReactNode;
 
 export interface NumberFieldProps {
   value: number | null;
-  onChange: (v: number | null) => void;
+  onChange: (value: number | null) => void;
   min?: number;
   max?: number;
   step?: number;
@@ -114,9 +114,9 @@ export function NumberField({ value, onChange, min, max, step = 1, prefix, suffi
       if (allowEmpty) onChange(null);
       return;
     }
-    const n = Number(raw);
-    if (!Number.isFinite(n)) return;
-    onChange(Math.min(max ?? Infinity, Math.max(min ?? -Infinity, n)));
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed)) return;
+    onChange(Math.min(max ?? Infinity, Math.max(min ?? -Infinity, parsed)));
   };
   return (
     <div className={cx('relative flex items-center', className)}>
@@ -137,7 +137,7 @@ export function NumberField({ value, onChange, min, max, step = 1, prefix, suffi
           focused.current = false;
           setText(value === null ? '' : String(value));
         }}
-        onChange={(e) => commit(e.target.value)}
+        onChange={(event) => commit(event.target.value)}
       />
       {suffix ? <span className="pointer-events-none absolute end-2.5 text-xs text-fg-subtle">{suffix}</span> : null}
     </div>
@@ -156,11 +156,11 @@ export function Slider({
   disabled,
 }: {
   value: number;
-  onChange: (v: number) => void;
+  onChange: (value: number) => void;
   min: number;
   max: number;
   step?: number;
-  format?: (v: number) => string;
+  format?: (value: number) => string;
   label?: ReactNode;
   hint?: ReactNode;
   disabled?: boolean;
@@ -178,7 +178,7 @@ export function Slider({
         )}
         <span className="num text-xs font-semibold text-fg">{format ? format(value) : value}</span>
       </div>
-      <input id={id} type="range" min={min} max={max} step={step} value={value} disabled={disabled} onChange={(e) => onChange(Number(e.target.value))} className="h-1.5 w-full cursor-pointer accent-[var(--accent)]" />
+      <input id={id} type="range" min={min} max={max} step={step} value={value} disabled={disabled} onChange={(event) => onChange(Number(event.target.value))} className="h-1.5 w-full cursor-pointer accent-[var(--accent)]" />
       {hint ? <div className="mt-1 text-xs text-fg-subtle">{hint}</div> : null}
     </div>
   );
@@ -194,38 +194,38 @@ export function Select<T extends string | number>({
   ...rest
 }: {
   value: T;
-  onChange: (v: T) => void;
+  onChange: (value: T) => void;
   options: { value: T; label: string }[];
   order?: OptionOrder;
   className?: string;
   'aria-label'?: string;
 }) {
-  const sorted = useMemo(() => sortOptions(options, (o) => o.label, order), [options, order]);
+  const sorted = useMemo(() => sortOptions(options, (option) => option.label, order), [options, order]);
   return (
     <select
       className={cx('input w-auto max-w-full pe-7', className)}
       value={String(value)}
       aria-label={rest['aria-label']}
-      onChange={(e) => {
-        const o = options.find((x) => String(x.value) === e.target.value);
-        if (o) onChange(o.value);
+      onChange={(event) => {
+        const chosen = options.find((option) => String(option.value) === event.target.value);
+        if (chosen) onChange(chosen.value);
       }}
     >
-      {sorted.map((o) => (
-        <option key={String(o.value)} value={String(o.value)}>
-          {o.label}
+      {sorted.map((option) => (
+        <option key={String(option.value)} value={String(option.value)}>
+          {option.label}
         </option>
       ))}
     </select>
   );
 }
 
-export function SearchInput({ value, onChange, placeholder, className, ...rest }: { value: string; onChange: (v: string) => void; placeholder?: string; className?: string; 'aria-label'?: string }) {
+export function SearchInput({ value, onChange, placeholder, className, ...rest }: { value: string; onChange: (value: string) => void; placeholder?: string; className?: string; 'aria-label'?: string }) {
   const hint = placeholder ?? t('Search…');
   return (
     <div className={cx('relative', className)}>
       <Search size={14} className="pointer-events-none absolute start-2.5 top-1/2 -translate-y-1/2 text-fg-subtle" />
-      <input type="search" className="input ps-8 pe-7 [&::-webkit-search-cancel-button]:hidden" value={value} placeholder={hint} aria-label={rest['aria-label'] ?? hint} onChange={(e) => onChange(e.target.value)} />
+      <input type="search" className="input ps-8 pe-7 [&::-webkit-search-cancel-button]:hidden" value={value} placeholder={hint} aria-label={rest['aria-label'] ?? hint} onChange={(event) => onChange(event.target.value)} />
       {value ? (
         <button type="button" onClick={() => onChange('')} className="absolute end-1.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-fg-subtle hover:text-fg" aria-label={t('Clear search')}>
           <X size={13} />
@@ -241,11 +241,11 @@ export function Popover({ trigger, children, align = 'end', className }: { trigg
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
-    const down = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    const down = (event: MouseEvent) => {
+      if (ref.current && !ref.current.contains(event.target as Node)) setOpen(false);
     };
-    const key = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
+    const key = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
     };
     document.addEventListener('mousedown', down);
     document.addEventListener('keydown', key);
@@ -257,7 +257,7 @@ export function Popover({ trigger, children, align = 'end', className }: { trigg
   const close = () => setOpen(false);
   return (
     <div ref={ref} className="relative inline-block">
-      {trigger(open, () => setOpen((o) => !o))}
+      {trigger(open, () => setOpen((wasOpen) => !wasOpen))}
       {open ? (
         <div className={cx('anim-fade absolute z-40 mt-1.5 min-w-48 rounded-lg border border-border bg-surface p-1.5 shadow-pop', align === 'end' ? 'end-0' : 'start-0', className)}>
           {typeof children === 'function' ? children(close) : children}

@@ -138,8 +138,8 @@ export const BEHAVIOR_GROUPS: { title: string; keys: ScalarKey[] }[] = [
 
 /** Reads a scalar from settings in display units (percent fields are shown as percent). */
 export function scalarDisplay(spec: ScalarSpec, settings: Settings): number {
-  const v = settings[spec.key];
-  return spec.unit === 'percent' ? Math.round(v * 100 * 1e6) / 1e6 : v;
+  const storedValue = settings[spec.key];
+  return spec.unit === 'percent' ? Math.round(storedValue * 100 * 1e6) / 1e6 : storedValue;
 }
 
 /** A value in display units with its unit, for example "70%", "7 days" or "$5.00". */

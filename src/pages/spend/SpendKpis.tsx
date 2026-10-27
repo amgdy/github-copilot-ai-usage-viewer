@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { Callout, Kpi, KpiGrid, type Tone } from '../../components/ui';
 import { msg, t, T } from '../../i18n';
 import { CREDIT_USD } from '../../lib/types';
-import { DAYS_PER_MONTH, DOW_NAMES, dowOf, fmtDay, ymd } from '../../lib/utils/date';
+import { DAYS_PER_MONTH, WEEKDAY_NAMES, dowOf, fmtDay, dateParts } from '../../lib/utils/date';
 import { fmtDelta, fmtInt, fmtMultiple, fmtPct, fmtUSD, pluralize } from '../../lib/utils/format';
 import { useAnalysis } from '../../state/analysis';
 import { drill, navigate } from '../../state/router';
@@ -13,19 +13,19 @@ const NOT_IN_FILE = msg('Not in this file');
 // Tiles run from the number a manager acts on first (money billed on top of seats) to background figures.
 function UsageKpis() {
   const { analysis } = useAnalysis();
-  const { agg, range, previous, anomalies, coverage } = analysis;
+  const { agg: aggregates, range, previous, anomalies, coverage } = analysis;
   const billing = coverage.billing;
-  const tot = agg.totals;
+  const totals = aggregates.totals;
   const prev = previous?.totals ?? null;
-  const avgDay = range.length > 0 ? tot.gross / range.length : 0;
-  const busiest = useMemo(() => busiestDay(agg.days.gross, range.start), [agg, range.start]);
-  const unusual = busiest !== null && anomalies.some((a) => a.day === busiest.day);
-  const spansYears = ymd(range.start).y !== ymd(range.end).y;
-  const share = tot.gross > 0 ? tot.net / tot.gross : 0;
+  const avgDay = range.length > 0 ? totals.gross / range.length : 0;
+  const busiest = useMemo(() => busiestDay(aggregates.days.gross, range.start), [aggregates, range.start]);
+  const unusual = busiest !== null && anomalies.some((anomaly) => anomaly.day === busiest.day);
+  const spansYears = dateParts(range.start).y !== dateParts(range.end).y;
+  const share = totals.gross > 0 ? totals.net / totals.gross : 0;
 
   let peakSub = t('No usage in this period');
   if (busiest) {
-    const when = t('{weekday}, {date}', { weekday: DOW_NAMES[dowOf(busiest.day)], date: fmtDay(busiest.day, spansYears) });
+    const when = t('{weekday}, {date}', { weekday: WEEKDAY_NAMES[dowOf(busiest.day)], date: fmtDay(busiest.day, spansYears) });
     peakSub =
       range.length > 1 && avgDay > 0 ? t('{when} · {multiple} the daily average', { when, multiple: fmtMultiple(busiest.gross / avgDay) }) : when;
   }
@@ -34,21 +34,21 @@ function UsageKpis() {
     <KpiGrid>
       <Kpi
         label={t('Billed on top of seats')}
-        value={billing ? fmtUSD(tot.net) : '–'}
-        delta={billing && prev ? fmtDelta(tot.net, prev.net) : null}
+        value={billing ? fmtUSD(totals.net) : '–'}
+        delta={billing && prev ? fmtDelta(totals.net, prev.net) : null}
         goodWhen="down"
-        tone={!billing ? 'neutral' : tot.net > 0.005 ? 'warn' : 'good'}
-        sub={!billing ? t(NOT_IN_FILE) : tot.net > 0.005 ? t('charged in addition to seat fees') : t('nothing billed in this period')}
-        spark={billing ? agg.days.net : undefined}
+        tone={!billing ? 'neutral' : totals.net > 0.005 ? 'warn' : 'good'}
+        sub={!billing ? t(NOT_IN_FILE) : totals.net > 0.005 ? t('charged in addition to seat fees') : t('nothing billed in this period')}
+        spark={billing ? aggregates.days.net : undefined}
         hint={t('Usage that went beyond the pooled included credits. This is the amount charged in addition to the seat fees.')}
         calc={['billed', 'previous-period']}
       />
       <Kpi
         label={t('Usage')}
-        value={fmtUSD(tot.gross)}
-        delta={prev ? fmtDelta(tot.gross, prev.gross) : null}
-        sub={pluralize(tot.credits, 'AI credit')}
-        spark={agg.days.gross}
+        value={fmtUSD(totals.gross)}
+        delta={prev ? fmtDelta(totals.gross, prev.gross) : null}
+        sub={pluralize(totals.credits, 'AI credit')}
+        spark={aggregates.days.gross}
         hint={t(
           'Value of all AI credits used in this period (1 credit = $0.01), including usage already paid for by included credits. Rows that went through Auto are shown after the Auto discount.',
         )}
@@ -56,10 +56,10 @@ function UsageKpis() {
       />
       <Kpi
         label={t('Covered by included credits')}
-        value={billing ? fmtUSD(tot.discount) : '–'}
-        delta={billing && prev ? fmtDelta(tot.discount, prev.discount) : null}
-        sub={!billing ? t(NOT_IN_FILE) : tot.gross > 0 ? t('{pct} of usage', { pct: fmtPct(tot.discount / tot.gross, 0) }) : undefined}
-        spark={billing ? agg.days.discount : undefined}
+        value={billing ? fmtUSD(totals.discount) : '–'}
+        delta={billing && prev ? fmtDelta(totals.discount, prev.discount) : null}
+        sub={!billing ? t(NOT_IN_FILE) : totals.gross > 0 ? t('{pct} of usage', { pct: fmtPct(totals.discount / totals.gross, 0) }) : undefined}
+        spark={billing ? aggregates.days.discount : undefined}
         hint={t(
           'Usage paid for by the AI credits that come with each GitHub Copilot seat. They are pooled across the organization and reset on the 1st of the month (UTC).',
         )}
@@ -67,9 +67,9 @@ function UsageKpis() {
       />
       <Kpi
         label={t('Billed share of usage')}
-        value={billing && tot.gross > 0 ? fmtPct(share, 1) : '–'}
+        value={billing && totals.gross > 0 ? fmtPct(share, 1) : '–'}
         tone={billing && share > 0.005 ? 'warn' : 'neutral'}
-        sub={!billing ? t(NOT_IN_FILE) : tot.gross > 0 ? t('{pct} covered by included credits', { pct: fmtPct(1 - share, 0) }) : undefined}
+        sub={!billing ? t(NOT_IN_FILE) : totals.gross > 0 ? t('{pct} covered by included credits', { pct: fmtPct(1 - share, 0) }) : undefined}
         hint={t('Billed on top of seats divided by usage. The rest was covered by included credits.')}
         calc="billed-share"
       />
@@ -148,7 +148,7 @@ function PoolKpis() {
   if (narrowed || !latest) return null;
 
   const poolKnown = !pool.capacityExceeded && capacityKnown(latest);
-  const p = latest.projection;
+  const projection = latest.projection;
   const billedKnown = billedProjectionKnown(latest, narrowed);
   const star = pool.capacityIsLowerBound ? '*' : '';
   const budget = coverage.billing && (settings.budgetMonthlyBilled ?? 0) > 0 ? pool.budget : null;
@@ -178,12 +178,12 @@ function PoolKpis() {
   return (
     <div className="space-y-1.5">
       <KpiGrid>
-        {p ? (
+        {projection ? (
           <Kpi
             label={t('Projected {month} billed', { month: latest.label })}
-            value={billedKnown ? fmtUSD(p.projNet, 0) : '–'}
-            tone={billedKnown && p.projNet > 0.005 ? 'warn' : 'good'}
-            sub={billedKnown ? t('{low} to {high}', { low: fmtUSD(p.projNetLow, 0), high: fmtUSD(p.projNetHigh, 0) }) : t('needs the pool size')}
+            value={billedKnown ? fmtUSD(projection.projNet, 0) : '–'}
+            tone={billedKnown && projection.projNet > 0.005 ? 'warn' : 'good'}
+            sub={billedKnown ? t('{low} to {high}', { low: fmtUSD(projection.projNetLow, 0), high: fmtUSD(projection.projNetHigh, 0) }) : t('needs the pool size')}
             hint={t('Usage beyond the pool at the projected month end, on top of seat fees.')}
             calc="projection"
           />
@@ -224,11 +224,11 @@ function PoolKpis() {
           hint={t('Months in which usage went beyond the pool, so billing on top of seats started.')}
           calc="pool-months-exhausted"
         />
-        {p ? (
+        {projection ? (
           <Kpi
             label={t('Projected {month} usage', { month: latest.label })}
-            value={fmtUSD(p.projGross, 0)}
-            sub={t('{low} to {high}', { low: fmtUSD(p.projGrossLow, 0), high: fmtUSD(p.projGrossHigh, 0) })}
+            value={fmtUSD(projection.projGross, 0)}
+            sub={t('{low} to {high}', { low: fmtUSD(projection.projGrossLow, 0), high: fmtUSD(projection.projGrossHigh, 0) })}
             hint={t(
               'Usage so far plus the remaining days at the average daily rate of the month and at the rate of the last 7 days. The range runs between the two rates.',
             )}

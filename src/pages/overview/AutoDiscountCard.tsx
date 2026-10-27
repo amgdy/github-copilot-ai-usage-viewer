@@ -11,11 +11,11 @@ const FORWARD = 'rtl:-scale-x-100';
 
 /** Plan name from the included credits per seat. The analysis keeps an English label, so it is named again here. */
 function planName(credits: number): string {
-  const q = Math.round(credits);
-  if (q <= 0) return t('No quota');
-  if (q === 1900) return t('Business');
-  if (q === 3900) return t('Enterprise');
-  return t('Custom ({n} credits)', { n: fmtInt(q) });
+  const quota = Math.round(credits);
+  if (quota <= 0) return t('No quota');
+  if (quota === 1900) return t('Business');
+  if (quota === 3900) return t('Enterprise');
+  return t('Custom ({n} credits)', { n: fmtInt(quota) });
 }
 
 function Block({ title, calc, className, children }: { title: string; calc: CalcRef; className?: string; children: ReactNode }) {
@@ -41,33 +41,33 @@ function Line({ label, value }: { label: ReactNode; value: ReactNode }) {
 
 function DiscountBlock() {
   const { analysis } = useAnalysis();
-  const a = analysis.auto;
-  const has = a.billed > 0;
-  const got = a.discount > 0.005;
-  const inReport = a.original > 0 ? Math.min(1, a.billed / a.original) : 1;
+  const auto = analysis.auto;
+  const has = auto.billed > 0;
+  const got = auto.discount > 0.005;
+  const inReport = auto.original > 0 ? Math.min(1, auto.billed / auto.original) : 1;
   const basis =
-    a.measuredShare >= 0.995
+    auto.measuredShare >= 0.995
       ? t('Measured: the original price comes from the token counts and the price card.')
-      : a.measuredShare <= 0.005
+      : auto.measuredShare <= 0.005
         ? t('Estimated: these Auto rows have no usable token counts, so the original price uses the discount rate of the plan.')
         : t('{share} of the Auto usage is measured from token counts. For the rest the discount is estimated with the discount rate of the plan.', {
-            share: fmtPct(a.measuredShare, 0),
+            share: fmtPct(auto.measuredShare, 0),
           });
 
   return (
     <Block title={t('Auto discount received')} calc={['auto-discount', 'auto-original-price']} className={got ? 'border-good/30 bg-good-soft' : undefined}>
-      <div className={cx('num truncate text-2xl font-semibold', got && 'text-good')}>{has ? fmtUSD(got ? a.discount : 0) : '–'}</div>
+      <div className={cx('num truncate text-2xl font-semibold', got && 'text-good')}>{has ? fmtUSD(got ? auto.discount : 0) : '–'}</div>
       {has ? (
         <>
           <p className="mt-0.5 text-xs text-fg-muted">
             {got
-              ? t('{rate} off an original price of {original}', { rate: fmtPct(a.rate, 1), original: fmtUSD(a.original) })
+              ? t('{rate} off an original price of {original}', { rate: fmtPct(auto.rate, 1), original: fmtUSD(auto.original) })
               : t('The report shows no Auto discount. The Auto usage was billed at its original price.')}
           </p>
           {got ? <ProgressBar className="mt-2" value={inReport} ghost={1} tone="good" height={8} label={t('Auto usage in the report as a share of its original price')} /> : null}
           <dl className="mt-2 space-y-0.5 text-xs">
-            <Line label={t('Original price of Auto usage')} value={fmtUSD(a.original)} />
-            <Line label={t('Auto usage in the report (after the discount)')} value={fmtUSD(a.billed)} />
+            <Line label={t('Original price of Auto usage')} value={fmtUSD(auto.original)} />
+            <Line label={t('Auto usage in the report (after the discount)')} value={fmtUSD(auto.billed)} />
           </dl>
           <p className="mt-2 text-[11px] leading-snug text-fg-subtle">{basis}</p>
         </>
@@ -80,39 +80,39 @@ function DiscountBlock() {
 
 function ShareBlock() {
   const { analysis, settings } = useAnalysis();
-  const a = analysis.auto;
-  const low = a.total > 0 && a.share < settings.lowAuto;
+  const auto = analysis.auto;
+  const low = auto.total > 0 && auto.share < settings.lowAuto;
   return (
     <Block title={t('Auto share of usage')} calc={['auto-share', 'auto-missed', 'auto-plan-rate']}>
-      <div className="num text-2xl font-semibold">{a.total > 0 ? fmtPct(a.share, 0) : '–'}</div>
-      <ProgressBar className="mt-2" value={a.share} tone={low ? 'warn' : 'accent'} height={8} label={t('Share of usage that went through Auto')} />
+      <div className="num text-2xl font-semibold">{auto.total > 0 ? fmtPct(auto.share, 0) : '–'}</div>
+      <ProgressBar className="mt-2" value={auto.share} tone={low ? 'warn' : 'accent'} height={8} label={t('Share of usage that went through Auto')} />
       <dl className="mt-2 space-y-0.5 text-xs">
-        <Line label={t('Through Auto')} value={fmtUSD(a.billed)} />
-        <Line label={t('Hand-picked models')} value={fmtUSD(a.direct)} />
-        <Line label={t('Discount missed on hand-picked usage')} value={t('about {amount}', { amount: fmtUSD(a.missed) })} />
+        <Line label={t('Through Auto')} value={fmtUSD(auto.billed)} />
+        <Line label={t('Hand-picked models')} value={fmtUSD(auto.direct)} />
+        <Line label={t('Discount missed on hand-picked usage')} value={t('about {amount}', { amount: fmtUSD(auto.missed) })} />
       </dl>
-      {a.plans.length > 0 ? (
+      {auto.plans.length > 0 ? (
         <>
           <p className="mt-2 text-[11px] font-medium text-fg-muted">{t('Auto discount rate by plan')}</p>
           <dl className="mt-0.5 space-y-0.5 text-[11px]">
-            {a.plans.map((p) => (
+            {auto.plans.map((plan) => (
               <Line
-                key={`${p.credits}-${p.label}`}
-                label={planName(p.credits)}
-                value={t('{rate} ({basis})', { rate: fmtPct(p.rate, 1), basis: p.source === 'measured' ? t('Measured') : t('Assumed') })}
+                key={`${plan.credits}-${plan.label}`}
+                label={planName(plan.credits)}
+                value={t('{rate} ({basis})', { rate: fmtPct(plan.rate, 1), basis: plan.source === 'measured' ? t('Measured') : t('Assumed') })}
               />
             ))}
           </dl>
         </>
       ) : null}
       <p className="mt-2 text-[11px] leading-snug text-fg-subtle">
-        {a.plans.some((p) => p.source === 'measured')
+        {auto.plans.some((plan) => plan.source === 'measured')
           ? t(
               'A plan with at least $1 of measured Auto usage uses the rate measured in this report. Only plans without that use the Auto model discount from Settings ({rate}).',
-              { rate: fmtPct(a.assumedRate, 0) },
+              { rate: fmtPct(auto.assumedRate, 0) },
             )
           : t('The report has no Auto usage that can be measured, so every plan uses the Auto model discount from Settings ({rate}).', {
-              rate: fmtPct(a.assumedRate, 0),
+              rate: fmtPct(auto.assumedRate, 0),
             })}
       </p>
     </Block>
@@ -122,8 +122,8 @@ function ShareBlock() {
 function ClassBlock() {
   const { analysis, taxonomy, settings } = useAnalysis();
   const groups = analysis.population.groups.autoUse;
-  const rows = taxonomy.autoUse.map((item) => ({ item, g: groups[item.id] })).filter((r) => r.g && r.g.users > 0);
-  const total = rows.reduce((s, r) => s + r.g.gross, 0);
+  const rows = taxonomy.autoUse.map((item) => ({ item, g: groups[item.id] })).filter((row) => row.g && row.g.users > 0);
+  const total = rows.reduce((sum, row) => sum + row.g.gross, 0);
   return (
     <Block title={t('Users by Auto use class')} calc="auto-use-class">
       {rows.length ? (
@@ -133,7 +133,7 @@ function ClassBlock() {
             <span className="w-12 text-end">{t('Usage')}</span>
           </div>
           <ul className="space-y-0.5">
-            {rows.map(({ item, g }) => (
+            {rows.map(({ item, g: group }) => (
               <li key={item.id}>
                 <button
                   type="button"
@@ -143,8 +143,8 @@ function ClassBlock() {
                 >
                   <span className="size-2 shrink-0 rounded-xs" style={{ background: item.color }} aria-hidden />
                   <span className="min-w-0 flex-1 truncate">{item.label}</span>
-                  <span className="num w-12 text-end">{fmtInt(g.users)}</span>
-                  <span className="num w-12 text-end text-fg-muted">{total > 0 ? fmtPct(g.gross / total, 0) : '–'}</span>
+                  <span className="num w-12 text-end">{fmtInt(group.users)}</span>
+                  <span className="num w-12 text-end text-fg-muted">{total > 0 ? fmtPct(group.gross / total, 0) : '–'}</span>
                 </button>
               </li>
             ))}

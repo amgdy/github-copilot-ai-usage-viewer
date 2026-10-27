@@ -15,8 +15,8 @@ export type SeatField =
   | 'reportTime';
 
 /** Lower case, with every run of other characters turned into an underscore (the same rule the usage CSV reader uses). */
-export function normalizeHeader(h: string): string {
-  return h
+export function normalizeHeader(header: string): string {
+  return header
     .replace(/^\uFEFF/, '')
     .trim()
     .toLowerCase()
@@ -65,9 +65,9 @@ export function mapColumns(names: readonly string[]): ColumnMap {
   const map: ColumnMap = {};
   for (const field of SEAT_FIELDS) {
     for (const alias of FIELD_ALIASES[field]) {
-      const i = names.indexOf(alias);
-      if (i !== -1) {
-        map[field] = i;
+      const columnIndex = names.indexOf(alias);
+      if (columnIndex !== -1) {
+        map[field] = columnIndex;
         break;
       }
     }
@@ -118,12 +118,12 @@ const USAGE_COLUMNS = new Set([
   'cache_write_tokens',
 ]);
 
-export const hasLoginColumn = (names: readonly string[]): boolean => FIELD_ALIASES.login.some((a) => names.includes(a));
+export const hasLoginColumn = (names: readonly string[]): boolean => FIELD_ALIASES.login.some((alias) => names.includes(alias));
 
 /** The header has a column only a usage report has. */
-export const hasUsageColumn = (names: readonly string[]): boolean => names.some((n) => USAGE_COLUMNS.has(n));
+export const hasUsageColumn = (names: readonly string[]): boolean => names.some((name) => USAGE_COLUMNS.has(name));
 
-export const hasDateColumn = (names: readonly string[]): boolean => names.some((n) => DATE_COLUMNS.includes(n));
+export const hasDateColumn = (names: readonly string[]): boolean => names.some((name) => DATE_COLUMNS.includes(name));
 
 /**
  * Whether a header belongs to a usage report, or looks enough like one that it must not be read as a license list:

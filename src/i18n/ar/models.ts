@@ -1,7 +1,7 @@
 /** Arabic text for the Models page and the notes on the price card. */
 import type { Dict } from '../core';
 
-const ar: Dict = {
+const arabic: Dict = {
   // Page
   'Which models drive the cost, are they right for the job, and where is a cheaper model good enough?':
     'ما النماذج التي تقود التكلفة؟ هل تناسب العمل المطلوب؟ وأين يكفي نموذج أرخص؟',
@@ -402,4 +402,4 @@ const ar: Dict = {
   'less usage per month': 'استخدام أقل شهريًا',
 };
 
-export default ar;
+export default arabic;

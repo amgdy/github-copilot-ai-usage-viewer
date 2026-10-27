@@ -6,7 +6,7 @@ import { MIN_PLAN_MEASURED_USD, type AutoPlanRate } from '../../lib/analytics/au
 import { fmtInt, fmtPct, fmtUSD } from '../../lib/utils/format';
 import { useAnalysis } from '../../state/analysis';
 
-const sum = (rows: AutoPlanRate[], pick: (p: AutoPlanRate) => number): number => rows.reduce((a, p) => a + pick(p), 0);
+const sum = (rows: AutoPlanRate[], pick: (plan: AutoPlanRate) => number): number => rows.reduce((total, plan) => total + pick(plan), 0);
 
 /** The Auto discount rate of each plan, and whether it was measured in the report or is the rate from Settings. */
 export function AutoPlanRates() {
@@ -15,14 +15,14 @@ export function AutoPlanRates() {
   const settingsRate = fmtPct(assumed, 0);
 
   const columns = useMemo<Column<AutoPlanRate>[]>(() => {
-    const basisTitle = (p: AutoPlanRate): string => {
-      if (p.source === 'measured') {
-        return t('Worked out from {amount} of Auto usage that could be priced from token counts and the price card.', { amount: fmtUSD(p.measuredBilled) });
+    const basisTitle = (plan: AutoPlanRate): string => {
+      if (plan.source === 'measured') {
+        return t('Worked out from {amount} of Auto usage that could be priced from token counts and the price card.', { amount: fmtUSD(plan.measuredBilled) });
       }
-      if (p.measuredBilled > 0) {
+      if (plan.measuredBilled > 0) {
         return t(
           'Only {amount} of the Auto usage could be measured from token counts. A plan needs at least {min}, so the Auto model discount from Settings ({pct}) is used.',
-          { amount: fmtUSD(p.measuredBilled), min: fmtUSD(MIN_PLAN_MEASURED_USD, 0), pct: settingsRate },
+          { amount: fmtUSD(plan.measuredBilled), min: fmtUSD(MIN_PLAN_MEASURED_USD, 0), pct: settingsRate },
         );
       }
       return t('None of the Auto usage on this plan could be measured from token counts, so the Auto model discount from Settings ({pct}) is used.', {
@@ -33,8 +33,8 @@ export function AutoPlanRates() {
       {
         key: 'plan',
         header: t('Plan'),
-        value: (p) => p.label,
-        render: (p) => <span className="font-medium">{p.label}</span>,
+        value: (plan) => plan.label,
+        render: (plan) => <span className="font-medium">{plan.label}</span>,
         hint: t('The plan is told apart by the monthly quota of each user in the report.'),
         calc: 'model-auto-plan',
       },
@@ -42,58 +42,58 @@ export function AutoPlanRates() {
         key: 'users',
         header: t('Users'),
         align: 'end',
-        value: (p) => p.users,
-        render: (p) => fmtInt(p.users),
+        value: (plan) => plan.users,
+        render: (plan) => fmtInt(plan.users),
         hint: t('Users of this plan with Auto usage.'),
         calc: 'model-auto-plan-users',
-        total: (rs) => fmtInt(sum(rs, (p) => p.users)),
+        total: (rows) => fmtInt(sum(rows, (plan) => plan.users)),
       },
       {
         key: 'billed',
         header: t('Auto usage'),
         align: 'end',
-        value: (p) => p.billed,
-        render: (p) => fmtUSD(p.billed),
+        value: (plan) => plan.billed,
+        render: (plan) => fmtUSD(plan.billed),
         hint: t('Usage that went through Auto, as charged in the report. This is after the Auto discount.'),
         calc: 'model-auto-usage',
-        total: (rs) => fmtUSD(sum(rs, (p) => p.billed)),
+        total: (rows) => fmtUSD(sum(rows, (plan) => plan.billed)),
       },
       {
         key: 'measured',
         header: t('Measured usage'),
         align: 'end',
-        value: (p) => p.measuredBilled,
-        render: (p) => fmtUSD(p.measuredBilled),
+        value: (plan) => plan.measuredBilled,
+        render: (plan) => fmtUSD(plan.measuredBilled),
         hint: t('The part of the Auto usage that could be priced from token counts and the price card.'),
         calc: 'model-auto-measured',
-        total: (rs) => fmtUSD(sum(rs, (p) => p.measuredBilled)),
+        total: (rows) => fmtUSD(sum(rows, (plan) => plan.measuredBilled)),
       },
       {
         key: 'original',
         header: t('Original price (measured)'),
         align: 'end',
-        value: (p) => p.measuredList,
-        render: (p) => fmtUSD(p.measuredList),
+        value: (plan) => plan.measuredList,
+        render: (plan) => fmtUSD(plan.measuredList),
         hint: t('What the measured usage would have cost at the price card, without the Auto discount.'),
         calc: 'model-auto-measured-original',
-        total: (rs) => fmtUSD(sum(rs, (p) => p.measuredList)),
+        total: (rows) => fmtUSD(sum(rows, (plan) => plan.measuredList)),
       },
       {
         key: 'rate',
         header: t('Discount rate'),
         align: 'end',
-        value: (p) => p.rate,
-        render: (p) => fmtPct(p.rate, 1),
+        value: (plan) => plan.rate,
+        render: (plan) => fmtPct(plan.rate, 1),
         hint: t('The rate used to estimate the Auto discount of this plan.'),
         calc: 'auto-plan-rate',
       },
       {
         key: 'basis',
         header: t('Basis'),
-        value: (p) => (p.source === 'measured' ? t('Measured') : t('Assumed')),
-        render: (p) => (
-          <Badge tone={p.source === 'measured' ? 'good' : 'warn'} title={basisTitle(p)}>
-            {p.source === 'measured' ? t('Measured') : t('Assumed')}
+        value: (plan) => (plan.source === 'measured' ? t('Measured') : t('Assumed')),
+        render: (plan) => (
+          <Badge tone={plan.source === 'measured' ? 'good' : 'warn'} title={basisTitle(plan)}>
+            {plan.source === 'measured' ? t('Measured') : t('Assumed')}
           </Badge>
         ),
         hint: t('Measured: the rate comes from the report. Assumed: the Auto model discount from Settings is used. Point at the badge to see why.'),
@@ -139,7 +139,7 @@ export function AutoPlanRates() {
           )}
         </p>
       ) : (
-        <DataTable rows={plans} columns={columns} rowKey={(p) => p.credits} dense fixedColumns pageSize={10} exportName="github-copilot-auto-plan-rates" />
+        <DataTable rows={plans} columns={columns} rowKey={(plan) => plan.credits} dense fixedColumns pageSize={10} exportName="github-copilot-auto-plan-rates" />
       )}
     </Card>
   );

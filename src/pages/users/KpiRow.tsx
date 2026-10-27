@@ -14,30 +14,30 @@ export function KpiRow() {
   const { users, population, range, narrowed, segmentFiltered, previous } = analysis;
   const perMonth = DAYS_PER_MONTH / Math.max(1, range.length);
 
-  const k = useMemo(() => {
+  const stats = useMemo(() => {
     const profiles = users.profiles;
-    const gross = profiles.map((p) => p.gross);
-    const n = profiles.length;
+    const gross = profiles.map((user) => user.gross);
+    const userCount = profiles.length;
     const total = gross.reduce((a, b) => a + b, 0);
     let over = 0;
     let overUsd = 0;
     let low = 0;
     let lowEligible = 0;
-    for (const p of profiles) {
-      if (!hasQuota(p)) continue;
-      if (p.utilization > 1) {
+    for (const user of profiles) {
+      if (!hasQuota(user)) continue;
+      if (user.utilization > 1) {
         over++;
-        overUsd += Math.max(0, -p.balance);
+        overUsd += Math.max(0, -user.balance);
       }
-      if (!p.isNew) {
+      if (!user.isNew) {
         lowEligible++;
-        if (p.utilization < LOW_UTILIZATION) low++;
+        if (user.utilization < LOW_UTILIZATION) low++;
       }
     }
     return {
-      n,
+      n: userCount,
       median: median(gross) * perMonth,
-      average: n > 0 ? (total / n) * perMonth : Number.NaN,
+      average: userCount > 0 ? (total / userCount) * perMonth : Number.NaN,
       top: topShare(gross, 0.1),
       known: quotaKnown(profiles),
       over,
@@ -53,15 +53,15 @@ export function KpiRow() {
     : neverUsed > 0
       ? tp(neverUsed, '{n} more seat has no usage in the report', '{n} more seats have no usage in the report', { n: fmtInt(neverUsed) })
       : t('With usage in this period');
-  const spread = k.median > 0 ? k.average / k.median : Number.NaN;
+  const spread = stats.median > 0 ? stats.average / stats.median : Number.NaN;
   const noQuota = t(NO_QUOTA);
 
   const active = (
     <Kpi
       key="active"
       label={t('Active users')}
-      value={fmtInt(k.n)}
-      delta={previous ? fmtDelta(k.n, previous.totals.users) : null}
+      value={fmtInt(stats.n)}
+      delta={previous ? fmtDelta(stats.n, previous.totals.users) : null}
       goodWhen="up"
       sub={activeSub}
       hint={t('People with usage in the selected period and filters. Seats in the license list that never show up in the report are listed at the bottom of this page.')}
@@ -72,7 +72,7 @@ export function KpiRow() {
     <Kpi
       key="median"
       label={t('Median usage per user per month')}
-      value={fmtUSD(k.median)}
+      value={fmtUSD(stats.median)}
       sub={t('Half of the users use less')}
       hint={t('The usage of the middle user, scaled to an average month. Half of the users use less than this and half use more.')}
       calc="user-median-usage"
@@ -82,7 +82,7 @@ export function KpiRow() {
     <Kpi
       key="average"
       label={t('Average usage per user per month')}
-      value={fmtUSD(k.average)}
+      value={fmtUSD(stats.average)}
       sub={Number.isFinite(spread) ? t('{multiple} the median', { multiple: fmtMultiple(spread) }) : undefined}
       hint={t('Total usage divided by the number of users, scaled to an average month. When the average is far above the median, a few heavy users pull it up.')}
       calc="user-average-usage"
@@ -92,10 +92,10 @@ export function KpiRow() {
     <Kpi
       key="top"
       label={t('Top 10% share of usage')}
-      value={fmtPct(k.top.share, 0)}
+      value={fmtPct(stats.top.share, 0)}
       sub={
-        k.top.n > 0
-          ? tp(k.top.k, '{n} user of {total} uses the most', '{n} users of {total} use the most', { n: fmtInt(k.top.k), total: fmtInt(k.top.n) })
+        stats.top.n > 0
+          ? tp(stats.top.k, '{n} user of {total} uses the most', '{n} users of {total} use the most', { n: fmtInt(stats.top.k), total: fmtInt(stats.top.n) })
           : undefined
       }
       hint={t('Share of all usage made by the 10% of users who use the most. A high share means a few people drive the usage.')}
@@ -106,13 +106,13 @@ export function KpiRow() {
     <Kpi
       key="over"
       label={t('Users above 100% of included credits')}
-      value={k.known ? fmtInt(k.over) : '–'}
-      tone={!k.known ? 'neutral' : k.over > 0 ? 'warn' : 'good'}
+      value={stats.known ? fmtInt(stats.over) : '–'}
+      tone={!stats.known ? 'neutral' : stats.over > 0 ? 'warn' : 'good'}
       sub={
-        !k.known
+        !stats.known
           ? noQuota
-          : k.over > 0
-            ? t('{amount} above their own credits', { amount: fmtUSD(k.overUsd, 0) })
+          : stats.over > 0
+            ? t('{amount} above their own credits', { amount: fmtUSD(stats.overUsd, 0) })
             : t('Nobody used more than their own credits')
       }
       hint={t(
@@ -125,13 +125,13 @@ export function KpiRow() {
     <Kpi
       key="low"
       label={t('Users below 20% of included credits')}
-      value={k.known ? fmtInt(k.low) : '–'}
-      tone={k.known && k.low > 0 ? 'info' : 'neutral'}
+      value={stats.known ? fmtInt(stats.low) : '–'}
+      tone={stats.known && stats.low > 0 ? 'info' : 'neutral'}
       sub={
-        !k.known
+        !stats.known
           ? noQuota
-          : k.lowEligible > 0
-            ? t('{share} of users, not counting new users', { share: fmtPct(k.low / k.lowEligible, 0) })
+          : stats.lowEligible > 0
+            ? t('{share} of users, not counting new users', { share: fmtPct(stats.low / stats.lowEligible, 0) })
             : t('No users to compare')
       }
       hint={t(
@@ -143,5 +143,5 @@ export function KpiRow() {
 
   // Most impact first: the users who cost money or waste a seat, then the size of the group, then the typical user.
   // Without included credits in the file the two credit tiles show a dash, so they move to the end.
-  return <KpiGrid>{k.known ? [over, low, active, top, medianTile, average] : [active, top, medianTile, average, over, low]}</KpiGrid>;
+  return <KpiGrid>{stats.known ? [over, low, active, top, medianTile, average] : [active, top, medianTile, average, over, low]}</KpiGrid>;
 }

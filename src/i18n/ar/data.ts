@@ -1,9 +1,9 @@
 import type { Dict, PluralEntry } from '../core';
 
-const p = (one: string, two: string, few: string, many: string, other: string): PluralEntry => ({ zero: other, one, two, few, many, other });
+const plural = (one: string, two: string, few: string, many: string, other: string): PluralEntry => ({ zero: other, one, two, few, many, other });
 
 /** Arabic for the Data page (src/pages/DataPage.tsx, src/pages/data) and the data coverage notes (lib/analytics/coverage.ts). */
-const ar: Dict = {
+const arabic: Dict = {
   // Page and header
   'Download filtered rows (CSV)': 'تنزيل الصفوف المصفّاة (CSV)',
   'Everything on this page describes all the rows you loaded, except the rows explorer and the download, which follow your filters.':
@@ -31,15 +31,15 @@ const ar: Dict = {
   'Show all': 'عرض الكل',
 
   // What is in the data
-  '{n} rows have no username': p('صف واحد بلا اسم مستخدم', 'صفان بلا اسم مستخدم', '{n} صفوف بلا اسم مستخدم', '{n} صفًا بلا اسم مستخدم', '{n} صف بلا اسم مستخدم'),
-  '{n} rows have no product': p('صف واحد بلا منتج', 'صفان بلا منتج', '{n} صفوف بلا منتج', '{n} صفًا بلا منتج', '{n} صف بلا منتج'),
-  '{n} rows have no SKU': p('صف واحد بلا SKU', 'صفان بلا SKU', '{n} صفوف بلا SKU', '{n} صفًا بلا SKU', '{n} صف بلا SKU'),
-  '{n} rows have no model': p('صف واحد بلا نموذج', 'صفان بلا نموذج', '{n} صفوف بلا نموذج', '{n} صفًا بلا نموذج', '{n} صف بلا نموذج'),
-  '{n} rows have no organization': p('صف واحد بلا مؤسسة', 'صفان بلا مؤسسة', '{n} صفوف بلا مؤسسة', '{n} صفًا بلا مؤسسة', '{n} صف بلا مؤسسة'),
+  '{n} rows have no username': plural('صف واحد بلا اسم مستخدم', 'صفان بلا اسم مستخدم', '{n} صفوف بلا اسم مستخدم', '{n} صفًا بلا اسم مستخدم', '{n} صف بلا اسم مستخدم'),
+  '{n} rows have no product': plural('صف واحد بلا منتج', 'صفان بلا منتج', '{n} صفوف بلا منتج', '{n} صفًا بلا منتج', '{n} صف بلا منتج'),
+  '{n} rows have no SKU': plural('صف واحد بلا SKU', 'صفان بلا SKU', '{n} صفوف بلا SKU', '{n} صفًا بلا SKU', '{n} صف بلا SKU'),
+  '{n} rows have no model': plural('صف واحد بلا نموذج', 'صفان بلا نموذج', '{n} صفوف بلا نموذج', '{n} صفًا بلا نموذج', '{n} صف بلا نموذج'),
+  '{n} rows have no organization': plural('صف واحد بلا مؤسسة', 'صفان بلا مؤسسة', '{n} صفوف بلا مؤسسة', '{n} صفًا بلا مؤسسة', '{n} صف بلا مؤسسة'),
   Apps: 'التطبيقات',
-  '{n} rows have no app client': p('صف واحد بلا تطبيق عميل', 'صفان بلا تطبيق عميل', '{n} صفوف بلا تطبيق عميل', '{n} صفًا بلا تطبيق عميل', '{n} صف بلا تطبيق عميل'),
-  '{n} rows have no repository': p('صف واحد بلا مستودع', 'صفان بلا مستودع', '{n} صفوف بلا مستودع', '{n} صفًا بلا مستودع', '{n} صف بلا مستودع'),
-  '{n} rows have no cost center': p('صف واحد بلا مركز تكلفة', 'صفان بلا مركز تكلفة', '{n} صفوف بلا مركز تكلفة', '{n} صفًا بلا مركز تكلفة', '{n} صف بلا مركز تكلفة'),
+  '{n} rows have no app client': plural('صف واحد بلا تطبيق عميل', 'صفان بلا تطبيق عميل', '{n} صفوف بلا تطبيق عميل', '{n} صفًا بلا تطبيق عميل', '{n} صف بلا تطبيق عميل'),
+  '{n} rows have no repository': plural('صف واحد بلا مستودع', 'صفان بلا مستودع', '{n} صفوف بلا مستودع', '{n} صفًا بلا مستودع', '{n} صف بلا مستودع'),
+  '{n} rows have no cost center': plural('صف واحد بلا مركز تكلفة', 'صفان بلا مركز تكلفة', '{n} صفوف بلا مركز تكلفة', '{n} صفًا بلا مركز تكلفة', '{n} صف بلا مركز تكلفة'),
   'Set on every row': 'موجود في كل صف',
   'Empty on every row': 'فارغ في كل صف',
   '{text} ({share} of usage)': '{text} ({share} من الاستخدام)',
@@ -56,7 +56,7 @@ const ar: Dict = {
 
   // Download
   '{percent} · {done} of {total} rows': '{percent} · {done} من {total} صف',
-  '{n} rows, {columns} columns in the order of the report.': p(
+  '{n} rows, {columns} columns in the order of the report.': plural(
     'صف واحد، و{columns} أعمدة بترتيب التقرير.',
     'صفان، و{columns} أعمدة بترتيب التقرير.',
     '{n} صفوف، و{columns} أعمدة بترتيب التقرير.',
@@ -171,8 +171,8 @@ const ar: Dict = {
     'غياب عمود اختياري ليس خطأ. يحسب التطبيق ما يستطيع، وتذكر الفحوص أعلاه ما هو محدود. لا تفرّق أسماء العناوين بين الأحرف الكبيرة والصغيرة، وتُعامل المسافة أو الشرطة أو ما يشبهها كشرطة سفلية، لذا يُقرأ {spaced} على أنه {gross}. تُقبل أسماء بديلة شائعة مثل {login} أو {org} أو {repo}. وتُقبل {unit} و{aicQty} و{aicGross} ثم يتم تجاهلها.',
 
   // KPIs
-  '{n} duplicates dropped': p('حُذف مكرر واحد', 'حُذف مكرران', 'حُذفت {n} مكررات', 'حُذف {n} مكررًا', 'حُذف {n} مكرر'),
-  '{n} bad dates': p('تاريخ واحد غير مقروء', 'تاريخان غير مقروءين', '{n} تواريخ غير مقروءة', '{n} تاريخًا غير مقروء', '{n} تاريخ غير مقروء'),
+  '{n} duplicates dropped': plural('حُذف مكرر واحد', 'حُذف مكرران', 'حُذفت {n} مكررات', 'حُذف {n} مكررًا', 'حُذف {n} مكرر'),
+  '{n} bad dates': plural('تاريخ واحد غير مقروء', 'تاريخان غير مقروءين', '{n} تواريخ غير مقروءة', '{n} تاريخًا غير مقروء', '{n} تاريخ غير مقروء'),
   '{credits} AI credits · {billed} billed': '{credits} رصيد ذكاء اصطناعي · {billed} مدفوع إضافي',
   '{credits} AI credits · billed amount not in the file': '{credits} رصيد ذكاء اصطناعي · المبلغ المدفوع إضافيًا غير موجود في الملف',
   'Usage of all rows kept, including the part covered by included credits. One AI credit is $0.01. Billed is the part charged on top of seats.':
@@ -205,7 +205,7 @@ const ar: Dict = {
     'تُظهر قائمة التراخيص من يملك ترخيص GitHub Copilot. بها يجد التطبيق التراخيص غير المستخدمة والمستخدمين بلا ترخيص. حمّلها مع ملفات الاستخدام، أو في صفحة التراخيص.',
   '{n} of {total}': '{n} من {total}',
   'List date': 'تاريخ القائمة',
-  'The list is {n} days older than the last day of the usage report. Export a new list to see current seats.': p(
+  'The list is {n} days older than the last day of the usage report. Export a new list to see current seats.': plural(
     'القائمة أقدم بيوم واحد من آخر يوم في تقرير الاستخدام. صدّر قائمة جديدة لترى التراخيص الحالية.',
     'القائمة أقدم بيومين من آخر يوم في تقرير الاستخدام. صدّر قائمة جديدة لترى التراخيص الحالية.',
     'القائمة أقدم بـ{n} أيام من آخر يوم في تقرير الاستخدام. صدّر قائمة جديدة لترى التراخيص الحالية.',
@@ -229,7 +229,7 @@ const ar: Dict = {
   'License list updated': 'تم تحديث قائمة التراخيص',
   'The license list did not change': 'لم تتغير قائمة التراخيص',
   'Some files were not loaded': 'لم يتم تحميل بعض الملفات',
-  '{n} entries without a usable username were left out.': p(
+  '{n} entries without a usable username were left out.': plural(
     'تم استبعاد إدخال واحد بلا اسم مستخدم صالح.',
     'تم استبعاد إدخالين بلا اسم مستخدم صالح.',
     'تم استبعاد {n} إدخالات بلا اسم مستخدم صالح.',
@@ -255,9 +255,9 @@ const ar: Dict = {
   'Data quality checks': 'فحوص جودة البيانات',
   'Worked out from all the files you loaded, whatever the filters. Items that need attention come first.':
     'محسوبة من كل الملفات التي حمّلتها، بغض النظر عن عوامل التصفية. تأتي العناصر التي تحتاج إلى انتباه أولًا.',
-  '{n} need attention': p('عنصر واحد يحتاج إلى انتباه', 'عنصران يحتاجان إلى انتباه', '{n} عناصر تحتاج إلى انتباه', '{n} عنصرًا يحتاج إلى انتباه', '{n} عنصر يحتاج إلى انتباه'),
-  '{n} notes': p('ملاحظة واحدة', 'ملاحظتان', '{n} ملاحظات', '{n} ملاحظة', '{n} ملاحظة'),
-  '{n} passed': p('فحص واحد ناجح', 'فحصان ناجحان', '{n} فحوص ناجحة', '{n} فحصًا ناجحًا', '{n} فحص ناجح'),
+  '{n} need attention': plural('عنصر واحد يحتاج إلى انتباه', 'عنصران يحتاجان إلى انتباه', '{n} عناصر تحتاج إلى انتباه', '{n} عنصرًا يحتاج إلى انتباه', '{n} عنصر يحتاج إلى انتباه'),
+  '{n} notes': plural('ملاحظة واحدة', 'ملاحظتان', '{n} ملاحظات', '{n} ملاحظة', '{n} ملاحظة'),
+  '{n} passed': plural('فحص واحد ناجح', 'فحصان ناجحان', '{n} فحوص ناجحة', '{n} فحصًا ناجحًا', '{n} فحص ناجح'),
 
   // Rows explorer
   'First page': 'الصفحة الأولى',
@@ -265,16 +265,16 @@ const ar: Dict = {
   'Go to page': 'الانتقال إلى الصفحة',
   Go: 'انتقال',
   'Last page': 'الصفحة الأخيرة',
-  'All {n} rows you loaded.': p('الصف الوحيد الذي حمّلته.', 'الصفان اللذان حمّلتهما.', 'كل الصفوف الـ{n} التي حمّلتها.', 'كل الصفوف الـ{n} التي حمّلتها.', 'كل الصفوف الـ{n} التي حمّلتها.'),
+  'All {n} rows you loaded.': plural('الصف الوحيد الذي حمّلته.', 'الصفان اللذان حمّلتهما.', 'كل الصفوف الـ{n} التي حمّلتها.', 'كل الصفوف الـ{n} التي حمّلتها.', 'كل الصفوف الـ{n} التي حمّلتها.'),
   'Your filters keep {n} of {total} rows.': 'عوامل التصفية تُبقي {n} من {total} صف.',
   'Rows explorer': 'مستكشف الصفوف',
   'The rows in your current filters.': 'الصفوف ضمن عوامل التصفية الحالية.',
   'Click a column to sort. Search words must all match.': 'انقر عمودًا للترتيب. يجب أن تتطابق كل كلمات البحث.',
-  'Sorting {n} rows…': p('جارٍ ترتيب صف واحد…', 'جارٍ ترتيب صفين…', 'جارٍ ترتيب {n} صفوف…', 'جارٍ ترتيب {n} صفًا…', 'جارٍ ترتيب {n} صف…'),
+  'Sorting {n} rows…': plural('جارٍ ترتيب صف واحد…', 'جارٍ ترتيب صفين…', 'جارٍ ترتيب {n} صفوف…', 'جارٍ ترتيب {n} صفًا…', 'جارٍ ترتيب {n} صف…'),
   'Download rows (CSV)': 'تنزيل الصفوف (CSV)',
   'Downloads the rows that match your search, in the order shown.': 'ينزّل الصفوف المطابقة لبحثك، بالترتيب المعروض.',
   'Downloads these rows in the order shown.': 'ينزّل هذه الصفوف بالترتيب المعروض.',
-  'Showing {from} to {to} of {n} matching rows': p(
+  'Showing {from} to {to} of {n} matching rows': plural(
     'عرض {from} إلى {to} من صف واحد مطابق',
     'عرض {from} إلى {to} من صفين مطابقين',
     'عرض {from} إلى {to} من {n} صفوف مطابقة',
@@ -319,7 +319,7 @@ const ar: Dict = {
   'Cost center views show a single group.': 'تعرض عروض مراكز التكلفة مجموعة واحدة.',
   'The file does not say what was billed, so covered and billed amounts are left at $0 and overage, pool and seat findings are hidden.':
     'الملف لا يذكر ما تم دفعه إضافيًا، لذا تبقى المبالغ المشمولة بالخطة والمدفوعة إضافيًا عند $0، وتُخفى نتائج التجاوز والرصيد المشترك والتراخيص.',
-  '{from} to {to} ({n} weekdays)': p(
+  '{from} to {to} ({n} weekdays)': plural(
     '{from} إلى {to} (يوم عمل واحد)',
     '{from} إلى {to} (يوما عمل)',
     '{from} إلى {to} ({n} أيام عمل)',
@@ -332,7 +332,7 @@ const ar: Dict = {
   'Expected columns are present': 'الأعمدة المتوقعة موجودة',
   'Every file has all the optional columns, apart from the token columns checked below.': 'كل ملف فيه كل الأعمدة الاختيارية، ما عدا أعمدة الرموز التي تُفحص أدناه.',
   'The file does not have: {names}.': 'الملف لا يحتوي على: {names}.',
-  '{n} of {total} files do not have: {names}.': p(
+  '{n} of {total} files do not have: {names}.': plural(
     'ملف واحد من {total} لا يحتوي على: {names}.',
     'ملفان من {total} لا يحتويان على: {names}.',
     '{n} ملفات من {total} لا تحتوي على: {names}.',
@@ -344,7 +344,7 @@ const ar: Dict = {
     'صدّر التقرير مرة أخرى بكل الأعمدة إن أمكن. وإلا فسيعمل التطبيق بما هو موجود، ضمن الحدود المذكورة.',
   'Dates can be read': 'التواريخ مقروءة',
   'Every row has a readable date.': 'كل صف فيه تاريخ مقروء.',
-  '{n} rows ({share}) have a date the app cannot read and were skipped.': p(
+  '{n} rows ({share}) have a date the app cannot read and were skipped.': plural(
     'صف واحد ({share}) فيه تاريخ لا يستطيع التطبيق قراءته، وتم تخطيه.',
     'صفان ({share}) فيهما تاريخ لا يستطيع التطبيق قراءته، وتم تخطيهما.',
     '{n} صفوف ({share}) فيها تاريخ لا يستطيع التطبيق قراءته، وتم تخطيها.',
@@ -354,7 +354,7 @@ const ar: Dict = {
   'Dates such as 2026-03-05 or 3/5/2026 are read. Fix the date column in the file and load it again.': 'تُقرأ تواريخ مثل 2026-03-05 أو 3/5/2026. أصلح عمود التاريخ في الملف وحمّله مرة أخرى.',
   'Numbers can be read': 'الأرقام مقروءة',
   'Every filled-in amount, quantity, token and seat-size cell is a number.': 'كل خلية مملوءة للمبلغ والكمية والرموز وحجم الترخيص هي رقم.',
-  '{n} cells could not be read as a number and were counted as 0. The rows are kept.': p(
+  '{n} cells could not be read as a number and were counted as 0. The rows are kept.': plural(
     'تعذّرت قراءة خلية واحدة كرقم وحُسبت 0. يبقى الصف.',
     'تعذّرت قراءة خليتين كرقم وحُسبتا 0. تبقى الصفوف.',
     'تعذّرت قراءة {n} خلايا كأرقام وحُسبت 0. تبقى الصفوف.',
@@ -366,14 +366,14 @@ const ar: Dict = {
   'Duplicate rows': 'الصفوف المكررة',
   'One file loaded. Duplicates are only looked for between different files, so identical rows inside one file are kept.':
     'تم تحميل ملف واحد. يُبحث عن المكررات بين الملفات المختلفة فقط، لذا تبقى الصفوف المتطابقة داخل الملف الواحد.',
-  'No row appears in more than one of the {n} files.': p(
+  'No row appears in more than one of the {n} files.': plural(
     'لا يظهر أي صف في أكثر من ملف.',
     'لا يظهر أي صف في الملفين كليهما.',
     'لا يظهر أي صف في أكثر من ملف من الملفات الـ{n}.',
     'لا يظهر أي صف في أكثر من ملف من الملفات الـ{n}.',
     'لا يظهر أي صف في أكثر من ملف من الملفات الـ{n}.',
   ),
-  '{n} rows ({share}) are identical to a row from another file and were dropped.': p(
+  '{n} rows ({share}) are identical to a row from another file and were dropped.': plural(
     'صف واحد ({share}) مطابق لصف من ملف آخر، وتم حذفه.',
     'صفان ({share}) مطابقان لصفوف من ملف آخر، وتم حذفهما.',
     '{n} صفوف ({share}) مطابقة لصفوف من ملف آخر، وتم حذفها.',
@@ -386,7 +386,7 @@ const ar: Dict = {
   'Amounts add up (usage = covered + billed)': 'المبالغ متوازنة (الاستخدام = المشمول بالخطة + المدفوع إضافيًا)',
   'Not checked. No file has discount_amount or net_amount.': 'لم يُفحص. لا يوجد ملف فيه discount_amount أو net_amount.',
   'Export the report with both columns to see what was covered by the included credits and what was billed.': 'صدّر التقرير بالعمودين لترى ما غطته الأرصدة المشمولة وما تم دفعه إضافيًا.',
-  '{n} files without discount_amount and net_amount columns are not checked.': p(
+  '{n} files without discount_amount and net_amount columns are not checked.': plural(
     'ملف واحد بلا عمودي discount_amount وnet_amount لم يُفحص.',
     'ملفان بلا عمودي discount_amount وnet_amount لم يُفحصا.',
     '{n} ملفات بلا عمودي discount_amount وnet_amount لم تُفحص.',
@@ -394,7 +394,7 @@ const ar: Dict = {
     '{n} ملف بلا عمودي discount_amount وnet_amount لم تُفحص.',
   ),
   'Usage equals covered plus billed on every row.': 'الاستخدام يساوي المشمول بالخطة زائد المدفوع إضافيًا في كل صف.',
-  '{n} rows ({share}) have usage that is not covered plus billed.': p(
+  '{n} rows ({share}) have usage that is not covered plus billed.': plural(
     'صف واحد ({share}) استخدامه لا يساوي المشمول بالخطة زائد المدفوع إضافيًا.',
     'صفان ({share}) استخدامهما لا يساوي المشمول بالخطة زائد المدفوع إضافيًا.',
     '{n} صفوف ({share}) استخدامها لا يساوي المشمول بالخطة زائد المدفوع إضافيًا.',
@@ -406,7 +406,7 @@ const ar: Dict = {
   'Usage matches the unit price (usage = quantity × unit price)': 'الاستخدام يطابق سعر الوحدة (الاستخدام = الكمية × سعر الوحدة)',
   'Not checked. No file has a quantity column, so AI credits are worked out from usage.': 'لم يُفحص. لا يوجد ملف فيه عمود quantity، لذا تُحسب أرصدة الذكاء الاصطناعي من الاستخدام.',
   'Usage equals quantity × the unit price on every row.': 'الاستخدام يساوي الكمية × سعر الوحدة في كل صف.',
-  '{n} rows ({share}) have usage that differs from quantity × the unit price.': p(
+  '{n} rows ({share}) have usage that differs from quantity × the unit price.': plural(
     'صف واحد ({share}) استخدامه يختلف عن الكمية × سعر الوحدة.',
     'صفان ({share}) استخدامهما يختلف عن الكمية × سعر الوحدة.',
     '{n} صفوف ({share}) استخدامها يختلف عن الكمية × سعر الوحدة.',
@@ -420,7 +420,7 @@ const ar: Dict = {
   'No row has a username.': 'لا يوجد صف فيه اسم مستخدم.',
   'Per-user views, segments and seat findings need it. Check that the username column is in the export and filled in.':
     'تحتاج إليه العروض لكل مستخدم والشرائح ونتائج التراخيص. تحقق من أن عمود اسم المستخدم موجود في الملف المصدّر ومملوء.',
-  '{n} rows ({share}) have no username.': p(
+  '{n} rows ({share}) have no username.': plural(
     'صف واحد ({share}) بلا اسم مستخدم.',
     'صفان ({share}) بلا اسم مستخدم.',
     '{n} صفوف ({share}) بلا اسم مستخدم.',
@@ -434,7 +434,7 @@ const ar: Dict = {
   'Models with prices': 'النماذج التي لها أسعار',
   'No row has a model name, so there is nothing to price.': 'لا يوجد صف فيه اسم نموذج، لذا لا يوجد ما يُسعَّر.',
   'Export the report with the model column to see the model mix and the cost by token type.': 'صدّر التقرير مع عمود النموذج لترى مزيج النماذج والتكلفة حسب نوع الرمز.',
-  'All {n} models have a price on the price card.': p(
+  'All {n} models have a price on the price card.': plural(
     'للنموذج سعر في قائمة الأسعار.',
     'لكلا النموذجين سعر في قائمة الأسعار.',
     'لكل النماذج الـ{n} أسعار في قائمة الأسعار.',
@@ -442,7 +442,7 @@ const ar: Dict = {
     'لكل النماذج الـ{n} أسعار في قائمة الأسعار.',
   ),
   'The model has no price on the price card.': 'ليس للنموذج سعر في قائمة الأسعار.',
-  '{n} of {total} models have no price on the price card.': p(
+  '{n} of {total} models have no price on the price card.': plural(
     'نموذج واحد من {total} ليس له سعر في قائمة الأسعار.',
     'نموذجان من {total} ليس لهما سعر في قائمة الأسعار.',
     '{n} نماذج من {total} ليس لها سعر في قائمة الأسعار.',
@@ -465,7 +465,7 @@ const ar: Dict = {
   'The data covers a single day.': 'البيانات تغطي يومًا واحدًا.',
   'There is no range to check for gaps. Trends and month projections need more days.': 'لا يوجد نطاق لفحص الفجوات. تحتاج الاتجاهات وتوقعات الشهر إلى أيام أكثر.',
   'Every day from {from} to {to} has rows.': 'كل يوم من {from} إلى {to} فيه صفوف.',
-  '{n} weekend days have none, which is normal for most teams.': p(
+  '{n} weekend days have none, which is normal for most teams.': plural(
     'يوم عطلة واحد ليس فيه صفوف، وهذا طبيعي لمعظم الفرق.',
     'يوما عطلة ليس فيهما صفوف، وهذا طبيعي لمعظم الفرق.',
     '{n} أيام عطلة ليس فيها صفوف، وهذا طبيعي لمعظم الفرق.',
@@ -473,7 +473,7 @@ const ar: Dict = {
     '{n} يوم عطلة ليس فيها صفوف، وهذا طبيعي لمعظم الفرق.',
   ),
   'Every weekday from {from} to {to} has rows.': 'كل يوم عمل من {from} إلى {to} فيه صفوف.',
-  '{n} weekdays from {from} to {to} have no rows.': p(
+  '{n} weekdays from {from} to {to} have no rows.': plural(
     'يوم عمل واحد من {from} إلى {to} ليس فيه صفوف.',
     'يوما عمل من {from} إلى {to} ليس فيهما صفوف.',
     '{n} أيام عمل من {from} إلى {to} ليس فيها صفوف.',
@@ -486,7 +486,7 @@ const ar: Dict = {
   'Only one month of data ({month}).': 'بيانات شهر واحد فقط ({month}).',
   'Trends and pool projections are limited with one month. Load more months to compare them. Several files can be loaded together.':
     'الاتجاهات وتوقعات الرصيد المشترك محدودة مع شهر واحد. حمّل أشهرًا أكثر للمقارنة. يمكن تحميل عدة ملفات معًا.',
-  '{n} months of data, from {from} to {to}.': p(
+  '{n} months of data, from {from} to {to}.': plural(
     'شهر واحد من البيانات، من {from} إلى {to}.',
     'شهران من البيانات، من {from} إلى {to}.',
     '{n} أشهر من البيانات، من {from} إلى {to}.',
@@ -496,7 +496,7 @@ const ar: Dict = {
   'The last month is complete': 'الشهر الأخير مكتمل',
   'The data starts on {date}, so the first month is partial too.': 'تبدأ البيانات في {date}، لذا الشهر الأول جزئي أيضًا.',
   'The data ends on {date}, the last day of {month}.': 'تنتهي البيانات في {date}، آخر يوم من {month}.',
-  'The data ends on {date}, {n} days before the end of {month}.': p(
+  'The data ends on {date}, {n} days before the end of {month}.': plural(
     'تنتهي البيانات في {date}، قبل يوم واحد من نهاية {month}.',
     'تنتهي البيانات في {date}، قبل يومين من نهاية {month}.',
     'تنتهي البيانات في {date}، قبل {n} أيام من نهاية {month}.',
@@ -507,7 +507,7 @@ const ar: Dict = {
     'يُتوقع الشهر الأخير من الأيام التي مضت حتى الآن، لذا أرقام نهاية الشهر تقديرات. حمّل الشهر كاملًا بعد انتهائه للحصول على الأرقام النهائية.',
   'Negative amounts': 'مبالغ سالبة',
   'No row has a negative amount.': 'لا يوجد صف فيه مبلغ سالب.',
-  '{n} rows ({share}) have a negative usage, covered or billed amount.': p(
+  '{n} rows ({share}) have a negative usage, covered or billed amount.': plural(
     'صف واحد ({share}) فيه مبلغ استخدام أو مشمول بالخطة أو مدفوع إضافي سالب.',
     'صفان ({share}) فيهما مبلغ استخدام أو مشمول بالخطة أو مدفوع إضافي سالب.',
     '{n} صفوف ({share}) فيها مبلغ استخدام أو مشمول بالخطة أو مدفوع إضافي سالب.',
@@ -522,4 +522,4 @@ const ar: Dict = {
   pipe: 'خط عمودي',
 };
 
-export default ar;
+export default arabic;

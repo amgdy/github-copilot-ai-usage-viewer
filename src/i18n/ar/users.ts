@@ -1,10 +1,10 @@
 import type { Dict, PluralEntry } from '../core';
 
 /** Arabic counted noun: one, two, 3 to 10, 11 to 99, and 0 or 100 and up. */
-const p = (one: string, two: string, few: string, many: string, other: string): PluralEntry => ({ zero: other, one, two, few, many, other });
+const plural = (one: string, two: string, few: string, many: string, other: string): PluralEntry => ({ zero: other, one, two, few, many, other });
 
 /** The Users page (src/pages/UsersPage.tsx, src/pages/users) and the user drawer (src/components/UserDrawer.tsx, src/components/user). */
-const ar: Dict = {
+const arabic: Dict = {
   // Drawer
   'No usage for this user in the current view': 'لا استخدام لهذا المستخدم في العرض الحالي',
   'The date range or the filters leave out every row for this user. Reset the filters to see them again.':
@@ -64,7 +64,7 @@ const ar: Dict = {
   // License block
   'Not in the export': 'غير موجود في التصدير',
   'License since': 'الترخيص منذ',
-  '{date} ({n} days before the export)': p(
+  '{date} ({n} days before the export)': plural(
     '{date} (قبل التصدير بيوم واحد)',
     '{date} (قبل التصدير بيومين)',
     '{date} (قبل التصدير بـ {n} أيام)',
@@ -74,7 +74,7 @@ const ar: Dict = {
   'Cancellation date': 'تاريخ الإلغاء',
   'No seat in the license list. This user has usage in the report, so check how they get access.':
     'لا يوجد ترخيص في قائمة التراخيص. لهذا المستخدم استخدام في التقرير، لذلك تحقّق من كيفية حصوله على الوصول.',
-  '{n} more seats have no usage in the report': p(
+  '{n} more seats have no usage in the report': plural(
     'ترخيص إضافي واحد بلا استخدام في التقرير',
     'ترخيصان إضافيان بلا استخدام في التقرير',
     '{n} تراخيص إضافية بلا استخدام في التقرير',
@@ -285,7 +285,7 @@ const ar: Dict = {
     'انقر فئة لعرض مستخدميها فقط في الأسفل. «يعتمد على Auto» من {high} من استخدام المستخدم عبر Auto. «نماذج مباشرة» أقل من {low}. غيّر القيمتين في {settings}.',
   'Show all classes': 'عرض كل الفئات',
   'Auto vs direct in this view': 'Auto مقابل الاختيار المباشر في هذا العرض',
-  'Who lets GitHub Copilot pick the model, what that saved, and what hand-picked usage could still save. {n} users in view.': p(
+  'Who lets GitHub Copilot pick the model, what that saved, and what hand-picked usage could still save. {n} users in view.': plural(
     'من يترك GitHub Copilot يختار النموذج، وما وفّره ذلك، وما يمكن أن يوفّره الاستخدام المختار يدويًا. مستخدم واحد في العرض.',
     'من يترك GitHub Copilot يختار النموذج، وما وفّره ذلك، وما يمكن أن يوفّره الاستخدام المختار يدويًا. مستخدمان في العرض.',
     'من يترك GitHub Copilot يختار النموذج، وما وفّره ذلك، وما يمكن أن يوفّره الاستخدام المختار يدويًا. {n} مستخدمين في العرض.',
@@ -304,7 +304,7 @@ const ar: Dict = {
 
   // Concentration
   'No users yet: 0% of usage': 'لا مستخدمين بعد: 0% من الاستخدام',
-  'made by the {n} biggest users ({share} of users)': p(
+  'made by the {n} biggest users ({share} of users)': plural(
     'يقوم به المستخدم الأكبر ({share} من المستخدمين)',
     'يقوم به أكبر مستخدمَين ({share} من المستخدمين)',
     'يقوم به أكبر {n} مستخدمين ({share} من المستخدمين)',
@@ -319,7 +319,7 @@ const ar: Dict = {
     'تُعاد حساب الفئات A وB وC للمستخدمين المعروضين، لذلك قد تختلف عن الفئة في الجدول.',
   'Not enough users': 'لا يوجد عدد كافٍ من المستخدمين',
   'At least two users with usage are needed to show how usage is spread.': 'يلزم مستخدمان على الأقل لهما استخدام لعرض توزّع الاستخدام.',
-  'That is the {n} biggest users of {total}.': p(
+  'That is the {n} biggest users of {total}.': plural(
     'أي المستخدم الأكبر من أصل {total}.',
     'أي أكبر مستخدمَين من أصل {total}.',
     'أي أكبر {n} مستخدمين من أصل {total}.',
@@ -336,7 +336,7 @@ const ar: Dict = {
   // KPIs
   'Included credits per user are not in the file': 'الأرصدة المشمولة لكل مستخدم غير موجودة في الملف',
   'Of {n} in this period': 'من أصل {n} في هذه الفترة',
-  '{n} more seats never used': p(
+  '{n} more seats never used': plural(
     'ترخيص إضافي واحد لم يُستخدم قط',
     'ترخيصان إضافيان لم يُستخدما قط',
     '{n} تراخيص إضافية لم تُستخدم قط',
@@ -357,7 +357,7 @@ const ar: Dict = {
   'Total usage divided by the number of users, scaled to an average month. When the average is far above the median, a few heavy users pull it up.':
     'إجمالي الاستخدام مقسومًا على عدد المستخدمين، محوّلًا إلى شهر متوسط. عندما يفوق المتوسط الوسيط بكثير، فهذا يعني أن قلة من كثيفي الاستخدام يرفعونه.',
   'Top 10% share of usage': 'حصة أعلى 10% من الاستخدام',
-  '{n} users of {total} use the most': p(
+  '{n} users of {total} use the most': plural(
     'مستخدم واحد من {total} هو الأكثر استخدامًا',
     'مستخدمان من {total} هما الأكثر استخدامًا',
     '{n} مستخدمين من {total} هم الأكثر استخدامًا',
@@ -383,7 +383,7 @@ const ar: Dict = {
   '{amount} hand-picked · {share} on Auto': '{amount} مختار يدويًا · {share} عبر Auto',
   'The {n} users with the most of {total} who have a missed discount. Click a user to see the details.':
     'أكثر {n} مستخدمين خصمًا فائتًا من أصل {total} لديهم خصم فائت. انقر مستخدمًا لترى التفاصيل.',
-  'All {n} users with a missed discount. Click a user to see the details.': p(
+  'All {n} users with a missed discount. Click a user to see the details.': plural(
     'المستخدم الوحيد الذي لديه خصم فائت. انقر المستخدم لترى التفاصيل.',
     'المستخدمان اللذان لديهما خصم فائت. انقر مستخدمًا لترى التفاصيل.',
     'كل المستخدمين الـ {n} الذين لديهم خصم فائت. انقر مستخدمًا لترى التفاصيل.',
@@ -399,7 +399,7 @@ const ar: Dict = {
   'Every person in your license list appears in this report, so no licenses are sitting unused.':
     'كل شخص في قائمة التراخيص يظهر في هذا التقرير، لذلك لا توجد تراخيص غير مستخدمة.',
   'Licenses never used': 'تراخيص لم تُستخدم قط',
-  '{n} licenses in the license list never appear in this file, about {amount} a month in license fees.': p(
+  '{n} licenses in the license list never appear in this file, about {amount} a month in license fees.': plural(
     'ترخيص واحد في قائمة التراخيص لا يظهر أبدًا في هذا الملف، بنحو {amount} في الشهر من رسوم التراخيص.',
     'ترخيصان في قائمة التراخيص لا يظهران أبدًا في هذا الملف، بنحو {amount} في الشهر من رسوم التراخيص.',
     '{n} تراخيص في قائمة التراخيص لا تظهر أبدًا في هذا الملف، بنحو {amount} في الشهر من رسوم التراخيص.',
@@ -415,14 +415,14 @@ const ar: Dict = {
   // Ranking
   'Top {n}': 'أعلى {n}',
   'Showing the top {shown} of {total} ranked users.': 'عرض أعلى {shown} من أصل {total} مستخدمًا مرتّبًا.',
-  'Showing all {n} ranked users.': p(
+  'Showing all {n} ranked users.': plural(
     'عرض المستخدم المرتّب الوحيد.',
     'عرض المستخدمَين المرتّبَين.',
     'عرض كل المستخدمين المرتّبين الـ {n}.',
     'عرض كل المستخدمين المرتّبين الـ {n}.',
     'عرض كل المستخدمين المرتّبين الـ {n}.',
   ),
-  '{n} users are not ranked.': p(
+  '{n} users are not ranked.': plural(
     'مستخدم واحد غير مرتّب.',
     'مستخدمان غير مرتّبَين.',
     '{n} مستخدمين غير مرتّبين.',
@@ -444,42 +444,42 @@ const ar: Dict = {
   'Bar colors': 'ألوان الأشرطة',
 
   // Scatter
-  '{n} users without active days are not shown.': p(
+  '{n} users without active days are not shown.': plural(
     'مستخدم واحد بلا أيام نشاط غير معروض.',
     'مستخدمان بلا أيام نشاط غير معروضَين.',
     '{n} مستخدمين بلا أيام نشاط غير معروضين.',
     '{n} مستخدمًا بلا أيام نشاط غير معروضين.',
     '{n} مستخدم بلا أيام نشاط غير معروضين.',
   ),
-  '{n} users without known included credits are not shown.': p(
+  '{n} users without known included credits are not shown.': plural(
     'مستخدم واحد بلا أرصدة مشمولة معروفة غير معروض.',
     'مستخدمان بلا أرصدة مشمولة معروفة غير معروضَين.',
     '{n} مستخدمين بلا أرصدة مشمولة معروفة غير معروضين.',
     '{n} مستخدمًا بلا أرصدة مشمولة معروفة غير معروضين.',
     '{n} مستخدم بلا أرصدة مشمولة معروفة غير معروضين.',
   ),
-  '{n} users without prompt tokens are not shown.': p(
+  '{n} users without prompt tokens are not shown.': plural(
     'مستخدم واحد بلا رموز طلب غير معروض.',
     'مستخدمان بلا رموز طلب غير معروضَين.',
     '{n} مستخدمين بلا رموز طلب غير معروضين.',
     '{n} مستخدمًا بلا رموز طلب غير معروضين.',
     '{n} مستخدم بلا رموز طلب غير معروضين.',
   ),
-  '{n} users without usage are not shown.': p(
+  '{n} users without usage are not shown.': plural(
     'مستخدم واحد بلا استخدام غير معروض.',
     'مستخدمان بلا استخدام غير معروضَين.',
     '{n} مستخدمين بلا استخدام غير معروضين.',
     '{n} مستخدمًا بلا استخدام غير معروضين.',
     '{n} مستخدم بلا استخدام غير معروضين.',
   ),
-  '{n} users without usage are not shown on the log scale.': p(
+  '{n} users without usage are not shown on the log scale.': plural(
     'مستخدم واحد بلا استخدام غير معروض على المقياس اللوغاريتمي.',
     'مستخدمان بلا استخدام غير معروضَين على المقياس اللوغاريتمي.',
     '{n} مستخدمين بلا استخدام غير معروضين على المقياس اللوغاريتمي.',
     '{n} مستخدمًا بلا استخدام غير معروضين على المقياس اللوغاريتمي.',
     '{n} مستخدم بلا استخدام غير معروضين على المقياس اللوغاريتمي.',
   ),
-  '{n} users without tokens are not shown on the log scale.': p(
+  '{n} users without tokens are not shown on the log scale.': plural(
     'مستخدم واحد بلا رموز غير معروض على المقياس اللوغاريتمي.',
     'مستخدمان بلا رموز غير معروضَين على المقياس اللوغاريتمي.',
     '{n} مستخدمين بلا رموز غير معروضين على المقياس اللوغاريتمي.',
@@ -720,4 +720,4 @@ const ar: Dict = {
     'الاستخدام على رموز الإخراج. تقدير: استخدام الصفوف التي لها أعداد رموز، مقسّمًا حسب نوع الرمز ببطاقة الأسعار.',
 };
 
-export default ar;
+export default arabic;

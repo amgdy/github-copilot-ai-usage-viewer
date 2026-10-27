@@ -7,7 +7,7 @@ import { useAnalysis } from '../../state/analysis';
 import { drill } from '../../state/router';
 import { useApp } from '../../state/store';
 import type { UserProfile } from '../../lib/analytics/users';
-import { fmtDay, ymd } from '../../lib/utils/date';
+import { fmtDay, dateParts } from '../../lib/utils/date';
 import { fmtDelta, fmtInt, fmtUSD, pluralize } from '../../lib/utils/format';
 
 const SHOWN = 8;
@@ -18,29 +18,29 @@ interface UserRow {
 }
 
 function UserList({ headers, rows }: { headers: string[]; rows: UserRow[] }) {
-  const selectUser = useApp((s) => s.selectUser);
+  const selectUser = useApp((state) => state.selectUser);
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
           <tr className="text-xs text-fg-muted">
-            {headers.map((h, i) => (
-              <th key={h} scope="col" className={cx('px-4 py-1.5 font-medium', i === 0 ? 'text-start' : 'whitespace-nowrap text-end')}>
-                {h}
+            {headers.map((header, index) => (
+              <th key={header} scope="col" className={cx('px-4 py-1.5 font-medium', index === 0 ? 'text-start' : 'whitespace-nowrap text-end')}>
+                {header}
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {rows.map(({ profile: p, cells }) => (
-            <tr key={p.id} onClick={() => selectUser(p.id)} className="cursor-pointer border-t border-border-muted hover:bg-surface-2">
+          {rows.map(({ profile: profile, cells }) => (
+            <tr key={profile.id} onClick={() => selectUser(profile.id)} className="cursor-pointer border-t border-border-muted hover:bg-surface-2">
               <td className="px-4 py-1.5">
                 <button type="button" title={t('Open this user')} className="block max-w-[12rem] truncate text-start font-medium hover:text-accent">
-                  {p.name}
+                  {profile.name}
                 </button>
               </td>
-              {cells.map((cell, i) => (
-                <td key={i} className="num whitespace-nowrap px-4 py-1.5 text-end">
+              {cells.map((cell, cellIndex) => (
+                <td key={cellIndex} className="num whitespace-nowrap px-4 py-1.5 text-end">
                   {cell}
                 </td>
               ))}
@@ -84,8 +84,8 @@ const byUsage = (a: UserProfile, b: UserProfile): number => b.gross - a.gross;
 function LapsedCard() {
   const { analysis, settings } = useAnalysis();
   const { users, range } = analysis;
-  const withYear = ymd(range.start).y !== ymd(range.end).y;
-  const lapsed = useMemo(() => users.profiles.filter((p) => p.lapsed).sort(byUsage), [users]);
+  const withYear = dateParts(range.start).y !== dateParts(range.end).y;
+  const lapsed = useMemo(() => users.profiles.filter((profile) => profile.lapsed).sort(byUsage), [users]);
   const days = pluralize(settings.lapsedDays, 'day');
 
   return (
@@ -119,9 +119,9 @@ function LapsedCard() {
       ) : (
         <UserList
           headers={[t('User'), t('Last active'), t('Days since'), t('Usage before')]}
-          rows={lapsed.slice(0, SHOWN).map((p) => ({
-            profile: p,
-            cells: [fmtDay(p.lastDay, withYear), fmtInt(p.daysSinceLast), fmtUSD(p.gross)],
+          rows={lapsed.slice(0, SHOWN).map((profile) => ({
+            profile: profile,
+            cells: [fmtDay(profile.lastDay, withYear), fmtInt(profile.daysSinceLast), fmtUSD(profile.gross)],
           }))}
         />
       )}
@@ -132,7 +132,7 @@ function LapsedCard() {
 function FadingCard() {
   const { analysis, settings } = useAnalysis();
   const { users, range } = analysis;
-  const fading = useMemo(() => users.profiles.filter((p) => p.traits.includes('fading')).sort(byUsage), [users]);
+  const fading = useMemo(() => users.profiles.filter((profile) => profile.traits.includes('fading')).sort(byUsage), [users]);
 
   let body: ReactNode;
   if (!users.trendReliable) {
@@ -159,19 +159,19 @@ function FadingCard() {
     body = (
       <UserList
         headers={[t('User'), t('7-day change'), t('Usage')]}
-        rows={fading.slice(0, SHOWN).map((p) => {
-          const change = fmtDelta(p.recent, p.prior);
+        rows={fading.slice(0, SHOWN).map((profile) => {
+          const change = fmtDelta(profile.recent, profile.prior);
           return {
-            profile: p,
+            profile: profile,
             cells: [
               <span
                 key="change"
                 className="text-bad"
-                title={t('{recent} in the last 7 days, {prior} in the 7 days before', { recent: fmtUSD(p.recent), prior: fmtUSD(p.prior) })}
+                title={t('{recent} in the last 7 days, {prior} in the 7 days before', { recent: fmtUSD(profile.recent), prior: fmtUSD(profile.prior) })}
               >
                 {change ? change.text : '–'}
               </span>,
-              fmtUSD(p.gross),
+              fmtUSD(profile.gross),
             ],
           };
         })}

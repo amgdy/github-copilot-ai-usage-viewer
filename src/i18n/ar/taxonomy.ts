@@ -1,7 +1,7 @@
 import type { Dict } from '../core';
 
 /** Arabic text for the user groups: usage tiers, engagement, personas, usage profiles, Pareto classes, Auto use and traits. */
-const ar: Dict = {
+const arabic: Dict = {
   // Usage tiers
   'Minimal (under {minimal})': 'ضئيل (أقل من {minimal})',
   'Used less than {minimal} of their own included monthly credits.': 'استخدم أقل من {minimal} من أرصدته الشهرية المشمولة.',
@@ -151,4 +151,4 @@ const ar: Dict = {
   'Check in. Did they hit a problem or move to another tool?': 'تواصل معه. هل واجه مشكلة أو انتقل إلى أداة أخرى؟',
 };
 
-export default ar;
+export default arabic;

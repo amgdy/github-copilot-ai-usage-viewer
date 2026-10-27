@@ -23,22 +23,22 @@ export interface UserTip {
 const RANK: Record<TipSeverity, number> = { high: 0, medium: 1, low: 2, positive: 3 };
 
 /** A link with its label in the current language. */
-const link = (d: DocLink): DocLink => ({ label: t(d.label), url: d.url });
+const link = (docLink: DocLink): DocLink => ({ label: t(docLink.label), url: docLink.url });
 
 /**
  * Personal, rule-based tips. They reuse the same traits and lever estimates as the organization-level view.
  * The tip with the largest saving comes first. Tips with the same saving (all coaching tips are 0) go by severity, then keep the order they are written in.
  */
-export function userTips(p: UserProfile, s: Settings, limit = 6): UserTip[] {
+export function userTips(user: UserProfile, settings: Settings, limit = 6): UserTip[] {
   const tips: UserTip[] = [];
-  const by = p.potentialBy;
+  const by = user.potentialBy;
   const push = (tip: UserTip) => tips.push(tip);
 
-  if (p.tier === 'runaway') {
+  if (user.tier === 'runaway') {
     push({
       id: 'runaway',
       severity: 'high',
-      title: t('You used {multiple} your included credits', { multiple: fmtMultiple(p.utilization) }),
+      title: t('You used {multiple} your included credits', { multiple: fmtMultiple(user.utilization) }),
       detail: t(
         'Set an AI credit session limit for open-ended agent tasks, split big jobs into plan then implement sessions, and watch for loops. If the work is legitimate, ask your admin for an individual budget with an expiry date.',
       ),
@@ -46,11 +46,11 @@ export function userTips(p: UserProfile, s: Settings, limit = 6): UserTip[] {
       docs: link(DOCS.sessionLimit),
     });
   }
-  if (p.powerfulShare >= 0.4 && by.modelShift > 0) {
+  if (user.powerfulShare >= 0.4 && by.modelShift > 0) {
     push({
       id: 'model',
-      severity: p.profile === 'frontier' && by.modelShift >= 0.1 * p.gross ? 'high' : 'medium',
-      title: t('{share} of your usage is on Powerful models', { share: fmtPct(p.powerfulShare, 0) }),
+      severity: user.profile === 'frontier' && by.modelShift >= 0.1 * user.gross ? 'high' : 'medium',
+      title: t('{share} of your usage is on Powerful models', { share: fmtPct(user.powerfulShare, 0) }),
       detail: t(
         'Use reasoning models for planning, architecture and hard debugging. Implement the plan with a mid-tier model in a fresh session, and use lighter models for docs, formatting and small refactors.',
       ),
@@ -58,16 +58,16 @@ export function userTips(p: UserProfile, s: Settings, limit = 6): UserTip[] {
       docs: link(DOCS.comparison),
     });
   }
-  if (p.traits.includes('lowAuto')) {
+  if (user.traits.includes('lowAuto')) {
     push({
       id: 'auto',
-      severity: by.autoAdoption >= 0.03 * p.gross ? 'medium' : 'low',
-      title: t('Auto handled {share} of your usage', { share: fmtPct(p.autoShare, 0) }),
+      severity: by.autoAdoption >= 0.03 * user.gross ? 'medium' : 'low',
+      title: t('Auto handled {share} of your usage', { share: fmtPct(user.autoShare, 0) }),
       detail:
-        p.autoMissed > 0
+        user.autoMissed > 0
           ? t(
               'Make Auto your default model. It routes each task to an efficient model, and Auto usage gets a discount off the original price of its tokens. Moving your hand-picked usage to Auto would have earned an estimated discount of {amount}. Pin a model only when a task needs it.',
-              { amount: fmtUSD(p.autoMissed) },
+              { amount: fmtUSD(user.autoMissed) },
             )
           : t(
               'Make Auto your default model. It routes each task to an efficient model. The Auto discount rate for your plan is 0% in this report, so the benefit is a fitting model for each task, not a lower price. Pin a model only when a task needs it.',
@@ -76,11 +76,11 @@ export function userTips(p: UserProfile, s: Settings, limit = 6): UserTip[] {
       docs: link(DOCS.auto),
     });
   }
-  if (p.traits.includes('lowCache')) {
+  if (user.traits.includes('lowCache')) {
     push({
       id: 'cache',
       severity: 'medium',
-      title: t('Your cache hit rate is {rate}', { rate: fmtPct(p.cacheHit, 0) }),
+      title: t('Your cache hit rate is {rate}', { rate: fmtPct(user.cacheHit, 0) }),
       detail: t(
         'Cached input costs about 10% of normal. Stay on one model for the whole session, start a new session (or /compact) instead of resuming an old thread, and avoid changing reasoning effort or tools mid-session.',
       ),
@@ -88,17 +88,17 @@ export function userTips(p: UserProfile, s: Settings, limit = 6): UserTip[] {
       docs: link(DOCS.optimize),
     });
   }
-  if (p.traits.includes('longContext')) {
+  if (user.traits.includes('longContext')) {
     push({
       id: 'long-context',
       severity: 'medium',
-      title: t('{share} of your usage is long-context surcharge', { share: fmtPct(p.longShare, 0) }),
+      title: t('{share} of your usage is long-context surcharge', { share: fmtPct(user.longShare, 0) }),
       detail: t("Prompts above a model's long-context threshold are billed at a higher rate. Split the work, summarize earlier steps and narrow the files you attach."),
       savingsUsd: by.longContext,
       docs: link(DOCS.pricing),
     });
   }
-  if (by.contextHygiene >= 0.03 * p.gross && p.gross >= s.minSpendForTraits) {
+  if (by.contextHygiene >= 0.03 * user.gross && user.gross >= settings.minSpendForTraits) {
     push({
       id: 'context',
       severity: 'low',
@@ -108,55 +108,55 @@ export function userTips(p: UserProfile, s: Settings, limit = 6): UserTip[] {
       docs: link(DOCS.context),
     });
   }
-  if (p.traits.includes('spiky')) {
+  if (user.traits.includes('spiky')) {
     push({
       id: 'spiky',
       severity: 'low',
-      title: t('{share} of your usage happened on {day}', { share: fmtPct(p.peakShare, 0), day: fmtDay(p.peakDayIdx) }),
+      title: t('{share} of your usage happened on {day}', { share: fmtPct(user.peakShare, 0), day: fmtDay(user.peakDayIdx) }),
       detail: t('Review what ran on that day. A session limit stops an open-ended agent task before it grows into one very large day.'),
       savingsUsd: 0,
       docs: link(DOCS.sessionLimit),
     });
   }
-  if (p.traits.includes('multiModel')) {
+  if (user.traits.includes('multiModel')) {
     push({
       id: 'multi-model',
       severity: 'low',
-      title: tp(p.modelCount, 'You used {n} different model', 'You used {n} different models'),
+      title: tp(user.modelCount, 'You used {n} different model', 'You used {n} different models'),
       detail: t('Switching models mid-session throws away the cache. Pick one model per session and switch only at natural breaks.'),
       savingsUsd: 0,
       docs: link(DOCS.optimize),
     });
   }
-  if (p.traits.includes('accelerating')) {
+  if (user.traits.includes('accelerating')) {
     push({
       id: 'accelerating',
       severity: 'low',
-      title: t('Your usage rose to {recent} from {prior} the week before', { recent: fmtUSD(p.recent, 0), prior: fmtUSD(p.prior, 0) }),
+      title: t('Your usage rose to {recent} from {prior} the week before', { recent: fmtUSD(user.recent, 0), prior: fmtUSD(user.prior, 0) }),
       detail: t('If this is a new project, that is expected. If not, review what ran, and ask for a budget before the pool runs out.'),
       savingsUsd: 0,
     });
   }
-  if (p.lapsed || p.traits.includes('fading')) {
+  if (user.lapsed || user.traits.includes('fading')) {
     push({
       id: 'lapsed',
       severity: 'low',
-      title: p.lapsed ? t('No usage since {day}', { day: fmtDay(p.lastDay) }) : t('Your usage is fading'),
+      title: user.lapsed ? t('No usage since {day}', { day: fmtDay(user.lastDay) }) : t('Your usage is fading'),
       detail: t('Try agent mode on a well-scoped task, or GitHub Copilot CLI for repetitive work. Tell your admin if something is blocking you.'),
       savingsUsd: 0,
       docs: link(DOCS.optimize),
     });
   }
-  if (p.tier === 'minimal' && !p.isNew && !p.lapsed) {
+  if (user.tier === 'minimal' && !user.isNew && !user.lapsed) {
     push({
       id: 'low-use',
       severity: 'low',
-      title: t('You use {share} of your included credits', { share: fmtPctAuto(p.utilization) }),
+      title: t('You use {share} of your included credits', { share: fmtPctAuto(user.utilization) }),
       detail: t('There is room to do more with GitHub Copilot: ask it to plan a change, write tests or review a diff. If you no longer need the seat, let your admin know so it can be reassigned.'),
       savingsUsd: 0,
     });
   }
-  if (p.isNew) {
+  if (user.isNew) {
     push({
       id: 'new',
       severity: 'positive',
@@ -166,7 +166,7 @@ export function userTips(p: UserProfile, s: Settings, limit = 6): UserTip[] {
       docs: link(DOCS.prompting),
     });
   }
-  if (p.persona === 'champion') {
+  if (user.persona === 'champion') {
     push({
       id: 'champion',
       severity: 'positive',
@@ -175,16 +175,16 @@ export function userTips(p: UserProfile, s: Settings, limit = 6): UserTip[] {
       savingsUsd: 0,
     });
   }
-  if (p.profile === 'efficient' && p.utilization >= 0.4) {
+  if (user.profile === 'efficient' && user.utilization >= 0.4) {
     push({
       id: 'efficient',
       severity: 'positive',
       title: t('Efficient model mix'),
-      detail: t('Mostly mid-tier and light models with {share} on Auto. Keep it up.', { share: fmtPct(p.autoShare, 0) }),
+      detail: t('Mostly mid-tier and light models with {share} on Auto. Keep it up.', { share: fmtPct(user.autoShare, 0) }),
       savingsUsd: 0,
     });
   }
-  if (p.traits.includes('noCostCenter')) {
+  if (user.traits.includes('noCostCenter')) {
     push({
       id: 'cost-center',
       severity: 'low',
@@ -373,14 +373,14 @@ export const PLAYBOOK: PlaybookItem[] = [
 ];
 
 /** Rows for the per-user action list export: usage, tokens, Auto, license and the top tip of each user. */
-export function userActionRows(users: UserSet, s: Settings): { headers: string[]; rows: unknown[][] } {
-  const tax = buildTaxonomy(s);
-  const label = <T extends { id: string; label: string }>(items: T[]) => new Map(items.map((i) => [i.id, i.label]));
-  const tier = label(tax.tiers);
-  const persona = label(tax.personas);
-  const profile = label(tax.profiles);
-  const trait = label(tax.traits);
-  const autoUse = label(tax.autoUse);
+export function userActionRows(users: UserSet, settings: Settings): { headers: string[]; rows: unknown[][] } {
+  const taxonomy = buildTaxonomy(settings);
+  const label = <T extends { id: string; label: string }>(items: T[]) => new Map(items.map((item) => [item.id, item.label]));
+  const tier = label(taxonomy.tiers);
+  const persona = label(taxonomy.personas);
+  const profile = label(taxonomy.profiles);
+  const trait = label(taxonomy.traits);
+  const autoUse = label(taxonomy.autoUse);
   const headers = [
     t('User'),
     t('Organization'),
@@ -417,38 +417,38 @@ export function userActionRows(users: UserSet, s: Settings): { headers: string[]
     t('Last surface'),
     t('Pending cancellation'),
   ];
-  const usd = (x: number): number => Number((Number.isFinite(x) ? x : 0).toFixed(4));
-  const rows = users.profiles.map((p) => {
-    const tips = userTips(p, s, 1);
-    const seat = p.license ?? null;
+  const usd = (amount: number): number => Number((Number.isFinite(amount) ? amount : 0).toFixed(4));
+  const rows = users.profiles.map((user) => {
+    const tips = userTips(user, settings, 1);
+    const seat = user.license ?? null;
     return [
-      p.name,
-      p.org,
-      p.costCenter,
-      p.plan,
-      Number(p.gross.toFixed(4)),
-      Number(p.net.toFixed(4)),
-      Number(p.utilization.toFixed(4)),
-      tier.get(p.tier) ?? p.tier,
-      persona.get(p.persona) ?? p.persona,
-      profile.get(p.profile) ?? p.profile,
-      p.pareto,
-      p.traits.map((id) => trait.get(id) ?? id).join('; '),
-      p.topModel,
-      Number(p.autoShare.toFixed(4)),
-      Number.isFinite(p.cacheHit) ? Number(p.cacheHit.toFixed(4)) : '',
-      Number(p.potential.toFixed(4)),
+      user.name,
+      user.org,
+      user.costCenter,
+      user.plan,
+      Number(user.gross.toFixed(4)),
+      Number(user.net.toFixed(4)),
+      Number(user.utilization.toFixed(4)),
+      tier.get(user.tier) ?? user.tier,
+      persona.get(user.persona) ?? user.persona,
+      profile.get(user.profile) ?? user.profile,
+      user.pareto,
+      user.traits.map((id) => trait.get(id) ?? id).join('; '),
+      user.topModel,
+      Number(user.autoShare.toFixed(4)),
+      Number.isFinite(user.cacheHit) ? Number(user.cacheHit.toFixed(4)) : '',
+      Number(user.potential.toFixed(4)),
       tips[0] ? `${tips[0].title}. ${tips[0].detail}` : '',
-      Math.round(p.input),
-      Math.round(p.output),
-      Math.round(p.cacheRead),
-      Math.round(p.cacheWrite),
-      Math.round(p.tokens),
-      usd(p.auto.billed),
-      usd(p.auto.original),
-      usd(p.auto.discount),
-      usd(p.autoMissed),
-      autoUse.get(p.autoUse) ?? p.autoUse,
+      Math.round(user.input),
+      Math.round(user.output),
+      Math.round(user.cacheRead),
+      Math.round(user.cacheWrite),
+      Math.round(user.tokens),
+      usd(user.auto.billed),
+      usd(user.auto.original),
+      usd(user.auto.discount),
+      usd(user.autoMissed),
+      autoUse.get(user.autoUse) ?? user.autoUse,
       seat ? (seat.seat ? t('Yes') : t('No')) : '',
       seat?.seat ? seat.plan : '',
       seat ? activityStatusText(seat.status) : '',

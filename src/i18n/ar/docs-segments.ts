@@ -1,7 +1,7 @@
 import type { Dict } from '../core';
 
 /** Arabic text for the calculation docs of the Segments page (src/lib/metrics/docs/segments.ts). */
-const ar: Dict = {
+const arabic: Dict = {
   // Usage tier
   'How much of the credits included in their own seat a user used in the period. The tier is a band of that share: Minimal, Light, Core, Power or Runaway. It tells you how large the usage is, not which models or what kind of work it was.':
     'مقدار ما استخدمه المستخدم في الفترة من الأرصدة المشمولة في ترخيصه. المستوى شريحة من هذه الحصة: ضئيل أو خفيف أو أساسي أو مكثف أو مفرط. يخبرك بحجم الاستخدام، لا بالنماذج المستخدمة ولا بنوع العمل.',
@@ -428,4 +428,4 @@ const ar: Dict = {
     'في ترخيص Business ($19 من الأرصدة المشمولة شهريًا)، المستخدم الذي استخدم $49 رصيده −$30 وقد سحب من الرصيد المشترك. والمستخدم الذي استخدم $4 رصيده +$15 وقد ترك فيه أرصدة.',
 };
 
-export default ar;
+export default arabic;

@@ -10,8 +10,8 @@ import { useResolvedTheme } from './state/theme';
 const startOver = () => useApp.getState().setDataset(null);
 
 export function App() {
-  const dataset = useApp((s) => s.dataset);
-  const picking = useApp((s) => s.pickingData);
+  const dataset = useApp((state) => state.dataset);
+  const picking = useApp((state) => state.pickingData);
   // A language change remounts everything below, so every text (including generated advice) is built again in the new language.
   const locale = useLocale();
   useResolvedTheme();

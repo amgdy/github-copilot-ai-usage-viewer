@@ -44,22 +44,22 @@ export function usePerMonth(): number {
 }
 
 /** Dictionary ids of the `n` largest values, descending. Ids with a value <= `min` are skipped. */
-export function topIds(values: ArrayLike<number>, n: number, opts: { min?: number; include?: (id: number) => boolean } = {}): number[] {
-  const min = opts.min ?? 0;
+export function topIds(values: ArrayLike<number>, count: number, options: { min?: number; include?: (id: number) => boolean } = {}): number[] {
+  const min = options.min ?? 0;
   const ids: number[] = [];
   for (let i = 0; i < values.length; i++) {
-    if (values[i] > min && (!opts.include || opts.include(i))) ids.push(i);
+    if (values[i] > min && (!options.include || options.include(i))) ids.push(i);
   }
   ids.sort((a, b) => values[b] - values[a]);
-  return ids.length > n ? ids.slice(0, n) : ids;
+  return ids.length > count ? ids.slice(0, count) : ids;
 }
 
 /** Display label of a dictionary id ("(unattributed / repo-level)" for the blank value). */
-export function dimLabel(store: DataStore, dim: DimKey, id: number): string {
-  return labelOf(dim, store.dicts[dim].values[id]);
+export function dimLabel(store: DataStore, dimension: DimKey, id: number): string {
+  return labelOf(dimension, store.dicts[dimension].values[id]);
 }
 
 /** The string stored in `Filters` for a dictionary id (use it for `drill({ models: [dimValue(store, 'model', id)] })`). */
-export function dimValue(store: DataStore, dim: DimKey, id: number): string {
-  return store.dicts[dim].values[id];
+export function dimValue(store: DataStore, dimension: DimKey, id: number): string {
+  return store.dicts[dimension].values[id];
 }

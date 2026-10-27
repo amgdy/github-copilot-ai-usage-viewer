@@ -19,27 +19,27 @@ import { UsageOverTime } from './spend/UsageOverTime';
 
 export default function SpendPage() {
   const { analysis, store } = useAnalysis();
-  const { range, agg, pool, narrowed } = analysis;
+  const { range, agg: aggregates, pool, narrowed } = analysis;
   const [picked, setPicked] = useState<string | null>(null);
   const poolRef = useRef<HTMLDivElement>(null);
 
-  const rows = useMemo(() => buildMonthRows(agg, store, pool, narrowed), [agg, store, pool, narrowed]);
-  const selected = rows.find((r) => r.m.key === picked)?.m.key ?? rows[rows.length - 1]?.m.key ?? null;
+  const rows = useMemo(() => buildMonthRows(aggregates, store, pool, narrowed), [aggregates, store, pool, narrowed]);
+  const selected = rows.find((row) => row.m.key === picked)?.m.key ?? rows[rows.length - 1]?.m.key ?? null;
 
   // Picking a month in the table shows its curve above, so bring the chart into view when it is off screen.
   const showMonth = useCallback((key: string) => {
     setPicked(key);
-    const el = poolRef.current;
-    if (!el) return;
-    const top = el.getBoundingClientRect().top;
+    const poolElement = poolRef.current;
+    if (!poolElement) return;
+    const top = poolElement.getBoundingClientRect().top;
     if (top >= 0 && top <= window.innerHeight * 0.6) return;
     const calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    el.scrollIntoView({ behavior: calm ? 'auto' : 'smooth', block: 'start' });
+    poolElement.scrollIntoView({ behavior: calm ? 'auto' : 'smooth', block: 'start' });
   }, []);
 
   const intro = t('How much was used, what was billed on top of seats, what drives it, and whether the included credits will last.');
 
-  if (agg.totals.rows === 0) {
+  if (aggregates.totals.rows === 0) {
     return (
       <>
         <PageHeader title={t('Usage and pool')} description={intro} />

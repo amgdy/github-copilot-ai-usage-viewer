@@ -18,24 +18,24 @@ import { UserKpis } from './user/UserKpis';
 
 /** Slide-over with everything about one user. Any page opens it with `useApp.getState().selectUser(id)`. */
 export function UserDrawer() {
-  const selected = useApp((s) => s.selectedUser);
+  const selected = useApp((state) => state.selectedUser);
   return selected === null ? null : <OpenDrawer id={selected} />;
 }
 
 function OpenDrawer({ id }: { id: number }) {
   const { analysis, store } = useAnalysis();
-  const selectUser = useApp((s) => s.selectUser);
+  const selectUser = useApp((state) => state.selectUser);
   const close = useCallback(() => selectUser(null), [selectUser]);
   const body = useRef<HTMLDivElement>(null);
-  const p = analysis.population.byId.get(id);
+  const user = analysis.population.byId.get(id);
 
   // The drawer focuses its panel first. A button is a better start for keyboard users.
   useEffect(() => {
     const close = t('Close');
     const buttons = body.current?.closest('[role="dialog"]')?.querySelectorAll<HTMLElement>('button[aria-label]') ?? [];
-    for (const b of buttons) {
-      if (b.getAttribute('aria-label') === close) {
-        b.focus();
+    for (const button of buttons) {
+      if (button.getAttribute('aria-label') === close) {
+        button.focus();
         break;
       }
     }
@@ -46,24 +46,24 @@ function OpenDrawer({ id }: { id: number }) {
     if (scroller) scroller.scrollTop = 0;
   }, [id]);
 
-  const name = p?.name ?? store.dicts.user.values[id] ?? t('User');
-  const subtitle = p ? userSubtitle(p) : '';
+  const name = user?.name ?? store.dicts.user.values[id] ?? t('User');
+  const subtitle = user ? userSubtitle(user) : '';
 
   return (
-    <Drawer open onClose={close} title={name} subtitle={subtitle || undefined} footer={p ? <UserFooter p={p} /> : undefined}>
+    <Drawer open onClose={close} title={name} subtitle={subtitle || undefined} footer={user ? <UserFooter p={user} /> : undefined}>
       <div ref={body} className="space-y-5 p-4">
-        {p ? (
+        {user ? (
           <>
-            <UserBadges p={p} />
-            <UserKpis p={p} />
-            {p.license ? <LicenseBlock license={p.license} /> : null}
-            <DailyChart p={p} />
-            <ModelMix p={p} />
-            <AutoVsDirect p={p} />
-            <TokensCard p={p} />
-            <CompareBars p={p} />
-            <TipCards p={p} />
-            <SavingsBars p={p} />
+            <UserBadges p={user} />
+            <UserKpis p={user} />
+            {user.license ? <LicenseBlock license={user.license} /> : null}
+            <DailyChart p={user} />
+            <ModelMix p={user} />
+            <AutoVsDirect p={user} />
+            <TokensCard p={user} />
+            <CompareBars p={user} />
+            <TipCards p={user} />
+            <SavingsBars p={user} />
           </>
         ) : (
           <EmptyState

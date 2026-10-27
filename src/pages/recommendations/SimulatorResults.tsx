@@ -30,24 +30,24 @@ export interface SimulatorResultsProps {
   getCopyText: () => string;
 }
 
-function Tiles({ f, scenario, seatCount }: { f: ScenarioFigures; scenario: Scenario; seatCount: number }) {
-  const usage = t('{before} to {after} a month', { before: fmtMoney(f.usageBefore), after: fmtMoney(f.usageAfter) });
+function Tiles({ f: figures, scenario, seatCount }: { f: ScenarioFigures; scenario: Scenario; seatCount: number }) {
+  const usage = t('{before} to {after} a month', { before: fmtMoney(figures.usageBefore), after: fmtMoney(figures.usageAfter) });
   const now = (amount: number): string => t('now {amount} a month', { amount: fmtMoney(amount) });
   const reduction = (
     <Kpi
       label={t('Usage reduction')}
-      value={fmtPct(f.reduction, 1)}
-      tone={f.reduction > 0 ? 'good' : 'neutral'}
+      value={fmtPct(figures.reduction, 1)}
+      tone={figures.reduction > 0 ? 'good' : 'neutral'}
       sub={usage}
       hint={t('The share of usage that the levers avoid. It does not depend on the size of the pool.')}
       calc="rec-sim-reduction"
     />
   );
   const usageAfter = (
-    <Kpi label={t('Usage after')} value={fmtMoney(f.usageAfter)} sub={now(f.usageBefore)} hint={t('Usage per month once the levers are applied.')} calc="rec-sim-usage-after" />
+    <Kpi label={t('Usage after')} value={fmtMoney(figures.usageAfter)} sub={now(figures.usageBefore)} hint={t('Usage per month once the levers are applied.')} calc="rec-sim-usage-after" />
   );
 
-  if (!f.cash) {
+  if (!figures.cash) {
     return (
       <>
         {reduction}
@@ -56,30 +56,30 @@ function Tiles({ f, scenario, seatCount }: { f: ScenarioFigures; scenario: Scena
     );
   }
 
-  const lower = f.costBefore > 0 ? 1 - f.costAfter / f.costBefore : 0;
+  const lower = figures.costBefore > 0 ? 1 - figures.costAfter / figures.costBefore : 0;
   const cashTiles = (
     <>
       {reduction}
       <Kpi
         label={t('Cash saving per month')}
-        value={fmtMoney(f.saveMonth)}
-        tone={f.saveMonth >= 0.5 ? 'good' : 'neutral'}
-        sub={t('average of {months}', { months: pluralize(f.months, 'month') })}
+        value={fmtMoney(figures.saveMonth)}
+        tone={figures.saveMonth >= 0.5 ? 'good' : 'neutral'}
+        sub={t('average of {months}', { months: pluralize(figures.months, 'month') })}
         hint={t('Cost is the larger of the pool and the usage. Using less saves cash only for the part of the usage above the pool. Seat actions add to it.')}
         calc="rec-sim-cash-month"
       />
-      <Kpi label={t('Cash saving per year')} value={fmtMoney(f.saveYear)} tone={f.saveYear >= 6 ? 'good' : 'neutral'} sub={t('12 times the monthly saving')} calc="rec-sim-cash-year" />
+      <Kpi label={t('Cash saving per year')} value={fmtMoney(figures.saveYear)} tone={figures.saveYear >= 6 ? 'good' : 'neutral'} sub={t('12 times the monthly saving')} calc="rec-sim-cash-year" />
     </>
   );
 
-  if (!f.poolKnown) {
+  if (!figures.poolKnown) {
     return (
       <>
         {cashTiles}
         <Kpi
           label={t('Billed on top of seats')}
-          value={fmtMoney(f.billedAfter)}
-          sub={now(f.billedBefore)}
+          value={fmtMoney(figures.billedAfter)}
+          sub={now(figures.billedBefore)}
           hint={t('Usage above the pool, per month. It is what using less can save while the number of seats stays the same.')}
           calc="rec-sim-billed"
         />
@@ -93,15 +93,15 @@ function Tiles({ f, scenario, seatCount }: { f: ScenarioFigures; scenario: Scena
       {cashTiles}
       <Kpi
         label={t('New monthly cost')}
-        value={fmtMoney(f.costAfter)}
-        sub={lower >= 0.0005 ? t('now {before}, {pct} lower', { before: fmtMoney(f.costBefore), pct: fmtPct(lower, 1) }) : t('now {before}, no change', { before: fmtMoney(f.costBefore) })}
+        value={fmtMoney(figures.costAfter)}
+        sub={lower >= 0.0005 ? t('now {before}, {pct} lower', { before: fmtMoney(figures.costBefore), pct: fmtPct(lower, 1) }) : t('now {before}, no change', { before: fmtMoney(figures.costBefore) })}
         hint={t('Average cost per month over the months in the report: seats plus usage above the pool.')}
         calc="rec-sim-cost"
       />
       <Kpi
         label={t('Unused included credits')}
-        value={fmtMoney(f.unusedAfter)}
-        sub={now(f.unusedBefore)}
+        value={fmtMoney(figures.unusedAfter)}
+        sub={now(figures.unusedBefore)}
         hint={t('Included credits that are paid for but not used, per month. Using less leaves more of the pool unused, which is why usage below the pool does not lower the bill.')}
         calc="rec-sim-unused"
       />
@@ -139,7 +139,7 @@ function PrintAssumptions({ levers, seats }: { levers: LeverParams; seats: SeatS
 
 /** KPI tiles, the lever waterfall and the month table for the current scenario. */
 export function SimulatorResults({ scenario, figures, levers, seats, perMonth, context, cashReason, poolReason, lowerBound, stale, getCopyText }: SimulatorResultsProps) {
-  const seatCount = seats.reduce((a, s) => a + (s.on ? s.option.count : 0), 0);
+  const seatCount = seats.reduce((total, seat) => total + (seat.on ? seat.option.count : 0), 0);
   return (
     <div className={cx('space-y-4 transition-opacity', stale && 'opacity-70')} aria-busy={stale}>
       <div className="flex flex-wrap items-center justify-between gap-2">

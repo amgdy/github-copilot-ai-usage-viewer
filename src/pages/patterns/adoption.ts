@@ -44,17 +44,17 @@ function weeklyActiveUsers(
   userCount: number,
 ): number[] {
   const { day, user, gross } = store;
-  const keep = (i: number): boolean => {
-    if (mask !== null && mask[i] === 0) return false;
-    const d = day[i];
-    return d >= range.start && d <= range.end && user[i] !== BLANK_ID && gross[i] > 0;
+  const keep = (rowIndex: number): boolean => {
+    if (mask !== null && mask[rowIndex] === 0) return false;
+    const rowDay = day[rowIndex];
+    return rowDay >= range.start && rowDay <= range.end && user[rowIndex] !== BLANK_ID && gross[rowIndex] > 0;
   };
 
   const offsets = new Int32Array(weeks + 1);
   for (let i = 0; i < store.n; i++) {
     if (keep(i)) offsets[indexOfDay(day[i]) + 1]++;
   }
-  for (let w = 0; w < weeks; w++) offsets[w + 1] += offsets[w];
+  for (let weekIndex = 0; weekIndex < weeks; weekIndex++) offsets[weekIndex + 1] += offsets[weekIndex];
 
   const order = new Int32Array(offsets[weeks]);
   const next = offsets.slice(0, weeks);
@@ -64,16 +64,16 @@ function weeklyActiveUsers(
 
   const stamp = new Int32Array(userCount);
   const active = new Array<number>(weeks).fill(0);
-  for (let w = 0; w < weeks; w++) {
+  for (let weekIndex = 0; weekIndex < weeks; weekIndex++) {
     let distinct = 0;
-    for (let j = offsets[w]; j < offsets[w + 1]; j++) {
-      const u = order[j];
-      if (stamp[u] !== w + 1) {
-        stamp[u] = w + 1;
+    for (let j = offsets[weekIndex]; j < offsets[weekIndex + 1]; j++) {
+      const userId = order[j];
+      if (stamp[userId] !== weekIndex + 1) {
+        stamp[userId] = weekIndex + 1;
         distinct++;
       }
     }
-    active[w] = distinct;
+    active[weekIndex] = distinct;
   }
   return active;
 }
@@ -84,23 +84,23 @@ export function buildAdoption(
   mask: Uint8Array | null,
   range: DayRange,
   firstDays: ArrayLike<number>,
-  cut: number,
+  newUserCutoff: number,
 ): Adoption {
-  const b = makeBucketer(range.start, range.end, 'week');
-  const count = b.count;
+  const bucketer = makeBucketer(range.start, range.end, 'week');
+  const count = bucketer.count;
   const startDay: number[] = [];
   const endDay: number[] = [];
   for (let k = 0; k < count; k++) {
-    startDay.push(b.start(k));
-    endDay.push(k + 1 < count ? b.start(k + 1) - 1 : range.end);
+    startDay.push(bucketer.start(k));
+    endDay.push(k + 1 < count ? bucketer.start(k + 1) - 1 : range.end);
   }
 
   const newUsers = new Array<number>(count).fill(0);
   let baseline = 0;
   for (let i = 0; i < firstDays.length; i++) {
-    const d = firstDays[i];
-    if (d < cut) baseline++;
-    else if (d <= range.end) newUsers[b.indexOf(d)]++;
+    const firstDay = firstDays[i];
+    if (firstDay < newUserCutoff) baseline++;
+    else if (firstDay <= range.end) newUsers[bucketer.indexOf(firstDay)]++;
   }
   const cumulative: number[] = [];
   let running = baseline;
@@ -113,12 +113,12 @@ export function buildAdoption(
     count,
     startDay,
     endDay,
-    days: startDay.map((s, k) => endDay[k] - s + 1),
+    days: startDay.map((weekStart, weekIndex) => endDay[weekIndex] - weekStart + 1),
     newUsers,
     cumulative,
-    weeklyActive: weeklyActiveUsers(store, mask, range, b.indexOf, count, userCount),
+    weeklyActive: weeklyActiveUsers(store, mask, range, bucketer.indexOf, count, userCount),
     baseline,
-    indexOfDay: b.indexOf,
+    indexOfDay: bucketer.indexOf,
   };
 }
 
@@ -138,16 +138,16 @@ export const VERDICT_WEEKS = 4;
 export const FLAT_BAND = 0.1;
 
 /** Last 4 full-enough weeks against the 4 before them, by mean weekly active users. */
-export function adoptionVerdict(a: Adoption): AdoptionVerdict {
+export function adoptionVerdict(adoption: Adoption): AdoptionVerdict {
   const counted: number[] = [];
-  for (let k = 0; k < a.count; k++) {
-    if (a.days[k] >= MIN_WEEK_DAYS) counted.push(a.weeklyActive[k]);
+  for (let k = 0; k < adoption.count; k++) {
+    if (adoption.days[k] >= MIN_WEEK_DAYS) counted.push(adoption.weeklyActive[k]);
   }
   const need = VERDICT_WEEKS * 2;
   if (counted.length < need) {
     return { kind: 'unknown', weeks: counted.length, recent: Number.NaN, prior: Number.NaN, change: Number.NaN };
   }
-  const mean = (xs: number[]) => xs.reduce((s, v) => s + v, 0) / xs.length;
+  const mean = (values: number[]) => values.reduce((sum, value) => sum + value, 0) / values.length;
   const recent = mean(counted.slice(-VERDICT_WEEKS));
   const prior = mean(counted.slice(-need, -VERDICT_WEEKS));
   const change = prior > 0 ? recent / prior - 1 : Number.NaN;
@@ -159,31 +159,31 @@ export function adoptionVerdict(a: Adoption): AdoptionVerdict {
   return { kind, weeks: counted.length, recent, prior, change };
 }
 
-export function verdictSentence(v: AdoptionVerdict): string {
+export function verdictSentence(verdict: AdoptionVerdict): string {
   const need = VERDICT_WEEKS * 2;
-  if (v.kind === 'unknown') {
+  if (verdict.kind === 'unknown') {
     return t('Too little history to say whether adoption is growing or fading. It needs at least {need} weeks with {days} or more days of data, and this range has {weeks}.', {
       need: fmtInt(need),
       days: fmtInt(MIN_WEEK_DAYS),
-      weeks: fmtInt(v.weeks),
+      weeks: fmtInt(verdict.weeks),
     });
   }
-  const vars = { weeks: fmtInt(VERDICT_WEEKS), recent: fmtNum(v.recent, 1), prior: fmtNum(v.prior, 1), pct: fmtPct(Math.abs(v.change), 0) };
-  if (v.prior <= 0) {
-    return v.recent > 0
-      ? t('Adoption is growing. The last {weeks} weeks averaged {recent} active users a week, and no one was active in the {weeks} weeks before.', vars)
+  const values = { weeks: fmtInt(VERDICT_WEEKS), recent: fmtNum(verdict.recent, 1), prior: fmtNum(verdict.prior, 1), pct: fmtPct(Math.abs(verdict.change), 0) };
+  if (verdict.prior <= 0) {
+    return verdict.recent > 0
+      ? t('Adoption is growing. The last {weeks} weeks averaged {recent} active users a week, and no one was active in the {weeks} weeks before.', values)
       : t('No users were active in the last {weeks} weeks.', { weeks: fmtInt(need) });
   }
-  if (v.kind === 'growing') {
-    return t('Adoption is growing. The last {weeks} weeks averaged {recent} active users a week, {pct} more than the {weeks} weeks before ({prior}).', vars);
+  if (verdict.kind === 'growing') {
+    return t('Adoption is growing. The last {weeks} weeks averaged {recent} active users a week, {pct} more than the {weeks} weeks before ({prior}).', values);
   }
-  if (v.kind === 'declining') {
-    return v.recent <= 0
-      ? t('Adoption is declining. No users were active in the last {weeks} weeks, down from an average of {prior} in the {weeks} weeks before.', vars)
-      : t('Adoption is declining. The last {weeks} weeks averaged {recent} active users a week, {pct} fewer than the {weeks} weeks before ({prior}).', vars);
+  if (verdict.kind === 'declining') {
+    return verdict.recent <= 0
+      ? t('Adoption is declining. No users were active in the last {weeks} weeks, down from an average of {prior} in the {weeks} weeks before.', values)
+      : t('Adoption is declining. The last {weeks} weeks averaged {recent} active users a week, {pct} fewer than the {weeks} weeks before ({prior}).', values);
   }
   return t('Adoption is flat. The last {weeks} weeks averaged {recent} active users a week, within {pct} of the {weeks} weeks before ({prior}).', {
-    ...vars,
+    ...values,
     pct: fmtPct(FLAT_BAND, 0),
   });
 }

@@ -23,20 +23,20 @@ export function ModelList({ rows, total, filter, onFilter, onChange, onRemove }:
   const [query, setQuery] = useState('');
   const deferred = useDeferredValue(query);
 
-  const counts = useMemo(() => ({ all: rows.length, attention: rows.filter((r) => r.attention).length, overridden: rows.filter((r) => r.meta.overridden).length }), [rows]);
+  const counts = useMemo(() => ({ all: rows.length, attention: rows.filter((row) => row.attention).length, overridden: rows.filter((row) => row.meta.overridden).length }), [rows]);
 
   const visible = useMemo(() => {
-    const q = deferred.trim().toLowerCase();
-    return rows.filter((r) => {
-      if (filter === 'attention' && !r.attention) return false;
-      if (filter === 'overridden' && !r.meta.overridden) return false;
-      return !q || r.name.toLowerCase().includes(q) || r.meta.vendor.toLowerCase().includes(q);
+    const searchText = deferred.trim().toLowerCase();
+    return rows.filter((row) => {
+      if (filter === 'attention' && !row.attention) return false;
+      if (filter === 'overridden' && !row.meta.overridden) return false;
+      return !searchText || row.name.toLowerCase().includes(searchText) || row.meta.vendor.toLowerCase().includes(searchText);
     });
   }, [rows, filter, deferred]);
 
-  const label = (text: string, n: number) => (
+  const label = (text: string, count: number) => (
     <>
-      {text} <span className="num text-fg-subtle">{fmtInt(n)}</span>
+      {text} <span className="num text-fg-subtle">{fmtInt(count)}</span>
     </>
   );
 

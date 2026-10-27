@@ -8,7 +8,7 @@ export const MAX_SEATS = 250_000;
 
 type Dict = Record<string, unknown>;
 
-const isDict = (v: unknown): v is Dict => typeof v === 'object' && v !== null && !Array.isArray(v);
+const isDict = (value: unknown): value is Dict => typeof value === 'object' && value !== null && !Array.isArray(value);
 
 export interface JsonScan {
   /** Every top-level JSON value found, in order. */
@@ -31,23 +31,23 @@ export function scanJsonValues(text: string): JsonScan {
   let start = -1;
   let inString = false;
   let escaped = false;
-  const n = text.length;
-  for (let i = 0; i < n; i++) {
-    const c = text.charCodeAt(i);
+  const length = text.length;
+  for (let i = 0; i < length; i++) {
+    const charCode = text.charCodeAt(i);
     if (inString) {
       if (escaped) escaped = false;
-      else if (c === 92) escaped = true;
-      else if (c === 34) inString = false;
+      else if (charCode === 92) escaped = true;
+      else if (charCode === 34) inString = false;
       continue;
     }
-    if (c === 34) {
+    if (charCode === 34) {
       if (depth > 0) inString = true;
       continue;
     }
-    if (c === 123 || c === 91) {
+    if (charCode === 123 || charCode === 91) {
       if (depth === 0) start = i;
       depth++;
-    } else if (c === 125 || c === 93) {
+    } else if (charCode === 125 || charCode === 93) {
       if (depth === 0) {
         garbage++;
         continue;
@@ -67,23 +67,23 @@ export function scanJsonValues(text: string): JsonScan {
 }
 
 /** Flattens a seat record to normalized, text-valued keys. Nested assignee, organization and team objects are read in place. */
-function flatten(rec: Dict): Record<string, string> {
+function flatten(record: Dict): Record<string, string> {
   const flat: Record<string, string> = {};
-  const text = (v: unknown): string | undefined => (typeof v === 'string' ? v : typeof v === 'number' ? String(v) : undefined);
-  for (const [key, value] of Object.entries(rec)) {
-    const k = normalizeHeader(key);
-    if (k === '') continue;
+  const text = (raw: unknown): string | undefined => (typeof raw === 'string' ? raw : typeof raw === 'number' ? String(raw) : undefined);
+  for (const [key, value] of Object.entries(record)) {
+    const normalizedKey = normalizeHeader(key);
+    if (normalizedKey === '') continue;
     if (isDict(value)) {
-      if (k === 'assignee') {
+      if (normalizedKey === 'assignee') {
         flat.login = text(value.login) ?? '';
         flat.name = text(value.name) ?? '';
         flat.email = text(value.email) ?? '';
-      } else if (k === 'organization') flat.organization = text(value.login) ?? text(value.name) ?? '';
-      else if (k === 'assigning_team') flat.assigning_team = text(value.slug) ?? text(value.name) ?? '';
+      } else if (normalizedKey === 'organization') flat.organization = text(value.login) ?? text(value.name) ?? '';
+      else if (normalizedKey === 'assigning_team') flat.assigning_team = text(value.slug) ?? text(value.name) ?? '';
       continue;
     }
-    const t = text(value);
-    flat[k] = t ?? '';
+    const textValue = text(value);
+    flat[normalizedKey] = textValue ?? '';
   }
   return flat;
 }
@@ -92,19 +92,19 @@ const getterOf =
   (flat: Record<string, string>) =>
   (field: SeatField): string | undefined => {
     for (const alias of FIELD_ALIASES[field]) {
-      const v = flat[alias];
-      if (v) return v;
+      const value = flat[alias];
+      if (value) return value;
     }
     return undefined;
   };
 
-const hasKey = (flat: Record<string, string>, field: SeatField): boolean => FIELD_ALIASES[field].some((a) => a in flat);
+const hasKey = (flat: Record<string, string>, field: SeatField): boolean => FIELD_ALIASES[field].some((alias) => alias in flat);
 
 /** What the GitHub API answers when the request fails: {"message": "Not Found", "documentation_url": ...}. */
-function apiErrorOf(rec: Dict): string | null {
-  if (typeof rec.message !== 'string') return null;
-  if (!('documentation_url' in rec) && !('status' in rec)) return null;
-  return rec.message.slice(0, 120);
+function apiErrorOf(record: Dict): string | null {
+  if (typeof record.message !== 'string') return null;
+  if (!('documentation_url' in record) && !('status' in record)) return null;
+  return record.message.slice(0, 120);
 }
 
 export interface JsonSeats {
@@ -125,8 +125,8 @@ interface Ctx {
   out: JsonSeats;
 }
 
-function addSeat(item: unknown, ctx: Ctx): void {
-  const out = ctx.out;
+function addSeat(item: unknown, context: Ctx): void {
+  const out = context.out;
   if (!isDict(item)) {
     out.skipped++;
     return;
@@ -152,14 +152,14 @@ function addSeat(item: unknown, ctx: Ctx): void {
   out.records.push(seat);
 }
 
-function collect(value: unknown, depth: number, ctx: Ctx): void {
-  const out = ctx.out;
+function collect(value: unknown, depth: number, context: Ctx): void {
+  const out = context.out;
   if (Array.isArray(value)) {
     if (depth >= 4) {
       out.skipped++;
       return;
     }
-    for (const item of value) collect(item, depth + 1, ctx);
+    for (const item of value) collect(item, depth + 1, context);
     return;
   }
   if (!isDict(value)) {
@@ -178,10 +178,10 @@ function collect(value: unknown, depth: number, ctx: Ctx): void {
     if (typeof value.total_seats === 'number' && Number.isFinite(value.total_seats) && value.total_seats >= 0) {
       out.total = Math.max(out.total ?? 0, Math.floor(value.total_seats));
     }
-    for (const item of value.seats) addSeat(item, ctx);
+    for (const item of value.seats) addSeat(item, context);
     return;
   }
-  addSeat(value, ctx);
+  addSeat(value, context);
 }
 
 /** Reads seats from JSON text in any of the shapes the API and the gh CLI produce. Never throws. */
@@ -205,9 +205,9 @@ export function parseSeatsJson(text: string): JsonSeats {
     out.garbage = scan.garbage;
     out.truncated = scan.truncated;
   }
-  const ctx: Ctx = { out };
-  for (const v of values) collect(v, 0, ctx);
+  const context: Ctx = { out };
+  for (const value of values) collect(value, 0, context);
   // When any record carries activity keys, apply that source to the whole response, including seats with blank dates.
-  if (out.records.some((r) => r.source === 'api')) for (const r of out.records) r.source = 'api';
+  if (out.records.some((record) => record.source === 'api')) for (const record of out.records) record.source = 'api';
   return out;
 }

@@ -21,8 +21,8 @@ function themeOptions(): { value: ThemeMode; label: ReactNode; title: string }[]
 }
 
 export function AppearanceSection() {
-  const theme = useApp((s) => s.theme);
-  const setTheme = useApp((s) => s.setTheme);
+  const theme = useApp((state) => state.theme);
+  const setTheme = useApp((state) => state.setTheme);
   const showing = resolveTheme(theme);
   const now =
     theme === 'system'

@@ -15,14 +15,14 @@ function Code({ children }: { children: string }) {
 function Columns({ names }: { names: string[] }) {
   return (
     <span className="inline-flex flex-wrap gap-1">
-      {names.map((n) => (
-        <Code key={n}>{n}</Code>
+      {names.map((column) => (
+        <Code key={column}>{column}</Code>
       ))}
     </span>
   );
 }
 
-const c = (name: string) => <Code>{name}</Code>;
+const asCode = (name: string) => <Code>{name}</Code>;
 
 export function HelpCard() {
   return (
@@ -64,7 +64,7 @@ export function HelpCard() {
             <p className="mt-1 text-fg-muted">
               <T
                 text="{date} and at least one of {gross} or {quantity}. A file without them is rejected with a message. Without a {gross} column, usage is worked out as {quantity} × {price}, or as {quantity} × $0.01 when that column is missing too."
-                values={{ date: c('date'), gross: c('gross_amount'), quantity: c('quantity'), price: c('applied_cost_per_quantity') }}
+                values={{ date: asCode('date'), gross: asCode('gross_amount'), quantity: asCode('quantity'), price: asCode('applied_cost_per_quantity') }}
               />
             </p>
           </div>
@@ -73,11 +73,11 @@ export function HelpCard() {
               {t('Optional columns')} <CalcInfo id="data-coverage-flags" />
             </h4>
             <dl className="mt-1 space-y-1.5">
-              {GROUPS.map((g) => (
-                <div key={g.title} className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                  <dt className="w-36 shrink-0 text-xs text-fg-muted">{t(g.title)}</dt>
+              {GROUPS.map((group) => (
+                <div key={group.title} className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                  <dt className="w-36 shrink-0 text-xs text-fg-muted">{t(group.title)}</dt>
                   <dd>
-                    <Columns names={g.columns} />
+                    <Columns names={group.columns} />
                   </dd>
                 </div>
               ))}
@@ -87,14 +87,14 @@ export function HelpCard() {
             <T
               text="A missing optional column is not an error. The app works out what it can, and the checks above say what is limited. Header names ignore capitals, and a space, dash or similar character counts as an underscore, so {spaced} is read as {gross}. Common other names such as {login}, {org} or {repo} are accepted. {unit}, {aicQty} and {aicGross} are accepted and ignored."
               values={{
-                spaced: c('Gross Amount'),
-                gross: c('gross_amount'),
-                login: c('login'),
-                org: c('org'),
-                repo: c('repo'),
-                unit: c('unit_type'),
-                aicQty: c('aic_quantity'),
-                aicGross: c('aic_gross_amount'),
+                spaced: asCode('Gross Amount'),
+                gross: asCode('gross_amount'),
+                login: asCode('login'),
+                org: asCode('org'),
+                repo: asCode('repo'),
+                unit: asCode('unit_type'),
+                aicQty: asCode('aic_quantity'),
+                aicGross: asCode('aic_gross_amount'),
               }}
             />
           </p>

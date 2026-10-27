@@ -11,11 +11,11 @@ import { playbookGroups } from './plan';
 export function PlaybookTab() {
   const { analysis, store } = useAnalysis();
   const perMonth = usePerMonth();
-  const ctx = useMemo(
+  const context = useMemo(
     () => ({ hasTokens: store.hasTokens, shiftRows: analysis.plan.levers.shiftRows.length, longPremium: analysis.agg.totals.longPremium }),
     [store.hasTokens, analysis.plan.levers.shiftRows.length, analysis.agg.totals.longPremium],
   );
-  const groups = useMemo(() => playbookGroups(analysis, perMonth, ctx), [analysis, perMonth, ctx]);
+  const groups = useMemo(() => playbookGroups(analysis, perMonth, context), [analysis, perMonth, context]);
 
   return (
     <div className="space-y-5">
@@ -25,17 +25,17 @@ export function PlaybookTab() {
 
       <PlanCard />
 
-      {groups.map((g) => (
-        <section key={g.audience} aria-labelledby={`playbook-${g.audience}`} className="space-y-2">
+      {groups.map((group) => (
+        <section key={group.audience} aria-labelledby={`playbook-${group.audience}`} className="space-y-2">
           <div>
-            <h2 id={`playbook-${g.audience}`} className="text-base font-semibold">
-              {t(g.title)}
+            <h2 id={`playbook-${group.audience}`} className="text-base font-semibold">
+              {t(group.title)}
             </h2>
-            <p className="text-sm text-fg-muted">{t(g.description)}</p>
+            <p className="text-sm text-fg-muted">{t(group.description)}</p>
           </div>
           <ul className="grid gap-3 lg:grid-cols-2">
-            {g.entries.map((e) => (
-              <PlaybookItemCard key={e.item.id} entry={e} />
+            {group.entries.map((entry) => (
+              <PlaybookItemCard key={entry.item.id} entry={entry} />
             ))}
           </ul>
         </section>

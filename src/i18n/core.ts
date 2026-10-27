@@ -26,7 +26,7 @@ export const LOCALES: { id: Locale; name: string; native: string; dir: 'ltr' | '
 ];
 
 let locale: Locale = 'en';
-let dict: Dict = {};
+let dictionary: Dict = {};
 const listeners = new Set<() => void>();
 let misses: Set<string> | null = null;
 const rules = new Map<Locale, Intl.PluralRules>();
@@ -42,8 +42,8 @@ export function isRtl(): boolean {
 /** Switches the language. App code uses `setLocale` from ./load, which also loads the dictionaries. */
 export function applyLocale(next: Locale, entries: Dict): void {
   locale = next;
-  dict = next === 'en' ? {} : entries;
-  for (const l of listeners) l();
+  dictionary = next === 'en' ? {} : entries;
+  for (const listener of listeners) listener();
 }
 
 export function subscribeLocale(listener: () => void): () => void {
@@ -60,22 +60,22 @@ export function missedKeys(): string[] {
   return misses ? [...misses].sort() : [];
 }
 
-function fill(text: string, vars?: Vars): string {
-  if (!vars) return text;
-  return text.replace(/\{(\w+)\}/g, (m, k: string) => (Object.hasOwn(vars, k) ? String(vars[k]) : m));
+function fill(text: string, values?: Vars): string {
+  if (!values) return text;
+  return text.replace(/\{(\w+)\}/g, (placeholder, name: string) => (Object.hasOwn(values, name) ? String(values[name]) : placeholder));
 }
 
 function lookup(key: string): Entry | undefined {
   if (locale === 'en') return undefined;
-  const e = Object.hasOwn(dict, key) ? dict[key] : undefined;
-  if (e === undefined) misses?.add(key);
-  return e;
+  const entry = Object.hasOwn(dictionary, key) ? dictionary[key] : undefined;
+  if (entry === undefined) misses?.add(key);
+  return entry;
 }
 
 /** Translates a fixed English text. */
-export function t(text: string, vars?: Vars): string {
-  const e = lookup(text);
-  return fill(e === undefined ? text : typeof e === 'string' ? e : e.other, vars);
+export function t(text: string, values?: Vars): string {
+  const entry = lookup(text);
+  return fill(entry === undefined ? text : typeof entry === 'string' ? entry : entry.other, values);
 }
 
 /**
@@ -90,18 +90,18 @@ export function msg<S extends string>(text: S): S {
  * Translates a counted text. English picks `one` for 1 and `other` otherwise. Arabic looks up `other` and
  * picks the plural form for n. `{n}` is filled with n unless `vars.n` is given (for example a formatted number).
  */
-export function tp(n: number, one: string, other: string, vars?: Vars): string {
-  const v: Vars = { n, ...vars };
-  const e = lookup(other);
-  if (e === undefined) return fill(n === 1 ? one : other, v);
-  if (typeof e === 'string') return fill(e, v);
-  let r = rules.get(locale);
-  if (!r) rules.set(locale, (r = new Intl.PluralRules(locale)));
-  const form = r.select(n) as keyof PluralEntry;
-  return fill(e[form] ?? e.other, v);
+export function tp(count: number, one: string, other: string, values?: Vars): string {
+  const valuesWithCount: Vars = { n: count, ...values };
+  const entry = lookup(other);
+  if (entry === undefined) return fill(count === 1 ? one : other, valuesWithCount);
+  if (typeof entry === 'string') return fill(entry, valuesWithCount);
+  let pluralRules = rules.get(locale);
+  if (!pluralRules) rules.set(locale, (pluralRules = new Intl.PluralRules(locale)));
+  const form = pluralRules.select(count) as keyof PluralEntry;
+  return fill(entry[form] ?? entry.other, valuesWithCount);
 }
 
 /** The {placeholders} in a text, sorted, for checking that a translation keeps them all. */
 export function placeholdersOf(text: string): string[] {
-  return [...text.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
+  return [...text.matchAll(/\{(\w+)\}/g)].map((match) => match[1]).sort();
 }

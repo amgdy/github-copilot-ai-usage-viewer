@@ -4,7 +4,7 @@ import { useChartColors, type ChartClick } from '../../components/charts/EChart'
 import { msg, t } from '../../i18n';
 import { useAnalysis } from '../../state/analysis';
 import { useApp } from '../../state/store';
-import { DOW_NAMES } from '../../lib/utils/date';
+import { WEEKDAY_NAMES } from '../../lib/utils/date';
 import { weekdayInsight, weekdayName, weekdayStats } from './model';
 import { isFiltered, weekdayOption, type WeekdayMetric } from './weekday';
 
@@ -31,26 +31,26 @@ const METRICS: { value: WeekdayMetric; label: string; title: string; subtitle: s
 
 export default function WeekdayPattern() {
   const { analysis, filters } = useAnalysis();
-  const { agg, range } = analysis;
+  const { agg: aggregates, range } = analysis;
   const colors = useChartColors();
-  const live = useApp((s) => s.filters.weekdays);
-  const toggleWeekday = useApp((s) => s.toggleWeekday);
-  const setFilters = useApp((s) => s.setFilters);
+  const live = useApp((state) => state.filters.weekdays);
+  const toggleWeekday = useApp((state) => state.toggleWeekday);
+  const setFilters = useApp((state) => state.setFilters);
   const [metric, setMetric] = useState<WeekdayMetric>('average');
 
-  const stats = useMemo(() => weekdayStats(range, agg.days, agg.dow), [range, agg]);
+  const stats = useMemo(() => weekdayStats(range, aggregates.days, aggregates.dow), [range, aggregates]);
   const option = useMemo(() => weekdayOption({ colors, stats, metric, selected: filters.weekdays }), [colors, stats, metric, filters.weekdays]);
   const insight = useMemo(
     () => weekdayInsight(stats, range.length, isFiltered(filters.weekdays)),
     [stats, range.length, filters.weekdays],
   );
 
-  const options: SegmentedOption<WeekdayMetric>[] = METRICS.map((m) => ({ value: m.value, label: t(m.label), title: t(m.title) }));
-  const current = METRICS.find((m) => m.value === metric) ?? METRICS[0];
+  const options: SegmentedOption<WeekdayMetric>[] = METRICS.map((metricOption) => ({ value: metricOption.value, label: t(metricOption.label), title: t(metricOption.title) }));
+  const current = METRICS.find((metricOption) => metricOption.value === metric) ?? METRICS[0];
   const liveFilter = isFiltered(live);
 
-  const onClick = (p: ChartClick) => {
-    if (p.componentType === 'series') toggleWeekday(p.dataIndex);
+  const onClick = (event: ChartClick) => {
+    if (event.componentType === 'series') toggleWeekday(event.dataIndex);
   };
 
   return (
@@ -63,26 +63,26 @@ export default function WeekdayPattern() {
       onClick={onClick}
       exportName="github-copilot-weekday-pattern"
       label={t('Bar chart of usage by weekday')}
-      empty={agg.totals.gross > 0 ? false : t('No usage in this range')}
+      empty={aggregates.totals.gross > 0 ? false : t('No usage in this range')}
       calc={['weekday-pattern', 'active-users-per-day']}
       footer={
         <div className="space-y-2">
           <p className="text-sm text-fg">{insight}</p>
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="text-fg-subtle">{t('Show only')}</span>
-            {DOW_NAMES.map((name, d) => {
-              const on = live.includes(d) && liveFilter;
-              const weekday = weekdayName(d);
+            {WEEKDAY_NAMES.map((name, dayOfWeek) => {
+              const on = live.includes(dayOfWeek) && liveFilter;
+              const weekday = weekdayName(dayOfWeek);
               let title = t('Show only {weekday}', { weekday });
               if (on) title = t('Remove {weekday} from the weekday filter', { weekday });
               else if (liveFilter) title = t('Add {weekday} to the weekday filter', { weekday });
               return (
                 <button
-                  key={d}
+                  key={dayOfWeek}
                   type="button"
                   aria-pressed={on}
                   title={title}
-                  onClick={() => toggleWeekday(d)}
+                  onClick={() => toggleWeekday(dayOfWeek)}
                   className={cx('chip hover:border-accent hover:text-accent', on && 'border-accent bg-accent-soft text-accent')}
                 >
                   {name}

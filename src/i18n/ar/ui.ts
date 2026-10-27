@@ -1,7 +1,7 @@
 import type { Dict } from '../core';
 
 /** Arabic text for the shared building blocks in src/components/ui. */
-const ar: Dict = {
+const arabic: Dict = {
   'Read from the file': 'مأخوذ من الملف',
   'Calculated from the file': 'محسوب من الملف',
   'Summed straight from a column of the report.': 'مجموع مأخوذ مباشرة من عمود في التقرير.',
@@ -59,4 +59,4 @@ const ar: Dict = {
   'Opens in a new tab': 'يفتح في علامة تبويب جديدة',
 };
 
-export default ar;
+export default arabic;

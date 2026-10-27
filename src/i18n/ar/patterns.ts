@@ -1,9 +1,9 @@
 import type { Dict, PluralEntry } from '../core';
 
 /** Arabic text for the Patterns page (src/pages/PatternsPage.tsx and src/pages/patterns). */
-const p = (one: string, two: string, few: string, many: string, other: string): PluralEntry => ({ zero: other, one, two, few, many, other });
+const plural = (one: string, two: string, few: string, many: string, other: string): PluralEntry => ({ zero: other, one, two, few, many, other });
 
-const ar: Dict = {
+const arabic: Dict = {
   // Page header
   'When GitHub Copilot is used, whether adoption is growing or fading, and which days stood out.':
     'متى يُستخدم GitHub Copilot، وهل التبنّي في ازدياد أم تراجع، وأي الأيام كانت لافتة.',
@@ -41,7 +41,7 @@ const ar: Dict = {
     'يُعد المستخدم جديدًا في الأسبوع الذي يظهر فيه أول مرة في البيانات. المستخدمون النشطون في الأسبوع هم من لديهم أي استخدام في ذلك الأسبوع.',
   'Users first seen in the first {days} of the data count as already using GitHub Copilot, so this range has no new users.':
     'المستخدمون الذين ظهروا أول مرة في أول {days} من البيانات يُعدّون من مستخدمي GitHub Copilot من قبل، لذا لا يوجد مستخدمون جدد في هذه الفترة.',
-  '{n} users count as already using GitHub Copilot.': p(
+  '{n} users count as already using GitHub Copilot.': plural(
     'مستخدم واحد يُعدّ من مستخدمي GitHub Copilot من قبل.',
     'مستخدمان يُعدّان من مستخدمي GitHub Copilot من قبل.',
     '{n} مستخدمين يُعدّون من مستخدمي GitHub Copilot من قبل.',
@@ -50,7 +50,7 @@ const ar: Dict = {
   ),
   'Users first seen in the first {days} of the data cannot be told apart from existing users, so new users are counted from {date}.':
     'لا يمكن تمييز المستخدمين الذين ظهروا أول مرة في أول {days} من البيانات عن المستخدمين الحاليين، لذا يُحسب المستخدمون الجدد بدءًا من {date}.',
-  '{n} users were already using GitHub Copilot before this range began.': p(
+  '{n} users were already using GitHub Copilot before this range began.': plural(
     'مستخدم واحد كان يستخدم GitHub Copilot قبل بداية هذه الفترة.',
     'مستخدمان كانا يستخدمان GitHub Copilot قبل بداية هذه الفترة.',
     '{n} مستخدمين كانوا يستخدمون GitHub Copilot قبل بداية هذه الفترة.',
@@ -134,7 +134,7 @@ const ar: Dict = {
   'Open in Users': 'فتح في صفحة المستخدمين',
   'Used GitHub Copilot earlier, then nothing for {days} or more by the end of the range.':
     'استخدموا GitHub Copilot من قبل، ثم لا شيء لمدة {days} أو أكثر حتى نهاية الفترة.',
-  '{n} lapsed users': p('مستخدم منقطع واحد', 'مستخدمان منقطعان', '{n} مستخدمين منقطعين', '{n} مستخدمًا منقطعًا', '{n} مستخدم منقطع'),
+  '{n} lapsed users': plural('مستخدم منقطع واحد', 'مستخدمان منقطعان', '{n} مستخدمين منقطعين', '{n} مستخدمًا منقطعًا', '{n} مستخدم منقطع'),
   'Ask them whether they still need GitHub Copilot. A seat nobody uses can go to someone who will.':
     'اسألهم هل ما زالوا يحتاجون إلى GitHub Copilot. الترخيص الذي لا يستخدمه أحد يمكن منحه لمن سيستخدمه.',
   'Users first seen in the last {days} are not counted, because they have had little time to use it.':
@@ -154,7 +154,7 @@ const ar: Dict = {
   '{recent} in the last 7 days, {prior} in the 7 days before': '{recent} في آخر 7 أيام، و{prior} في الأيام السبعة التي قبلها',
   'Fading users': 'المستخدمون المتراجعون',
   'Usage in the last 7 days of the range is half or less of the 7 days before.': 'الاستخدام في آخر 7 أيام من الفترة يساوي نصف الأيام السبعة التي قبلها أو أقل.',
-  '{n} fading users': p('مستخدم متراجع واحد', 'مستخدمان متراجعان', '{n} مستخدمين متراجعين', '{n} مستخدمًا متراجعًا', '{n} مستخدم متراجع'),
+  '{n} fading users': plural('مستخدم متراجع واحد', 'مستخدمان متراجعان', '{n} مستخدمين متراجعين', '{n} مستخدمًا متراجعًا', '{n} مستخدم متراجع'),
   'Check in with them before they stop. A short tip or a training session can help them get value from GitHub Copilot again.':
     'تواصل معهم قبل أن يتوقفوا. نصيحة قصيرة أو جلسة تدريب قد تساعدهم على الاستفادة من GitHub Copilot من جديد.',
   'Only users with at least {amount} in the earlier 7 days are checked. Hover a change to see the amounts.':
@@ -231,7 +231,7 @@ const ar: Dict = {
   'Click to show only this weekday.': 'انقر لعرض هذا اليوم من الأسبوع فقط.',
   'Click to take this weekday out of the weekday filter.': 'انقر لإخراج هذا اليوم من تصفية أيام الأسبوع.',
   'Click to add this weekday to the weekday filter.': 'انقر لإضافة هذا اليوم إلى تصفية أيام الأسبوع.',
-  'This weekday occurs {n} times in the range, {usage} with usage.': p(
+  'This weekday occurs {n} times in the range, {usage} with usage.': plural(
     'يتكرر هذا اليوم مرة واحدة في الفترة، منها {usage} فيها استخدام.',
     'يتكرر هذا اليوم مرتين في الفترة، منها {usage} فيها استخدام.',
     'يتكرر هذا اليوم {n} مرات في الفترة، منها {usage} فيها استخدام.',
@@ -251,4 +251,4 @@ const ar: Dict = {
   '{recent} vs {prior}': '{recent} مقابل {prior}',
 };
 
-export default ar;
+export default arabic;

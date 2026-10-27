@@ -37,7 +37,7 @@ interface GlyphDef {
   paths: { d: string; fill?: string; evenOdd?: boolean }[];
 }
 
-const OCT = '0 0 16 16';
+const OCTICON_VIEW_BOX = '0 0 16 16';
 const BOX = '0 0 24 24';
 
 const MOONSHOT =
@@ -45,7 +45,7 @@ const MOONSHOT =
 
 export const GLYPHS = {
   github: {
-    viewBox: OCT,
+    viewBox: OCTICON_VIEW_BOX,
     paths: [
       {
         d: 'M6.766 11.328c-2.063-.25-3.516-1.734-3.516-3.656 0-.781.281-1.625.75-2.188-.203-.515-.172-1.609.063-2.062.625-.078 1.468.25 1.968.703.594-.187 1.219-.281 1.985-.281.765 0 1.39.094 1.953.265.484-.437 1.344-.765 1.969-.687.218.422.25 1.515.046 2.047.5.593.766 1.39.766 2.203 0 1.922-1.453 3.375-3.547 3.64.531.344.89 1.094.89 1.954v1.625c0 .468.391.734.86.547C13.781 14.359 16 11.53 16 8.03 16 3.61 12.406 0 7.984 0 3.563 0 0 3.61 0 8.031a7.88 7.88 0 0 0 5.172 7.422c.422.156.828-.125.828-.547v-1.25c-.219.094-.5.156-.75.156-1.031 0-1.64-.562-2.078-1.609-.172-.422-.36-.672-.719-.719-.187-.015-.25-.093-.25-.187 0-.188.313-.328.625-.328.453 0 .844.281 1.25.86.313.452.64.655 1.031.655s.641-.14 1-.5c.266-.265.47-.5.657-.656',
@@ -53,7 +53,7 @@ export const GLYPHS = {
     ],
   },
   copilot: {
-    viewBox: OCT,
+    viewBox: OCTICON_VIEW_BOX,
     paths: [
       {
         d: 'M7.998 15.035c-4.562 0-7.873-2.914-7.998-3.749V9.338c.085-.628.677-1.686 1.588-2.065.013-.07.024-.143.036-.218.029-.183.06-.384.126-.612-.201-.508-.254-1.084-.254-1.656 0-.87.128-1.769.693-2.484.579-.733 1.494-1.124 2.724-1.261 1.206-.134 2.262.034 2.944.765.05.053.096.108.139.165.044-.057.094-.112.143-.165.682-.731 1.738-.899 2.944-.765 1.23.137 2.145.528 2.724 1.261.566.715.693 1.614.693 2.484 0 .572-.053 1.148-.254 1.656.066.228.098.429.126.612.012.076.024.148.037.218.924.385 1.522 1.471 1.591 2.095v1.872c0 .766-3.351 3.795-8.002 3.795Zm0-1.485c2.28 0 4.584-1.11 5.002-1.433V7.862l-.023-.116c-.49.21-1.075.291-1.727.291-1.146 0-2.059-.327-2.71-.991A3.222 3.222 0 0 1 8 6.303a3.24 3.24 0 0 1-.544.743c-.65.664-1.563.991-2.71.991-.652 0-1.236-.081-1.727-.291l-.023.116v4.255c.419.323 2.722 1.433 5.002 1.433ZM6.762 2.83c-.193-.206-.637-.413-1.682-.297-1.019.113-1.479.404-1.713.7-.247.312-.369.789-.369 1.554 0 .793.129 1.171.308 1.371.162.181.519.379 1.442.379.853 0 1.339-.235 1.638-.54.315-.322.527-.827.617-1.553.117-.935-.037-1.395-.241-1.614Zm4.155-.297c-1.044-.116-1.488.091-1.681.297-.204.219-.359.679-.242 1.614.091.726.303 1.231.618 1.553.299.305.784.54 1.638.54.922 0 1.28-.198 1.442-.379.179-.2.308-.578.308-1.371 0-.765-.123-1.242-.37-1.554-.233-.296-.693-.587-1.713-.7Z',
@@ -62,7 +62,7 @@ export const GLYPHS = {
     ],
   },
   security: {
-    viewBox: OCT,
+    viewBox: OCTICON_VIEW_BOX,
     paths: [
       {
         d: 'm8.533.133 5.25 1.68A1.75 1.75 0 0 1 15 3.48V7c0 1.566-.32 3.182-1.303 4.682-.983 1.498-2.585 2.813-5.032 3.855a1.697 1.697 0 0 1-1.33 0c-2.447-1.042-4.049-2.357-5.032-3.855C1.32 10.182 1 8.566 1 7V3.48a1.75 1.75 0 0 1 1.217-1.667l5.25-1.68a1.748 1.748 0 0 1 1.066 0Zm-.61 1.429.001.001-5.25 1.68a.251.251 0 0 0-.174.237V7c0 1.36.275 2.666 1.057 3.859.784 1.194 2.121 2.342 4.366 3.298a.196.196 0 0 0 .154 0c2.245-.957 3.582-2.103 4.366-3.297C13.225 9.666 13.5 8.358 13.5 7V3.48a.25.25 0 0 0-.174-.238l-5.25-1.68a.25.25 0 0 0-.153 0ZM9.5 6.5c0 .536-.286 1.032-.75 1.3v2.45a.75.75 0 0 1-1.5 0V7.8A1.5 1.5 0 1 1 9.5 6.5Z',
@@ -70,7 +70,7 @@ export const GLYPHS = {
     ],
   },
   codeQuality: {
-    viewBox: OCT,
+    viewBox: OCTICON_VIEW_BOX,
     paths: [
       { d: 'M10.28 6.28a.75.75 0 1 0-1.06-1.06L6.25 8.19l-.97-.97a.75.75 0 0 0-1.06 1.06l1.5 1.5a.75.75 0 0 0 1.06 0l3.5-3.5Z' },
       {
@@ -79,7 +79,7 @@ export const GLYPHS = {
     ],
   },
   agent: {
-    viewBox: OCT,
+    viewBox: OCTICON_VIEW_BOX,
     paths: [
       {
         d: 'M14.5 8.9v-.052A2.956 2.956 0 0 0 11.542 5.9a.815.815 0 0 1-.751-.501l-.145-.348A3.496 3.496 0 0 0 7.421 2.9h-.206a3.754 3.754 0 0 0-3.736 4.118l.011.121a.822.822 0 0 1-.619.879A1.81 1.81 0 0 0 1.5 9.773v.14c0 1.097.89 1.987 1.987 1.987H4.5a.75.75 0 0 1 0 1.5H3.487A3.487 3.487 0 0 1 0 9.913v-.14C0 8.449.785 7.274 1.963 6.75A5.253 5.253 0 0 1 7.215 1.4h.206a4.992 4.992 0 0 1 4.586 3.024A4.455 4.455 0 0 1 16 8.848V8.9a.75.75 0 0 1-1.5 0Z',
@@ -88,7 +88,7 @@ export const GLYPHS = {
     ],
   },
   codeReview: {
-    viewBox: OCT,
+    viewBox: OCTICON_VIEW_BOX,
     paths: [
       {
         d: 'M1.75 1h12.5c.966 0 1.75.784 1.75 1.75v8.5A1.75 1.75 0 0 1 14.25 13H8.061l-2.574 2.573A1.458 1.458 0 0 1 3 14.543V13H1.75A1.75 1.75 0 0 1 0 11.25v-8.5C0 1.784.784 1 1.75 1ZM1.5 2.75v8.5c0 .138.112.25.25.25h2a.75.75 0 0 1 .75.75v2.19l2.72-2.72a.749.749 0 0 1 .53-.22h6.5a.25.25 0 0 0 .25-.25v-8.5a.25.25 0 0 0-.25-.25H1.75a.25.25 0 0 0-.25.25Zm5.28 1.72a.75.75 0 0 1 0 1.06L5.31 7l1.47 1.47a.751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018l-2-2a.75.75 0 0 1 0-1.06l2-2a.75.75 0 0 1 1.06 0Zm2.44 0a.75.75 0 0 1 1.06 0l2 2a.75.75 0 0 1 0 1.06l-2 2a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L10.69 7 9.22 5.53a.75.75 0 0 1 0-1.06Z',
@@ -96,7 +96,7 @@ export const GLYPHS = {
     ],
   },
   cli: {
-    viewBox: OCT,
+    viewBox: OCTICON_VIEW_BOX,
     paths: [
       {
         d: 'M0 2.75C0 1.784.784 1 1.75 1h12.5c.966 0 1.75.784 1.75 1.75v10.5A1.75 1.75 0 0 1 14.25 15H1.75A1.75 1.75 0 0 1 0 13.25Zm1.75-.25a.25.25 0 0 0-.25.25v10.5c0 .138.112.25.25.25h12.5a.25.25 0 0 0 .25-.25V2.75a.25.25 0 0 0-.25-.25ZM7.25 8a.749.749 0 0 1-.22.53l-2.25 2.25a.749.749 0 0 1-1.275-.326.749.749 0 0 1 .215-.734L5.44 8 3.72 6.28a.749.749 0 0 1 .326-1.275.749.749 0 0 1 .734.215l2.25 2.25c.141.14.22.331.22.53Zm1.5 1.5h3a.75.75 0 0 1 0 1.5h-3a.75.75 0 0 1 0-1.5Z',
@@ -104,7 +104,7 @@ export const GLYPHS = {
     ],
   },
   auto: {
-    viewBox: OCT,
+    viewBox: OCTICON_VIEW_BOX,
     paths: [
       {
         d: 'M7.53 1.282a.5.5 0 0 1 .94 0l.478 1.306a7.492 7.492 0 0 0 4.464 4.464l1.305.478a.5.5 0 0 1 0 .94l-1.305.478a7.492 7.492 0 0 0-4.464 4.464l-.478 1.305a.5.5 0 0 1-.94 0l-.478-1.305a7.492 7.492 0 0 0-4.464-4.464L1.282 8.47a.5.5 0 0 1 0-.94l1.306-.478a7.492 7.492 0 0 0 4.464-4.464Z',
@@ -112,7 +112,7 @@ export const GLYPHS = {
     ],
   },
   license: {
-    viewBox: OCT,
+    viewBox: OCTICON_VIEW_BOX,
     paths: [
       { d: 'M3 7.5a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 .5.5v3a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1-.5-.5v-3Zm10 .25a.75.75 0 0 1-.75.75h-4.5a.75.75 0 0 1 0-1.5h4.5a.75.75 0 0 1 .75.75ZM10.25 11a.75.75 0 0 0 0-1.5h-2.5a.75.75 0 0 0 0 1.5h2.5Z' },
       {
@@ -167,10 +167,10 @@ export type BrandIconProps = Omit<SVGProps<SVGSVGElement>, 'children'> & {
 };
 
 export function Glyph({ glyph, size = 16, title, className, ...rest }: BrandIconProps & { glyph: GlyphId }) {
-  const g: GlyphDef = GLYPHS[glyph];
+  const definition: GlyphDef = GLYPHS[glyph];
   return (
     <svg
-      viewBox={g.viewBox}
+      viewBox={definition.viewBox}
       width={size}
       height={size}
       fill="currentColor"
@@ -182,15 +182,15 @@ export function Glyph({ glyph, size = 16, title, className, ...rest }: BrandIcon
       {...rest}
     >
       {title ? <title>{title}</title> : null}
-      {g.paths.map((p, i) => (
-        <path key={i} d={p.d} fill={p.fill} fillRule={p.evenOdd ? 'evenodd' : undefined} clipRule={p.evenOdd ? 'evenodd' : undefined} />
+      {definition.paths.map((path, index) => (
+        <path key={index} d={path.d} fill={path.fill} fillRule={path.evenOdd ? 'evenodd' : undefined} clipRule={path.evenOdd ? 'evenodd' : undefined} />
       ))}
     </svg>
   );
 }
 
-export const GitHubIcon = (p: BrandIconProps) => <Glyph glyph="github" {...p} />;
-export const GitHubCopilotIcon = (p: BrandIconProps) => <Glyph glyph="copilot" {...p} />;
+export const GitHubIcon = (props: BrandIconProps) => <Glyph glyph="github" {...props} />;
+export const GitHubCopilotIcon = (props: BrandIconProps) => <Glyph glyph="copilot" {...props} />;
 
 const VENDOR_GLYPH: Partial<Record<Vendor, GlyphId>> = {
   Anthropic: 'anthropic',
@@ -202,9 +202,9 @@ const VENDOR_GLYPH: Partial<Record<Vendor, GlyphId>> = {
 };
 
 /** The logo of the company that makes a model. Nothing is drawn for "Other". */
-export function VendorIcon({ vendor, ...p }: BrandIconProps & { vendor: Vendor }) {
+export function VendorIcon({ vendor, ...iconProps }: BrandIconProps & { vendor: Vendor }) {
   const glyph = VENDOR_GLYPH[vendor];
-  return glyph ? <Glyph glyph={glyph} {...p} /> : null;
+  return glyph ? <Glyph glyph={glyph} {...iconProps} /> : null;
 }
 
 /** Products as they appear in the report's product column. */
@@ -216,14 +216,14 @@ const PRODUCT_GLYPH: Record<string, GlyphId> = {
 };
 
 /** The GitHub icon for a product of the report. Nothing is drawn for a product it does not know. */
-export function ProductIcon({ product, ...p }: BrandIconProps & { product: string }) {
+export function ProductIcon({ product, ...iconProps }: BrandIconProps & { product: string }) {
   const glyph = PRODUCT_GLYPH[product.trim().toLowerCase()];
-  return glyph ? <Glyph glyph={glyph} {...p} /> : null;
+  return glyph ? <Glyph glyph={glyph} {...iconProps} /> : null;
 }
 
 /** Features that recommendations and guides talk about, each with the icon GitHub uses for it. */
 export type FeatureId = 'auto' | 'agent' | 'codeReview' | 'cli' | 'license' | 'copilot' | 'security' | 'codeQuality';
 
-export function FeatureIcon({ feature, ...p }: BrandIconProps & { feature: FeatureId }) {
-  return <Glyph glyph={feature} {...p} />;
+export function FeatureIcon({ feature, ...iconProps }: BrandIconProps & { feature: FeatureId }) {
+  return <Glyph glyph={feature} {...iconProps} />;
 }

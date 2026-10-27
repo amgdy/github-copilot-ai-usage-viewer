@@ -13,36 +13,36 @@ export type SeriesMeasure = 'gross' | 'net' | 'discount' | 'credits' | 'rows';
 export interface Bucketer {
   count: number;
   indexOf(day: number): number;
-  start(i: number): number;
-  label(i: number): string;
+  start(bucketIndex: number): number;
+  label(bucketIndex: number): string;
 }
 
-const weekStart = (d: number) => d - dowOf(d);
+const weekStart = (day: number) => day - dowOf(day);
 
 export function makeBucketer(start: number, end: number, bucket: Bucket): Bucketer {
   if (bucket === 'day') {
     return {
       count: Math.max(0, end - start + 1),
-      indexOf: (d) => d - start,
-      start: (i) => start + i,
-      label: (i) => fmtDay(start + i),
+      indexOf: (day) => day - start,
+      start: (bucketIndex) => start + bucketIndex,
+      label: (bucketIndex) => fmtDay(start + bucketIndex),
     };
   }
   if (bucket === 'week') {
-    const w0 = weekStart(start);
+    const firstWeekStart = weekStart(start);
     return {
-      count: Math.max(0, Math.floor((weekStart(end) - w0) / 7) + 1),
-      indexOf: (d) => Math.floor((weekStart(d) - w0) / 7),
-      start: (i) => Math.max(start, w0 + i * 7),
-      label: (i) => t('Week of {date}', { date: fmtDay(Math.max(start, w0 + i * 7)) }),
+      count: Math.max(0, Math.floor((weekStart(end) - firstWeekStart) / 7) + 1),
+      indexOf: (day) => Math.floor((weekStart(day) - firstWeekStart) / 7),
+      start: (bucketIndex) => Math.max(start, firstWeekStart + bucketIndex * 7),
+      label: (bucketIndex) => t('Week of {date}', { date: fmtDay(Math.max(start, firstWeekStart + bucketIndex * 7)) }),
     };
   }
-  const m0 = monthIndexOf(start);
+  const firstMonthIndex = monthIndexOf(start);
   return {
-    count: Math.max(0, monthIndexOf(end) - m0 + 1),
-    indexOf: (d) => monthIndexOf(d) - m0,
-    start: (i) => Math.max(start, monthStartDay(m0 + i)),
-    label: (i) => monthLabel(m0 + i),
+    count: Math.max(0, monthIndexOf(end) - firstMonthIndex + 1),
+    indexOf: (day) => monthIndexOf(day) - firstMonthIndex,
+    start: (bucketIndex) => Math.max(start, monthStartDay(firstMonthIndex + bucketIndex)),
+    label: (bucketIndex) => monthLabel(firstMonthIndex + bucketIndex),
   };
 }
 
@@ -69,37 +69,37 @@ export function stackedSeries(
   store: DataStore,
   mask: Uint8Array | null,
   range: { start: number; end: number },
-  dim: DimKey,
+  dimension: DimKey,
   ids: number[],
   measure: SeriesMeasure,
   bucket: Bucket,
   names: string[],
-  groupOf?: (store: DataStore, i: number) => number,
+  groupOf?: (store: DataStore, rowIndex: number) => number,
 ): StackedSeries {
-  const b = makeBucketer(range.start, range.end, bucket);
-  const pos = new Map<number, number>();
-  ids.forEach((id, k) => pos.set(id, k));
-  const data = ids.map(() => new Float64Array(b.count));
-  const other = new Float64Array(b.count);
-  const col = store[dim] as Int32Array;
-  const src = MEASURE_SOURCE[measure];
-  const values = src ? (store[src] as Float64Array) : null;
+  const bucketer = makeBucketer(range.start, range.end, bucket);
+  const indexById = new Map<number, number>();
+  ids.forEach((id, seriesIndex) => indexById.set(id, seriesIndex));
+  const data = ids.map(() => new Float64Array(bucketer.count));
+  const other = new Float64Array(bucketer.count);
+  const column = store[dimension] as Int32Array;
+  const sourceField = MEASURE_SOURCE[measure];
+  const values = sourceField ? (store[sourceField] as Float64Array) : null;
   for (let i = 0; i < store.n; i++) {
     if (mask !== null && mask[i] === 0) continue;
-    const d = store.day[i];
-    if (d < range.start || d > range.end) continue;
-    const bi = b.indexOf(d);
-    const key = groupOf ? groupOf(store, i) : col[i];
-    const k = pos.get(key);
-    const v = values ? values[i] : 1;
-    if (k === undefined) other[bi] += v;
-    else data[k][bi] += v;
+    const day = store.day[i];
+    if (day < range.start || day > range.end) continue;
+    const bucketIndex = bucketer.indexOf(day);
+    const key = groupOf ? groupOf(store, i) : column[i];
+    const seriesIndex = indexById.get(key);
+    const amount = values ? values[i] : 1;
+    if (seriesIndex === undefined) other[bucketIndex] += amount;
+    else data[seriesIndex][bucketIndex] += amount;
   }
   return {
-    bucketer: b,
-    labels: Array.from({ length: b.count }, (_, i) => b.label(i)),
-    series: ids.map((id, k) => ({ id, name: names[k] ?? String(id), data: data[k] })),
-    other: other.some((x) => x !== 0) ? other : null,
+    bucketer: bucketer,
+    labels: Array.from({ length: bucketer.count }, (_, bucketIndex) => bucketer.label(bucketIndex)),
+    series: ids.map((id, seriesIndex) => ({ id, name: names[seriesIndex] ?? String(id), data: data[seriesIndex] })),
+    other: other.some((amount) => amount !== 0) ? other : null,
   };
 }
 
@@ -110,16 +110,16 @@ export function userDailySeries(
   range: { start: number; end: number },
   userIds: number[],
 ): Map<number, Float32Array> {
-  const n = Math.max(0, range.end - range.start + 1);
+  const dayCount = Math.max(0, range.end - range.start + 1);
   const out = new Map<number, Float32Array>();
-  for (const id of userIds) out.set(id, new Float32Array(n));
+  for (const id of userIds) out.set(id, new Float32Array(dayCount));
   for (let i = 0; i < store.n; i++) {
     if (mask !== null && mask[i] === 0) continue;
-    const arr = out.get(store.user[i]);
-    if (!arr) continue;
-    const d = store.day[i];
-    if (d < range.start || d > range.end) continue;
-    arr[d - range.start] += store.gross[i];
+    const dailyGross = out.get(store.user[i]);
+    if (!dailyGross) continue;
+    const day = store.day[i];
+    if (day < range.start || day > range.end) continue;
+    dailyGross[day - range.start] += store.gross[i];
   }
   return out;
 }
@@ -131,7 +131,7 @@ export interface FacetCounts {
 
 export type FacetKey = Extract<ListFilterKey, 'users' | 'products' | 'skus' | 'models' | 'orgs' | 'costCenters' | 'repos' | 'apps' | 'files' | 'vendors' | 'categories' | 'plans'> | 'weekdays';
 
-const KEY_TO_DIM = Object.fromEntries((Object.entries(DIM_FILTER_KEY) as [DimKey, ListFilterKey][]).map(([d, k]) => [k, d])) as Record<string, DimKey>;
+const KEY_TO_DIM = Object.fromEntries((Object.entries(DIM_FILTER_KEY) as [DimKey, ListFilterKey][]).map(([dimension, filterKey]) => [filterKey, dimension])) as Record<string, DimKey>;
 
 /**
  * Row and spend totals for every option of one filter, with all *other* filters applied.
@@ -139,39 +139,39 @@ const KEY_TO_DIM = Object.fromEntries((Object.entries(DIM_FILTER_KEY) as [DimKey
  */
 export function facetCounts(
   store: DataStore,
-  prep: Prepared,
+  prepared: Prepared,
   models: ModelTable,
   filters: Filters,
   key: FacetKey,
 ): FacetCounts {
-  const mask = buildMask(store, prep, models, filters, key);
-  const dim = KEY_TO_DIM[key];
+  const mask = buildMask(store, prepared, models, filters, key);
+  const dimension = KEY_TO_DIM[key];
   let size: number;
-  let idOf: (i: number) => number;
-  if (dim) {
-    size = store.dicts[dim].values.length;
-    const col = store[dim] as Int32Array;
-    idOf = (i) => col[i];
+  let idOf: (rowIndex: number) => number;
+  if (dimension) {
+    size = store.dicts[dimension].values.length;
+    const column = store[dimension] as Int32Array;
+    idOf = (rowIndex) => column[rowIndex];
   } else if (key === 'vendors') {
     size = VENDORS.length;
-    idOf = (i) => models.vendor[store.model[i]];
+    idOf = (rowIndex) => models.vendor[store.model[rowIndex]];
   } else if (key === 'categories') {
     size = CATEGORIES.length;
-    idOf = (i) => models.cat[store.model[i]];
+    idOf = (rowIndex) => models.cat[store.model[rowIndex]];
   } else if (key === 'plans') {
-    size = Math.max(1, prep.planLabels.length);
-    idOf = (i) => prep.planOfRow[i];
+    size = Math.max(1, prepared.planLabels.length);
+    idOf = (rowIndex) => prepared.planOfRow[rowIndex];
   } else {
     size = 7;
-    idOf = (i) => prep.dowOfDay[store.day[i] - store.minDay];
+    idOf = (rowIndex) => prepared.dowOfDay[store.day[rowIndex] - store.minDay];
   }
   const rows = new Float64Array(size);
   const gross = new Float64Array(size);
   for (let i = 0; i < store.n; i++) {
     if (mask !== null && mask[i] === 0) continue;
-    const k = idOf(i);
-    rows[k]++;
-    gross[k] += store.gross[i];
+    const optionId = idOf(i);
+    rows[optionId]++;
+    gross[optionId] += store.gross[i];
   }
   return { rows, gross };
 }

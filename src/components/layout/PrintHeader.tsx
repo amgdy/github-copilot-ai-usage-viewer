@@ -9,7 +9,7 @@ import { datasetLabel, useApp } from '../../state/store';
 /** Printed at the top of every page: the top bar and filter chips are hidden on paper, so say what this view covers. */
 export function PrintHeader() {
   const { dataset, analysis, store, taxonomy } = useAnalysis();
-  const filters = useApp((s) => s.filters);
+  const filters = useApp((state) => state.filters);
   const chips = useMemo(() => describeFilters(filters, store, taxonomy).map(chipText), [filters, store, taxonomy]);
   const { start, end, length } = analysis.range;
   const today = Math.floor(Date.now() / 86_400_000);

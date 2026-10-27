@@ -4,10 +4,10 @@ import { t } from '../../i18n';
 import type { ModelOverride, ModelOverrides } from '../../lib/pricing/models';
 import { ratesText } from './models';
 
-function summary(o: ModelOverride): string {
+function summary(modelOverride: ModelOverride): string {
   const parts: string[] = [];
-  if (o.category) parts.push(t('Tier {tier}', { tier: t(o.category) }));
-  if (o.base) parts.push(ratesText(o.base));
+  if (modelOverride.category) parts.push(t('Tier {tier}', { tier: t(modelOverride.category) }));
+  if (modelOverride.base) parts.push(ratesText(modelOverride.base));
   return parts.join(t('. ')) || t('No tier or price set');
 }
 

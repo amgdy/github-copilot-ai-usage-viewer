@@ -37,12 +37,12 @@ export function scanStore(store: DataStore): StoreScan {
   const hit = cache.get(store);
   if (hit) return hit;
 
-  const n = store.n;
-  const span = n ? store.maxDay - store.minDay + 1 : 0;
+  const rowCount = store.n;
+  const span = rowCount ? store.maxDay - store.minDay + 1 : 0;
   const daysSeen = new Uint8Array(span);
-  const cols = SCAN_DIMS.map((dim) => {
-    const size = store.dicts[dim].values.length;
-    return { ids: store[dim], rows: new Uint32Array(size), gross: new Float64Array(size) };
+  const cols = SCAN_DIMS.map((dimension) => {
+    const size = store.dicts[dimension].values.length;
+    return { ids: store[dimension], rows: new Uint32Array(size), gross: new Float64Array(size) };
   });
 
   const { day, gross: grossCol, discount: discountCol, net: netCol, qty: qtyCol, minDay, user, product } = store;
@@ -51,34 +51,34 @@ export function scanStore(store: DataStore): StoreScan {
   let gross = 0;
   let discount = 0;
   let net = 0;
-  let qty = 0;
-  for (let i = 0; i < n; i++) {
-    const g = grossCol[i];
+  let quantity = 0;
+  for (let i = 0; i < rowCount; i++) {
+    const rowGross = grossCol[i];
     daysSeen[day[i] - minDay] = 1;
-    gross += g;
+    gross += rowGross;
     discount += discountCol[i];
     net += netCol[i];
-    qty += qtyCol[i];
-    if (user[i] === blankUser) unattributedByProduct[product[i]] += g;
-    for (let d = 0; d < cols.length; d++) {
-      const c = cols[d];
-      const id = c.ids[i];
-      c.rows[id]++;
-      c.gross[id] += g;
+    quantity += qtyCol[i];
+    if (user[i] === blankUser) unattributedByProduct[product[i]] += rowGross;
+    for (let dimensionIndex = 0; dimensionIndex < cols.length; dimensionIndex++) {
+      const column = cols[dimensionIndex];
+      const id = column.ids[i];
+      column.rows[id]++;
+      column.gross[id] += rowGross;
     }
   }
 
   let daysWithData = 0;
   for (let k = 0; k < span; k++) daysWithData += daysSeen[k];
 
-  const dims = {} as Record<ScanDim, DimScan>;
-  SCAN_DIMS.forEach((dim, d) => {
-    const values = store.dicts[dim].values;
-    const { rows, gross: byGross } = cols[d];
+  const dimensions = {} as Record<ScanDim, DimScan>;
+  SCAN_DIMS.forEach((dimension, dimensionIndex) => {
+    const values = store.dicts[dimension].values;
+    const { rows, gross: byGross } = cols[dimensionIndex];
     const blankId = values.indexOf('');
     let distinct = 0;
     for (let id = 0; id < values.length; id++) if (rows[id] > 0 && id !== blankId) distinct++;
-    dims[dim] = {
+    dimensions[dimension] = {
       rows,
       gross: byGross,
       distinct,
@@ -88,7 +88,7 @@ export function scanStore(store: DataStore): StoreScan {
     };
   });
 
-  const scan: StoreScan = { rows: n, gross, discount, net, qty, daysSeen, daysWithData, dims, unattributedByProduct };
+  const scan: StoreScan = { rows: rowCount, gross, discount, net, qty: quantity, daysSeen, daysWithData, dims: dimensions, unattributedByProduct };
   cache.set(store, scan);
   return scan;
 }

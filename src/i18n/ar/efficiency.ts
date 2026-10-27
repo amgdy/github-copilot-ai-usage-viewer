@@ -1,9 +1,9 @@
 /** Arabic text for the Efficiency page and the habit changes (levers). */
 import type { Dict, PluralEntry } from '../core';
 
-const p = (one: string, two: string, few: string, many: string, other: string): PluralEntry => ({ zero: other, one, two, few, many, other });
+const plural = (one: string, two: string, few: string, many: string, other: string): PluralEntry => ({ zero: other, one, two, few, many, other });
 
-const ar: Dict = {
+const arabic: Dict = {
   // Page
   'Are you getting the best value from each credit? Which habits waste credits, and what is it worth to change them?':
     'هل تحصل على أفضل قيمة من كل رصيد؟ ما العادات التي تهدر الأرصدة، وما قيمة تغييرها؟',
@@ -64,7 +64,7 @@ const ar: Dict = {
   '{auto} of {usage} usage went through Auto': '{auto} من استخدام {usage} مرّ عبر Auto',
   'Make Auto the default in the model picker. Pick a model by hand only when a task needs it.':
     'اجعل Auto الخيار الافتراضي في قائمة النماذج. اختر نموذجًا يدويًا فقط عندما تحتاج المهمة إلى ذلك.',
-  'Show {n} users with low Auto use': p(
+  'Show {n} users with low Auto use': plural(
     'عرض مستخدم واحد قليل الاستخدام لـ Auto',
     'عرض مستخدمَين قليلَي الاستخدام لـ Auto',
     'عرض {n} مستخدمين قليلي الاستخدام لـ Auto',
@@ -76,7 +76,7 @@ const ar: Dict = {
     'رموز القراءة من الذاكرة المؤقتة نص رآه النموذج من قبل ويقرؤه مرة أخرى بسعر أقل. رموز الكتابة في الذاكرة المؤقتة تحفظ نصًا جديدًا لاستخدامه لاحقًا وتكلف أكثر. المحادثة المستمرة تقرأ من الذاكرة المؤقتة أكثر من محادثة تبدأ من جديد.',
   'Stay in one chat and one model for each task. Avoid restarting chats or editing instructions in the middle of a task.':
     'ابقَ في محادثة واحدة ونموذج واحد لكل مهمة. تجنّب إعادة بدء المحادثات أو تعديل التعليمات في منتصف المهمة.',
-  'Show {n} users with low cache reuse': p(
+  'Show {n} users with low cache reuse': plural(
     'عرض مستخدم واحد قليل الاستفادة من الذاكرة المؤقتة',
     'عرض مستخدمَين قليلَي الاستفادة من الذاكرة المؤقتة',
     'عرض {n} مستخدمين قليلي الاستفادة من الذاكرة المؤقتة',
@@ -89,7 +89,7 @@ const ar: Dict = {
   'Powerful models cost the most per request. Most everyday tasks do not need them.': 'النماذج القوية هي الأغلى لكل طلب. ومعظم المهام اليومية لا تحتاج إليها.',
   'Use Versatile or Lightweight models for routine work. Keep Powerful models for hard problems.':
     'استخدم النماذج متعددة الاستخدامات أو الخفيفة للعمل الروتيني. واترك النماذج القوية للمشكلات الصعبة.',
-  'Show {n} users on mostly Powerful models': p(
+  'Show {n} users on mostly Powerful models': plural(
     'عرض مستخدم واحد يعتمد غالبًا على النماذج القوية',
     'عرض مستخدمَين يعتمدان غالبًا على النماذج القوية',
     'عرض {n} مستخدمين يعتمدون غالبًا على النماذج القوية',
@@ -102,7 +102,7 @@ const ar: Dict = {
     'الطلبات التي تتجاوز حد الحجم للنموذج تُحتسب بسعر أعلى. الطلبات الطويلة جدًا تضيف رسومًا إضافية.',
   'Point to fewer files, summarize long chats, split big tasks and use /compact often.':
     'أشر إلى ملفات أقل، ولخّص المحادثات الطويلة، وقسّم المهام الكبيرة، واستخدم ‎/compact كثيرًا.',
-  'Show {n} users with long-context surcharges': p(
+  'Show {n} users with long-context surcharges': plural(
     'عرض مستخدم واحد عليه رسوم السياق الطويل',
     'عرض مستخدمَين عليهما رسوم السياق الطويل',
     'عرض {n} مستخدمين عليهم رسوم السياق الطويل',
@@ -111,12 +111,12 @@ const ar: Dict = {
   ),
   'Open the Users page, filtered to people with long-context surcharges': 'افتح صفحة المستخدمين مع تصفية من عليهم رسوم السياق الطويل',
   'Users in the runaway tier': 'المستخدمون في المستوى المفرط',
-  '{share} of {n} users': p('{share} من مستخدم واحد', '{share} من مستخدمَين', '{share} من {n} مستخدمين', '{share} من {n} مستخدمًا', '{share} من {n} مستخدم'),
+  '{share} of {n} users': plural('{share} من مستخدم واحد', '{share} من مستخدمَين', '{share} من {n} مستخدمين', '{share} من {n} مستخدمًا', '{share} من {n} مستخدم'),
   'One user far beyond their own included credits can use up the shared pool for everybody.':
     'مستخدم واحد يتجاوز أرصدته المشمولة بكثير يمكن أن يستهلك الرصيد المشترك للجميع.',
   'Look at how they work. Move routine work to lighter models and think about a user budget.':
     'راجع طريقة عملهم. انقل العمل الروتيني إلى نماذج أخف، وفكّر في ميزانية للمستخدم.',
-  'Show {n} users in the runaway tier': p(
+  'Show {n} users in the runaway tier': plural(
     'عرض مستخدم واحد في المستوى المفرط',
     'عرض مستخدمَين في المستوى المفرط',
     'عرض {n} مستخدمين في المستوى المفرط',
@@ -130,7 +130,7 @@ const ar: Dict = {
     'لا يستحق الترخيص تكلفته إلا عند استخدامه كثيرًا. المستخدمون اليوميون يحصلون على أكبر فائدة من أرصدتهم المشمولة.',
   'Run a short training for occasional users. Give seats that stay quiet to someone else.':
     'نظّم تدريبًا قصيرًا للمستخدمين غير المنتظمين. وأعطِ التراخيص غير المستخدمة لشخص آخر.',
-  'Show {n} occasional or rare users': p(
+  'Show {n} occasional or rare users': plural(
     'عرض مستخدم واحد غير منتظم أو نادر',
     'عرض مستخدمَين غير منتظمَين أو نادرَين',
     'عرض {n} مستخدمين غير منتظمين أو نادرين',
@@ -147,7 +147,7 @@ const ar: Dict = {
   'Green means healthy, amber means it could be better and red needs attention. Shares are measured on the usage in the selected period.':
     'الأخضر يعني جيد، والكهرماني يعني يمكن تحسينه، والأحمر يحتاج إلى اهتمام. الحصص مقيسة على الاستخدام في الفترة المحددة.',
   '{healthy} of {total} checks are healthy': '{healthy} من {total} فحوصات جيدة',
-  '{n} checks could not be measured for this data.': p(
+  '{n} checks could not be measured for this data.': plural(
     'تعذّر قياس فحص واحد لهذه البيانات.',
     'تعذّر قياس فحصين لهذه البيانات.',
     'تعذّر قياس {n} فحوصات لهذه البيانات.',
@@ -221,7 +221,7 @@ const ar: Dict = {
   'Cache hit rate per period with the low cache line': 'نسبة القراءة من الذاكرة المؤقتة لكل فترة مع خط الحد المنخفض',
   'No prompt tokens in this period': 'لا رموز طلبات في هذه الفترة',
   'Overall in this period: {rate}. Periods without prompt tokens are left blank.': 'الإجمالي في هذه الفترة: {rate}. الفترات التي لا تحتوي على رموز طلبات تُترك فارغة.',
-  'Red bars are below {limit}.': p(
+  'Red bars are below {limit}.': plural(
     'العمود الأحمر أقل من {limit}.',
     'العمودان الأحمران أقل من {limit}.',
     'الأعمدة الحمراء أقل من {limit}.',
@@ -233,7 +233,7 @@ const ar: Dict = {
   'Number of users in each cache hit rate range': 'عدد المستخدمين في كل نطاق من نسبة القراءة من الذاكرة المؤقتة',
   'No users with prompt tokens in this selection': 'لا مستخدمين لديهم رموز طلبات في هذا التحديد',
   'Show users with low cache reuse': 'عرض المستخدمين قليلي الاستفادة من الذاكرة المؤقتة',
-  '{n} users without prompt tokens are not shown': p(
+  '{n} users without prompt tokens are not shown': plural(
     'لا يظهر مستخدم واحد ليس لديه رموز طلبات',
     'لا يظهر مستخدمان ليس لديهما رموز طلبات',
     'لا يظهر {n} مستخدمين ليس لديهم رموز طلبات',
@@ -283,7 +283,7 @@ const ar: Dict = {
   // Cost per active day
   'Usage divided by the days a user was active. It shows how intense a working day is, not just how much a user used in total.':
     'الاستخدام مقسومًا على أيام نشاط المستخدم. يوضح مدى كثافة يوم العمل، لا إجمالي ما استخدمه المستخدم فقط.',
-  'Based on {n} users with at least one active day.': p(
+  'Based on {n} users with at least one active day.': plural(
     'بناءً على مستخدم واحد لديه يوم نشاط واحد على الأقل.',
     'بناءً على مستخدمَين لديهما يوم نشاط واحد على الأقل.',
     'بناءً على {n} مستخدمين لديهم يوم نشاط واحد على الأقل.',
@@ -329,7 +329,7 @@ const ar: Dict = {
   '{usage}, {share} of usage': '{usage}، {share} من الاستخدام',
   'The report has no plan quota for any user, so {amount} of included credits per month is assumed for each of them.':
     'لا يحتوي التقرير على حصة الخطة لأي مستخدم، لذا يُفترض {amount} من الأرصدة المشمولة شهريًا لكل منهم.',
-  '{n} users have no plan quota in the report, so {amount} of included credits per month is assumed for each of them.': p(
+  '{n} users have no plan quota in the report, so {amount} of included credits per month is assumed for each of them.': plural(
     'مستخدم واحد ليس له حصة خطة في التقرير، لذا يُفترض له {amount} من الأرصدة المشمولة شهريًا.',
     'مستخدمان ليس لهما حصة خطة في التقرير، لذا يُفترض {amount} من الأرصدة المشمولة شهريًا لكل منهما.',
     '{n} مستخدمين ليس لهم حصة خطة في التقرير، لذا يُفترض {amount} من الأرصدة المشمولة شهريًا لكل منهم.',
@@ -340,7 +340,7 @@ const ar: Dict = {
   'Every seat includes credits. They are pooled across the organization and reset each month, so credits that nobody uses are lost.':
     'كل ترخيص يتضمن أرصدة. وهي مشتركة على مستوى المؤسسة وتُعاد كل شهر، لذا تضيع الأرصدة التي لا يستخدمها أحد.',
   'Under-use': 'قلة الاستخدام',
-  '{n} users use less than {limit} of their included credits.': p(
+  '{n} users use less than {limit} of their included credits.': plural(
     'مستخدم واحد يستخدم أقل من {limit} من أرصدته المشمولة.',
     'مستخدمان يستخدمان أقل من {limit} من أرصدتهما المشمولة.',
     '{n} مستخدمين يستخدمون أقل من {limit} من أرصدتهم المشمولة.',
@@ -350,7 +350,7 @@ const ar: Dict = {
   'The unused part is paid for and lost at month end, so check that these seats are needed, or help the users get more out of them.':
     'الجزء غير المستخدم مدفوع ويضيع في نهاية الشهر، لذا تحقق من الحاجة إلى هذه التراخيص، أو ساعد المستخدمين على الاستفادة منها أكثر.',
   'Over-use': 'زيادة الاستخدام',
-  '{n} users use at least {limit} of their own credits.': p(
+  '{n} users use at least {limit} of their own credits.': plural(
     'مستخدم واحد يستخدم {limit} على الأقل من أرصدته.',
     'مستخدمان يستخدمان {limit} على الأقل من أرصدتهما.',
     '{n} مستخدمين يستخدمون {limit} على الأقل من أرصدتهم.',
@@ -363,7 +363,7 @@ const ar: Dict = {
     'في هذه الفترة، ترك {lenders} مبلغ {lent} دون استخدام، بينما استخدم {takers} مبلغ {taken} فوق أرصدتهم.',
 
   // Biggest opportunities
-  'Together they could avoid {amount} per month, {share} of what all {n} users with a saving could avoid. Click a bar to open the user.': p(
+  'Together they could avoid {amount} per month, {share} of what all {n} users with a saving could avoid. Click a bar to open the user.': plural(
     'معًا يمكنهم تجنب {amount} شهريًا، أي {share} مما يمكن أن يتجنبه المستخدم الوحيد صاحب التوفير. انقر على عمود لفتح المستخدم.',
     'معًا يمكنهم تجنب {amount} شهريًا، أي {share} مما يمكن أن يتجنبه المستخدمان أصحاب التوفير. انقر على عمود لفتح المستخدم.',
     'معًا يمكنهم تجنب {amount} شهريًا، أي {share} مما يمكن أن يتجنبه كل المستخدمين أصحاب التوفير ({n}). انقر على عمود لفتح المستخدم.',
@@ -374,7 +374,7 @@ const ar: Dict = {
   'Biggest opportunities': 'أكبر الفرص',
   'The users who could avoid the most usage by changing their habits, and which habit is worth the most for each. Amounts are usage per month, not cash.':
     'المستخدمون الذين يمكنهم تجنب أكبر قدر من الاستخدام بتغيير عاداتهم، وأي عادة لها أكبر قيمة لكل منهم. المبالغ استخدام شهري وليست مبالغ نقدية.',
-  'Top {n} users by avoidable usage per month': p(
+  'Top {n} users by avoidable usage per month': plural(
     'المستخدم الأول حسب الاستخدام الممكن تجنبه شهريًا',
     'أعلى مستخدمَين حسب الاستخدام الممكن تجنبه شهريًا',
     'أعلى {n} مستخدمين حسب الاستخدام الممكن تجنبه شهريًا',
@@ -399,7 +399,7 @@ const ar: Dict = {
   'The data in this report shows no saving for this lever': 'لا تُظهر بيانات هذا التقرير أي توفير لهذا التغيير',
   'No saving found': 'لم يُعثر على توفير',
   'Lever "{lever}"': 'تغيير العادة «{lever}»',
-  ', shared with {n} other habits, so the amounts do not add up.': p(
+  ', shared with {n} other habits, so the amounts do not add up.': plural(
     '، مشترك مع عادة أخرى، لذا لا تُجمع المبالغ.',
     '، مشترك مع عادتين أخريين، لذا لا تُجمع المبالغ.',
     '، مشترك مع {n} عادات أخرى، لذا لا تُجمع المبالغ.',
@@ -417,7 +417,7 @@ const ar: Dict = {
   'Role models': 'قدوة',
   'Users who get a lot done per credit. They use GitHub Copilot regularly, use enough for the numbers to mean something, use Auto, and read most of their prompt from the cache where the report shows it.':
     'مستخدمون ينجزون الكثير لكل رصيد. يستخدمون GitHub Copilot بانتظام، وبقدر كافٍ لتكون الأرقام ذات معنى، ويستخدمون Auto، ويقرؤون معظم طلباتهم من الذاكرة المؤقتة حيث يظهر ذلك في التقرير.',
-  '{usage} usage over {n} active days': p(
+  '{usage} usage over {n} active days': plural(
     'الاستخدام: {usage} خلال يوم نشاط واحد',
     'الاستخدام: {usage} خلال يومَي نشاط',
     'الاستخدام: {usage} خلال {n} أيام نشاط',
@@ -440,4 +440,4 @@ const ar: Dict = {
   'Gets more done per credit than most users, with an efficiency score of {score} out of 100.': 'ينجز لكل رصيد أكثر من معظم المستخدمين، بدرجة كفاءة {score} من 100.',
 };
 
-export default ar;
+export default arabic;

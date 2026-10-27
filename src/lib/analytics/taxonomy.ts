@@ -37,46 +37,46 @@ export interface TaxonomyItem<T extends string = string> {
  */
 
 /** A fraction as a percent for a label. A whole percent has no decimals, and a threshold such as 12.5% keeps them. */
-const pct = (x: number) => `${Number((x * 100).toFixed(2))}%`;
+const pct = (fraction: number) => `${Number((fraction * 100).toFixed(2))}%`;
 
 export const TIER_ORDER: TierId[] = ['minimal', 'light', 'core', 'power', 'runaway'];
 
-export function tierItems(s: Settings): TaxonomyItem<TierId>[] {
-  const v = { minimal: pct(s.tiers.minimal), light: pct(s.tiers.light), core: pct(s.tiers.core), power: pct(s.tiers.power) };
+export function tierItems(settings: Settings): TaxonomyItem<TierId>[] {
+  const thresholds = { minimal: pct(settings.tiers.minimal), light: pct(settings.tiers.light), core: pct(settings.tiers.core), power: pct(settings.tiers.power) };
   return [
     {
       id: 'minimal',
-      label: t('Minimal (under {minimal})', v),
+      label: t('Minimal (under {minimal})', thresholds),
       color: '#b9b6ab',
-      description: t('Used less than {minimal} of their own included monthly credits.', v),
+      description: t('Used less than {minimal} of their own included monthly credits.', thresholds),
       action: t('Check that the person still needs the license. Show them agent mode and Auto. If they still do not use it, give the license to someone else.'),
     },
     {
       id: 'light',
-      label: t('Light ({minimal} to {light})', v),
+      label: t('Light ({minimal} to {light})', thresholds),
       color: '#8db8b2',
-      description: t('Used {minimal} to {light} of their own included credits.', v),
+      description: t('Used {minimal} to {light} of their own included credits.', thresholds),
       action: t('Offer short training on tasks that save the most time, such as agent mode, tools and instruction files.'),
     },
     {
       id: 'core',
-      label: t('Core ({light} to {core})', v),
+      label: t('Core ({light} to {core})', thresholds),
       color: '#2a8d93',
-      description: t('Used {light} to {core} of their own included credits. This is the healthy range.', v),
+      description: t('Used {light} to {core} of their own included credits. This is the healthy range.', thresholds),
       action: t('Healthy. Keep it as is. Their included credits are well used.'),
     },
     {
       id: 'power',
-      label: t('Power ({core} to {power})', v),
+      label: t('Power ({core} to {power})', thresholds),
       color: '#d19a2a',
-      description: t('Used more than their own included credits ({core} to {power}). The shared pool pays for the extra.', v),
+      description: t('Used more than their own included credits ({core} to {power}). The shared pool pays for the extra.', thresholds),
       action: t('Useful work, but watch the shared pool. Check which models they use and how long their chats get. Think about a budget for them.'),
     },
     {
       id: 'runaway',
-      label: t('Runaway ({power} or more)', v),
+      label: t('Runaway ({power} or more)', thresholds),
       color: '#c4513f',
-      description: t('Used {power} or more of their own included credits.', v),
+      description: t('Used {power} or more of their own included credits.', thresholds),
       action: t('Look at their biggest days with them. Move everyday work to cheaper models or Auto, and set a budget for them.'),
     },
   ];
@@ -84,76 +84,76 @@ export function tierItems(s: Settings): TaxonomyItem<TierId>[] {
 
 export const ENGAGEMENT_ORDER: EngagementId[] = ['daily', 'regular', 'occasional', 'rare'];
 
-export function engagementItems(s: Settings): TaxonomyItem<EngagementId | LifecycleId>[] {
-  const v = { daily: pct(s.engagement.daily), regular: pct(s.engagement.regular), occasional: pct(s.engagement.occasional), newDays: s.newUserDays, lapsedDays: s.lapsedDays };
+export function engagementItems(settings: Settings): TaxonomyItem<EngagementId | LifecycleId>[] {
+  const thresholds = { daily: pct(settings.engagement.daily), regular: pct(settings.engagement.regular), occasional: pct(settings.engagement.occasional), newDays: settings.newUserDays, lapsedDays: settings.lapsedDays };
   return [
     {
       id: 'daily',
       label: t('Daily'),
       color: '#2a8d93',
-      description: t('Active on at least {daily} of workdays since they started.', v),
+      description: t('Active on at least {daily} of workdays since they started.', thresholds),
       action: t('They use it every day. Keep their setup working well and learn from how they work.'),
     },
     {
       id: 'regular',
       label: t('Regular'),
       color: '#5fa8ac',
-      description: t('Active on {regular} to {daily} of workdays.', v),
+      description: t('Active on {regular} to {daily} of workdays.', thresholds),
       action: t('Good users. Share tips so they get more out of it.'),
     },
     {
       id: 'occasional',
       label: t('Occasional'),
       color: '#9cc7c6',
-      description: t('Active on {occasional} to {regular} of workdays.', v),
+      description: t('Active on {occasional} to {regular} of workdays.', thresholds),
       action: t('Ask what holds them back (trust, use cases or training) and run a short training session.'),
     },
     {
       id: 'new',
       label: t('New'),
       color: '#8e4f96',
-      description: t('First seen in the last {newDays} days, and the report starts at least {newDays} days before that.', v),
+      description: t('First seen in the last {newDays} days, and the report starts at least {newDays} days before that.', thresholds),
       action: t('Help them start well: show how to pick a model and how to use Auto. Check in after two weeks.'),
     },
     {
       id: 'rare',
       label: t('Rare'),
       color: '#c9c4b6',
-      description: t('Active on fewer than {occasional} of workdays.', v),
+      description: t('Active on fewer than {occasional} of workdays.', thresholds),
       action: t('Reach out to them again, or give the license to someone else.'),
     },
     {
       id: 'lapsed',
       label: t('Lapsed'),
       color: '#9a978c',
-      description: t('No activity for {lapsedDays} days or more after earlier use.', v),
+      description: t('No activity for {lapsedDays} days or more after earlier use.', thresholds),
       action: t('Ask what changed. Bring them back, or take back the license.'),
     },
   ];
 }
 
-export function personaItems(s: Settings): TaxonomyItem<PersonaId>[] {
-  const v = { regular: pct(s.engagement.regular), light: pct(s.tiers.light), power: pct(s.tiers.power), newDays: s.newUserDays, lapsedDays: s.lapsedDays };
+export function personaItems(settings: Settings): TaxonomyItem<PersonaId>[] {
+  const thresholds = { regular: pct(settings.engagement.regular), light: pct(settings.tiers.light), power: pct(settings.tiers.power), newDays: settings.newUserDays, lapsedDays: settings.lapsedDays };
   return [
     {
       id: 'champion',
       label: t('Champions'),
       color: '#5e9a3e',
-      description: t('Active often (on at least {regular} of workdays) and use at least {light} of their own included credits.', v),
+      description: t('Active often (on at least {regular} of workdays) and use at least {light} of their own included credits.', thresholds),
       action: t('Learn from them. Write down how they work, which models they pick and how they ask, and share it. Ask them to help others.'),
     },
     {
       id: 'steady',
       label: t('Steady light users'),
       color: '#2a8d93',
-      description: t('Use GitHub Copilot often, but lightly (under {light} of their own included credits).', v),
+      description: t('Use GitHub Copilot often, but lightly (under {light} of their own included credits).', thresholds),
       action: t('Low cost and a good habit. Offer training on agent mode, tools and instruction files so they get more from it.'),
     },
     {
       id: 'new',
       label: t('New users'),
       color: '#8e4f96',
-      description: t('First seen in the last {newDays} days, and the report starts at least {newDays} days before that.', v),
+      description: t('First seen in the last {newDays} days, and the report starts at least {newDays} days before that.', thresholds),
       action: t('Help them start well: share model tips, Auto and tips on keeping chats short.'),
     },
     {
@@ -167,7 +167,7 @@ export function personaItems(s: Settings): TaxonomyItem<PersonaId>[] {
       id: 'runaway',
       label: t('Runaway users'),
       color: '#c4513f',
-      description: t('Used {power} or more of their own included credits.', v),
+      description: t('Used {power} or more of their own included credits.', thresholds),
       action: t('Look at their biggest sessions. Move everyday work to cheaper models or Auto, and set a budget for them.'),
     },
     {
@@ -181,20 +181,20 @@ export function personaItems(s: Settings): TaxonomyItem<PersonaId>[] {
       id: 'lapsed',
       label: t('Lapsed users'),
       color: '#a3a096',
-      description: t('Used it before, but nothing for {lapsedDays} days or more.', v),
+      description: t('Used it before, but nothing for {lapsedDays} days or more.', thresholds),
       action: t('Bring them back, or take back the license if they no longer need it.'),
     },
   ];
 }
 
-export function profileItems(s: Settings): TaxonomyItem<ProfileId>[] {
-  const v = { frontier: pct(s.frontierHeavy), efficient: pct(s.efficientShare) };
+export function profileItems(settings: Settings): TaxonomyItem<ProfileId>[] {
+  const thresholds = { frontier: pct(settings.frontierHeavy), efficient: pct(settings.efficientShare) };
   return [
     {
       id: 'efficient',
       label: t('Efficient'),
       color: '#5e9a3e',
-      description: t('At least {efficient} of their usage is on Versatile or Lightweight models.', v),
+      description: t('At least {efficient} of their usage is on Versatile or Lightweight models.', thresholds),
       action: t('Good model choices. Ask them to share how they pick models.'),
     },
     {
@@ -208,61 +208,61 @@ export function profileItems(s: Settings): TaxonomyItem<ProfileId>[] {
       id: 'frontier',
       label: t('Frontier-heavy'),
       color: '#8e4f96',
-      description: t('At least {frontier} of their usage is on Powerful models, the most expensive kind.', v),
+      description: t('At least {frontier} of their usage is on Powerful models, the most expensive kind.', thresholds),
       action: t('The biggest chance to save. Use cheaper models or Auto for everyday edits, explanations and tests.'),
     },
   ];
 }
 
-export function paretoItems(s: Settings): TaxonomyItem<ParetoId>[] {
-  const v = { a: pct(s.pareto.a), b: pct(s.pareto.b - s.pareto.a), c: pct(1 - s.pareto.b) };
+export function paretoItems(settings: Settings): TaxonomyItem<ParetoId>[] {
+  const shares = { a: pct(settings.pareto.a), b: pct(settings.pareto.b - settings.pareto.a), c: pct(1 - settings.pareto.b) };
   return [
     {
       id: 'A',
       label: t('A: top users'),
       color: '#c8643f',
-      description: t('The few users who together make up the first {a} of usage.', v),
+      description: t('The few users who together make up the first {a} of usage.', shares),
       action: t('Start here with coaching and budgets. This is where most of the money goes.'),
     },
     {
       id: 'B',
       label: t('B: middle'),
       color: '#d9ae52',
-      description: t('The users who make up the next {b} of usage.', v),
+      description: t('The users who make up the next {b} of usage.', shares),
       action: t('Give light guidance and keep an eye on them.'),
     },
     {
       id: 'C',
       label: t('C: long tail'),
       color: '#c9c4b6',
-      description: t('The users who make up the last {c} of usage. Usually the largest group of people.', v),
+      description: t('The users who make up the last {c} of usage. Usually the largest group of people.', shares),
       action: t('Focus on helping them use it more and get value from it, not on cost.'),
     },
   ];
 }
 
-export function autoUseItems(s: Settings): TaxonomyItem<AutoUseId>[] {
-  const v = { autoFirst: pct(s.autoFirst), lowAuto: pct(s.lowAuto) };
+export function autoUseItems(settings: Settings): TaxonomyItem<AutoUseId>[] {
+  const thresholds = { autoFirst: pct(settings.autoFirst), lowAuto: pct(settings.lowAuto) };
   return [
     {
       id: 'autoFirst',
       label: t('Auto-first'),
       color: '#5e9a3e',
-      description: t("At least {autoFirst} of the user's usage goes through Auto model selection, so most of it gets the Auto discount where the plan has one.", v),
+      description: t("At least {autoFirst} of the user's usage goes through Auto model selection, so most of it gets the Auto discount where the plan has one.", thresholds),
       action: t('Keep it. Ask how they work with Auto and share it with people who pick models by hand.'),
     },
     {
       id: 'mixed',
       label: t('Mixed'),
       color: '#4a6fc4',
-      description: t("{lowAuto} to {autoFirst} of the user's usage goes through Auto. The rest uses a model picked by hand.", v),
+      description: t("{lowAuto} to {autoFirst} of the user's usage goes through Auto. The rest uses a model picked by hand.", thresholds),
       action: t('Suggest Auto for everyday work, and a named model only when a task needs it.'),
     },
     {
       id: 'direct',
       label: t('Direct models'),
       color: '#d19a2a',
-      description: t("Less than {lowAuto} of the user's usage goes through Auto. They pick models by hand, so they miss the Auto discount where the plan has one.", v),
+      description: t("Less than {lowAuto} of the user's usage goes through Auto. They pick models by hand, so they miss the Auto discount where the plan has one.", thresholds),
       action: t('Show them Auto. Where the plan has an Auto discount the same work costs less, and Auto picks a suitable model for each request.'),
     },
     {
@@ -275,35 +275,35 @@ export function autoUseItems(s: Settings): TaxonomyItem<AutoUseId>[] {
   ];
 }
 
-export function traitItems(s: Settings): TaxonomyItem<TraitId>[] {
-  const v = { lowCache: pct(s.lowCacheHit), longContext: pct(s.longContextShare), spike: pct(s.spikeShare), lowAuto: pct(s.lowAuto) };
+export function traitItems(settings: Settings): TaxonomyItem<TraitId>[] {
+  const thresholds = { lowCache: pct(settings.lowCacheHit), longContext: pct(settings.longContextShare), spike: pct(settings.spikeShare), lowAuto: pct(settings.lowAuto) };
   return [
     {
       id: 'longContext',
       label: t('Long-context surcharges'),
       color: '#8e4f96',
-      description: t('At least {longContext} of their usage looks like long-context pricing: very large requests that cost more per token.', v),
+      description: t('At least {longContext} of their usage looks like long-context pricing: very large requests that cost more per token.', thresholds),
       action: t('Keep requests smaller: add fewer files to the chat, split big tasks, and start a new chat when the old one gets long.'),
     },
     {
       id: 'spiky',
       label: t('Spiky usage'),
       color: '#d19a2a',
-      description: t("A single day makes up at least {spike} of the user's usage.", v),
+      description: t("A single day makes up at least {spike} of the user's usage.", thresholds),
       action: t('Look at the biggest day for an agent session that ran too long. Think about limits for long sessions.'),
     },
     {
       id: 'lowCache',
       label: t('Low cache reuse'),
       color: '#4a6fc4',
-      description: t('Cache hit rate under {lowCache}. Text that was already sent is sent again at full price instead of being read back from the cheaper cache.', v),
+      description: t('Cache hit rate under {lowCache}. Text that was already sent is sent again at full price instead of being read back from the cheaper cache.', thresholds),
       action: t('Stay in the same chat and with the same model while working on one task. Do not keep changing instructions or restarting chats.'),
     },
     {
       id: 'lowAuto',
       label: t('Rarely uses Auto'),
       color: '#2a8d93',
-      description: t('Less than {lowAuto} of their usage goes through Auto model selection.', v),
+      description: t('Less than {lowAuto} of their usage goes through Auto model selection.', thresholds),
       action: t('Try Auto. It picks a suitable model for each request, and on plans that have an Auto discount the same work costs less.'),
     },
     {
@@ -347,15 +347,15 @@ export interface Taxonomy {
   traits: TaxonomyItem<TraitId>[];
 }
 
-export function buildTaxonomy(s: Settings): Taxonomy {
+export function buildTaxonomy(settings: Settings): Taxonomy {
   return {
-    tiers: tierItems(s),
-    engagement: engagementItems(s),
-    personas: personaItems(s),
-    profiles: profileItems(s),
-    pareto: paretoItems(s),
-    autoUse: autoUseItems(s),
-    traits: traitItems(s),
+    tiers: tierItems(settings),
+    engagement: engagementItems(settings),
+    personas: personaItems(settings),
+    profiles: profileItems(settings),
+    pareto: paretoItems(settings),
+    autoUse: autoUseItems(settings),
+    traits: traitItems(settings),
   };
 }
 

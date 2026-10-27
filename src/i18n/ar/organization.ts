@@ -1,9 +1,9 @@
 import type { Dict, PluralEntry } from '../core';
 
-const p = (one: string, two: string, few: string, many: string, other: string): PluralEntry => ({ zero: other, one, two, few, many, other });
+const plural = (one: string, two: string, few: string, many: string, other: string): PluralEntry => ({ zero: other, one, two, few, many, other });
 
 /** Arabic for the Organization page (`pages/OrganizationPage.tsx`, `pages/organization/*`). */
-const ar: Dict = {
+const arabic: Dict = {
   // Page
   'Which parts of the business generate the usage and the bill, and how to allocate it between teams.':
     'أي أجزاء العمل تولّد الاستخدام والفاتورة، وكيف توزّعها بين الفرق.',
@@ -77,7 +77,7 @@ const ar: Dict = {
   // KPI row
   'Value of all AI credits used in this view (1 credit = $0.01), including usage already paid for by included credits. The shares on this page are shares of this amount.':
     'قيمة كل أرصدة الذكاء الاصطناعي المستخدمة في هذا العرض (الرصيد الواحد = $0.01)، بما فيها الاستخدام الذي غطته الأرصدة المشمولة. الحصص في هذه الصفحة حصص من هذا المبلغ.',
-  '{n} groups with usage': p('مجموعة واحدة لها استخدام', 'مجموعتان لهما استخدام', '{n} مجموعات لها استخدام', '{n} مجموعة لها استخدام', '{n} مجموعة لها استخدام'),
+  '{n} groups with usage': plural('مجموعة واحدة لها استخدام', 'مجموعتان لهما استخدام', '{n} مجموعات لها استخدام', '{n} مجموعة لها استخدام', '{n} مجموعة لها استخدام'),
   'Distinct groups in this view. Usage without a value is not counted here, see Unattributed usage.':
     'المجموعات المختلفة في هذا العرض. الاستخدام بلا قيمة لا يُحسب هنا، انظر الاستخدام غير المنسوب.',
   'Largest group': 'أكبر مجموعة',
@@ -86,7 +86,7 @@ const ar: Dict = {
   'The group with the most usage. Usage without a value is not considered.': 'المجموعة صاحبة أكبر استخدام. الاستخدام بلا قيمة لا يدخل في المقارنة.',
   'Top 3 share': 'حصة أكبر 3',
   'The 3 largest of {n}': 'أكبر 3 من {n}',
-  'Only {n} groups': p('مجموعة واحدة فقط', 'مجموعتان فقط', '{n} مجموعات فقط', '{n} مجموعة فقط', '{n} مجموعة فقط'),
+  'Only {n} groups': plural('مجموعة واحدة فقط', 'مجموعتان فقط', '{n} مجموعات فقط', '{n} مجموعة فقط', '{n} مجموعة فقط'),
   'Share of all usage that comes from the three largest groups. A high share means a few groups decide the bill.':
     'حصة كل الاستخدام التي تأتي من أكبر ثلاث مجموعات. الحصة المرتفعة تعني أن مجموعات قليلة تحدد الفاتورة.',
   'Unattributed usage': 'الاستخدام غير المنسوب',
@@ -192,7 +192,7 @@ const ar: Dict = {
 
   // Who is in each group
   'Who is in each group': 'من في كل مجموعة',
-  'The {n} users with the most usage in each group. Click a user to open the details.': p(
+  'The {n} users with the most usage in each group. Click a user to open the details.': plural(
     'المستخدم صاحب أكبر استخدام في كل مجموعة. انقر مستخدمًا لفتح التفاصيل.',
     'المستخدمان صاحبا أكبر استخدام في كل مجموعة. انقر مستخدمًا لفتح التفاصيل.',
     'المستخدمون الـ {n} أصحاب أكبر استخدام في كل مجموعة. انقر مستخدمًا لفتح التفاصيل.',
@@ -225,7 +225,7 @@ const ar: Dict = {
   'Usage of the seat holders in a 30.4-day month, divided by the seats': 'استخدام أصحاب التراخيص في شهر من 30.4 يومًا، مقسومًا على التراخيص',
   'Filters are active. Seats and seat cost cover the whole license list. Used seats, users without a seat and usage follow the dates and row filters, as on the Licenses page, so a seat whose holder is outside them counts as a seat with no usage.':
     'عوامل التصفية نشطة. التراخيص وتكلفتها تغطي قائمة التراخيص كلها. التراخيص المستخدمة والمستخدمون بلا ترخيص والاستخدام تتبع التواريخ وعوامل تصفية الصفوف، كما في صفحة التراخيص، لذلك يُحسب الترخيص الذي يقع صاحبه خارجها ترخيصًا بلا استخدام.',
-  'The license list names more than one organization for {n} seats. Each counts in the first one.': p(
+  'The license list names more than one organization for {n} seats. Each counts in the first one.': plural(
     'تذكر قائمة التراخيص أكثر من مؤسسة لترخيص واحد. يُحسب في أولها.',
     'تذكر قائمة التراخيص أكثر من مؤسسة لترخيصين. يُحسب كل منهما في أولها.',
     'تذكر قائمة التراخيص أكثر من مؤسسة لـ {n} تراخيص. يُحسب كل منها في أولها.',
@@ -255,7 +255,7 @@ const ar: Dict = {
     'يجمع صف غير مخصص الاستخدام والأشخاص الذين ليس لهم مركز تكلفة. لا يمكن تحميله على فريق حتى يُخصَّصوا.',
   'Search cost centers…': 'ابحث في مراكز التكلفة…',
   '1 user appears in more than one cost center. Their seat is counted in the first one.': 'يظهر مستخدم واحد في أكثر من مركز تكلفة. يُحسب ترخيصه في أولها.',
-  '{n} users appear in more than one cost center. Their seat is counted in the first one.': p(
+  '{n} users appear in more than one cost center. Their seat is counted in the first one.': plural(
     'يظهر مستخدم واحد في أكثر من مركز تكلفة. يُحسب ترخيصه في أولها.',
     'يظهر مستخدمان في أكثر من مركز تكلفة. يُحسب ترخيص كل منهما في أولها.',
     'يظهر {n} مستخدمين في أكثر من مركز تكلفة. يُحسب ترخيص كل منهم في أولها.',
@@ -266,7 +266,7 @@ const ar: Dict = {
   'Unassigned collects usage and people without an organization. It cannot be charged back until they are assigned.':
     'يجمع صف غير مخصص الاستخدام والأشخاص الذين ليس لهم مؤسسة. لا يمكن تحميله على فريق حتى يُخصَّصوا.',
   '1 user appears in more than one organization. Their seat is counted in the first one.': 'يظهر مستخدم واحد في أكثر من مؤسسة. يُحسب ترخيصه في أولها.',
-  '{n} users appear in more than one organization. Their seat is counted in the first one.': p(
+  '{n} users appear in more than one organization. Their seat is counted in the first one.': plural(
     'يظهر مستخدم واحد في أكثر من مؤسسة. يُحسب ترخيصه في أولها.',
     'يظهر مستخدمان في أكثر من مؤسسة. يُحسب ترخيص كل منهما في أولها.',
     'يظهر {n} مستخدمين في أكثر من مؤسسة. يُحسب ترخيص كل منهم في أولها.',
@@ -321,4 +321,4 @@ const ar: Dict = {
   'Search users…': 'ابحث في المستخدمين…',
 };
 
-export default ar;
+export default arabic;

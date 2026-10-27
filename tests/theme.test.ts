@@ -11,14 +11,14 @@ const html = read('../index.html');
 function palette(selector: string): Record<string, string> {
   const start = css.indexOf(selector);
   const body = css.slice(css.indexOf('{', start) + 1, css.indexOf('}', start));
-  return Object.fromEntries([...body.matchAll(/--theme-([\w-]+): (#[0-9a-f]{6})\b/gi)].map((m) => [m[1], m[2].toLowerCase()]));
+  return Object.fromEntries([...body.matchAll(/--theme-([\w-]+): (#[0-9a-f]{6})\b/gi)].map((match) => [match[1], match[2].toLowerCase()]));
 }
 
 function contrast(foreground: string, background: string): number {
   const luminance = (color: string) => {
     const channels = color.match(/[0-9a-f]{2}/gi)?.map((part) => parseInt(part, 16) / 255) ?? [];
-    const [r, g, b] = channels.map((channel) => (channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4));
-    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    const [red, green, blue] = channels.map((channel) => (channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
   };
   const values = [luminance(foreground), luminance(background)].sort((a, b) => b - a);
   return ((values[0] ?? 0) + 0.05) / ((values[1] ?? 0) + 0.05);
@@ -53,7 +53,7 @@ describe('brand theme', () => {
   });
 
   it('uses small, even corners', () => {
-    const radii = Object.fromEntries([...css.matchAll(/--radius-(\w+): ([\d.]+)rem;/g)].map((m) => [m[1], Number(m[2])]));
+    const radii = Object.fromEntries([...css.matchAll(/--radius-(\w+): ([\d.]+)rem;/g)].map((match) => [match[1], Number(match[2])]));
     expect(radii).toMatchObject({ xs: 0.125, sm: 0.1875, md: 0.25, lg: 0.375, xl: 0.5 });
     expect(Math.max(...Object.values(radii))).toBeLessThanOrEqual(1);
   });
@@ -68,7 +68,7 @@ describe('brand fonts', () => {
     expect(fonts.startsWith('/*! Mona Sans: Copyright')).toBe(true);
     expect(fonts).toContain('IBM Plex Sans Arabic: Copyright');
     expect(fonts).toContain('SIL Open Font License');
-    const files = [...fonts.matchAll(/url\('([^']+)'\)/g)].map((m) => m[1]);
+    const files = [...fonts.matchAll(/url\('([^']+)'\)/g)].map((match) => match[1]);
     expect(files.length).toBeGreaterThanOrEqual(4);
     for (const file of files) {
       expect(file, 'fonts are never loaded from the internet').not.toMatch(/^(?:https?:)?\/\//);

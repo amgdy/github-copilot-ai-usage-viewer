@@ -120,13 +120,13 @@ interface ReportUser {
  * The last day each login has usage in any loaded file, by lower-case login. Filters and the date range do not apply, so the
  * reclaim and fading lists stay the same whatever the view. Pass the result to `buildLicenseReport`.
  */
-export function lastUsageDays(store: Pick<DataStore, 'dicts'>, prep: Pick<Prepared, 'userLastDay'>): Map<string, number> {
+export function lastUsageDays(store: Pick<DataStore, 'dicts'>, prepared: Pick<Prepared, 'userLastDay'>): Map<string, number> {
   const names = store.dicts.user.values;
   const out = new Map<string, number>();
-  for (let u = 1; u < names.length; u++) {
-    const day = prep.userLastDay[u];
+  for (let userId = 1; userId < names.length; userId++) {
+    const day = prepared.userLastDay[userId];
     if (day < 0) continue;
-    const key = names[u].trim().toLowerCase();
+    const key = names[userId].trim().toLowerCase();
     if (key === '') continue;
     const have = out.get(key);
     if (have === undefined || day > have) out.set(key, day);
@@ -135,9 +135,9 @@ export function lastUsageDays(store: Pick<DataStore, 'dicts'>, prep: Pick<Prepar
 }
 
 const byLogin = (a: LicenseFinding, b: LicenseFinding): number => {
-  const x = a.login.toLowerCase();
-  const y = b.login.toLowerCase();
-  return x < y ? -1 : x > y ? 1 : 0;
+  const firstLogin = a.login.toLowerCase();
+  const secondLogin = b.login.toLowerCase();
+  return firstLogin < secondLogin ? -1 : firstLogin > secondLogin ? 1 : 0;
 };
 
 /** Largest number of days first, and seats without a date before all others. */
@@ -169,13 +169,13 @@ export function buildLicenseReport(
   if (index === null) return null;
 
   const reportUsers = new Map<string, ReportUser>();
-  for (const p of population.profiles) {
-    const key = p.name.trim().toLowerCase();
+  for (const profile of population.profiles) {
+    const key = profile.name.trim().toLowerCase();
     const have = reportUsers.get(key);
-    if (have === undefined) reportUsers.set(key, { profile: p, usage: p.gross, lastDay: p.lastDay });
+    if (have === undefined) reportUsers.set(key, { profile: profile, usage: profile.gross, lastDay: profile.lastDay });
     else {
-      have.usage += p.gross;
-      if (p.lastDay > have.lastDay) have.lastDay = p.lastDay;
+      have.usage += profile.gross;
+      if (profile.lastDay > have.lastDay) have.lastDay = profile.lastDay;
     }
   }
 
@@ -289,7 +289,7 @@ export function buildLicenseReport(
     unmatchedUsage,
     byStatus,
     reclaim,
-    reclaimValue: reclaim.reduce((sum, f) => sum + f.seatPrice, 0),
+    reclaimValue: reclaim.reduce((sum, finding) => sum + finding.seatPrice, 0),
     fading,
     noActivityDate,
     quiet,

@@ -17,20 +17,20 @@ interface BandEdge {
   label?: { show: boolean; formatter: string; position: 'insideBottom'; color: string; fontSize: number };
 }
 
-const pctAxis = (v: number): string => `${Math.round(v * 100)}%`;
+const pctAxis = (share: number): string => `${Math.round(share * 100)}%`;
 
 export function ConcentrationCard() {
   const { analysis, taxonomy, settings } = useAnalysis();
   const colors = useChartColors();
   const profiles = analysis.users.profiles;
-  const { a, b } = settings.pareto;
+  const { a: classACutoff, b: classBCutoff } = settings.pareto;
 
-  const conc = useMemo(() => concentration(profiles.map((p) => p.gross), { a, b }), [profiles, a, b]);
+  const usageConcentration = useMemo(() => concentration(profiles.map((user) => user.gross), { a: classACutoff, b: classBCutoff }), [profiles, classACutoff, classBCutoff]);
   const pareto = useMemo(() => taxLookup(taxonomy.pareto), [taxonomy]);
 
   const option = useMemo<EChartsOption | null>(() => {
-    if (!conc || conc.n < 2) return null;
-    const { edges, n } = conc;
+    if (!usageConcentration || usageConcentration.n < 2) return null;
+    const { edges, n: userCount } = usageConcentration;
     const band = (from: number, to: number, id: 'A' | 'B' | 'C'): [BandEdge, BandEdge] => [
       { xAxis: from, itemStyle: { color: pareto[id].color, opacity: 0.12 }, label: { show: true, formatter: id, position: 'insideBottom', color: colors.textMuted, fontSize: 12 } },
       { xAxis: to },
@@ -42,15 +42,15 @@ export function ConcentrationCard() {
         axisPointer: { type: 'line' },
         formatter: (params: unknown) => {
           const list = (Array.isArray(params) ? params : [params]) as TipParam[];
-          const point = list.find((q) => q.seriesIndex === 0);
-          const v = point?.value;
-          if (!Array.isArray(v)) return '';
-          const users = Math.round(Number(v[0]) * n);
+          const point = list.find((param) => param.seriesIndex === 0);
+          const pointValue = point?.value;
+          if (!Array.isArray(pointValue)) return '';
+          const users = Math.round(Number(pointValue[0]) * userCount);
           if (users === 0) return t('No users yet: 0% of usage');
-          const head = t('{share} of usage', { share: fmtPct(Number(v[1]), 0) });
+          const head = t('{share} of usage', { share: fmtPct(Number(pointValue[1]), 0) });
           const by = tp(users, 'made by the biggest user ({share} of users)', 'made by the {n} biggest users ({share} of users)', {
             n: fmtInt(users),
-            share: fmtPct(users / n, 0),
+            share: fmtPct(users / userCount, 0),
           });
           return `<b>${head}</b><br/>${by}`;
         },
@@ -61,7 +61,7 @@ export function ConcentrationCard() {
         {
           name: t('Usage'),
           type: 'line',
-          data: conc.curve,
+          data: usageConcentration.curve,
           showSymbol: false,
           smooth: false,
           z: 3,
@@ -79,8 +79,8 @@ export function ConcentrationCard() {
             lineStyle: { type: 'dashed', width: 1, color: colors.textSubtle },
             label: { color: colors.textMuted, fontSize: 12, position: 'insideStartTop' },
             data: [
-              { yAxis: a, label: { formatter: t('{share} of usage', { share: fmtPct(a, 0) }) } },
-              { yAxis: b, label: { formatter: t('{share} of usage', { share: fmtPct(b, 0) }) } },
+              { yAxis: classACutoff, label: { formatter: t('{share} of usage', { share: fmtPct(classACutoff, 0) }) } },
+              { yAxis: classBCutoff, label: { formatter: t('{share} of usage', { share: fmtPct(classBCutoff, 0) }) } },
               { xAxis: edges.a, label: { show: false } },
               { xAxis: edges.b, label: { show: false } },
             ],
@@ -100,11 +100,11 @@ export function ConcentrationCard() {
         },
       ],
     };
-  }, [conc, pareto, colors, a, b]);
+  }, [usageConcentration, pareto, colors, classACutoff, classBCutoff]);
 
-  const top = conc?.top(0.1);
-  const gini = conc?.gini ?? Number.NaN;
-  const classes = conc ? (['A', 'B', 'C'] as const).map((id) => ({ item: pareto[id], ...conc.classes[id] })) : [];
+  const top = usageConcentration?.top(0.1);
+  const gini = usageConcentration?.gini ?? Number.NaN;
+  const classes = usageConcentration ? (['A', 'B', 'C'] as const).map((id) => ({ item: pareto[id], ...usageConcentration.classes[id] })) : [];
   const headline = top ? t('{users} of users make {share} of usage', { users: fmtPct(top.k / top.n, 0), share: fmtPct(top.share, 0) }) : '';
 
   return (
@@ -119,7 +119,7 @@ export function ConcentrationCard() {
           : undefined
       }
     >
-      {!conc || !option || !top ? (
+      {!usageConcentration || !option || !top ? (
         <div className="p-4">
           <EmptyState title={t('Not enough users')} description={t('At least two users with usage are needed to show how usage is spread.')} />
         </div>
@@ -143,7 +143,7 @@ export function ConcentrationCard() {
                 <TaxBadge item={item} />
                 <div className="num mt-1.5 text-sm font-semibold">{t('{share} of usage', { share: fmtPct(share, 0) })}</div>
                 <div className="num text-xs text-fg-muted">
-                  {t('{users} ({share})', { users: pluralize(users, 'user'), share: fmtPct(users / conc.n, 0) })}
+                  {t('{users} ({share})', { users: pluralize(users, 'user'), share: fmtPct(users / usageConcentration.n, 0) })}
                 </div>
               </li>
             ))}

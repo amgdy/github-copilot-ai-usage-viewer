@@ -12,16 +12,16 @@ interface Row extends GlossaryEntry {
   haystack: string;
 }
 
-const escapeRegExp = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const escapeRegExp = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 function Highlight({ text, pattern }: { text: string; pattern: RegExp | null }) {
   if (!pattern) return <>{text}</>;
   // The pattern has one capture group, so the matches sit at the odd positions.
   return (
     <>
-      {text.split(pattern).map((part, i) =>
-        i % 2 === 1 ? (
-          <mark key={i} className="rounded-sm bg-accent-soft px-0.5 text-fg">
+      {text.split(pattern).map((part, index) =>
+        index % 2 === 1 ? (
+          <mark key={index} className="rounded-sm bg-accent-soft px-0.5 text-fg">
             {part}
           </mark>
         ) : (
@@ -36,21 +36,21 @@ function Highlight({ text, pattern }: { text: string; pattern: RegExp | null }) 
 function matchedAliases(row: Row, words: string[]): string[] {
   if (words.length === 0) return [];
   const shown = `${row.term} ${row.text}`.toLowerCase();
-  if (words.every((w) => shown.includes(w))) return [];
-  return (row.aliases ?? []).filter((a) => words.some((w) => a.toLowerCase().includes(w)));
+  if (words.every((word) => shown.includes(word))) return [];
+  return (row.aliases ?? []).filter((alias) => words.some((word) => alias.toLowerCase().includes(word)));
 }
 
 export function GlossarySection() {
-  const settings = useApp((s) => s.settings);
+  const settings = useApp((state) => state.settings);
   const [query, setQuery] = useState('');
 
   const rows = useMemo<Row[]>(
     () =>
-      GLOSSARY.map((e) => {
-        const term = t(e.term);
-        const text = typeof e.definition === 'function' ? e.definition(settings) : t(e.definition);
+      GLOSSARY.map((entry) => {
+        const term = t(entry.term);
+        const text = typeof entry.definition === 'function' ? entry.definition(settings) : t(entry.definition);
         // The English term stays searchable when the page is in another language.
-        return { ...e, term, text, haystack: `${term} ${e.term} ${(e.aliases ?? []).join(' ')} ${text}`.toLowerCase() };
+        return { ...entry, term, text, haystack: `${term} ${entry.term} ${(entry.aliases ?? []).join(' ')} ${text}`.toLowerCase() };
       }),
     [settings],
   );
@@ -59,10 +59,10 @@ export function GlossarySection() {
   const pattern = useMemo(() => (words.length ? new RegExp(`(${[...words].sort((a, b) => b.length - a.length).map(escapeRegExp).join('|')})`, 'gi') : null), [words]);
 
   const groups = useMemo(() => {
-    const visible = rows.filter((r) => words.every((w) => r.haystack.includes(w)));
+    const visible = rows.filter((row) => words.every((word) => row.haystack.includes(word)));
     return {
       count: visible.length,
-      list: GLOSSARY_GROUPS.map((group) => ({ group, rows: visible.filter((r) => r.group === group) })).filter((g) => g.rows.length > 0),
+      list: GLOSSARY_GROUPS.map((group) => ({ group, rows: visible.filter((row) => row.group === group) })).filter((section) => section.rows.length > 0),
     };
   }, [rows, words]);
 
@@ -103,16 +103,16 @@ export function GlossarySection() {
               <div key={group}>
                 <h3 className="eyebrow border-b border-border-muted bg-surface-2 px-4 py-1.5">{t(group)}</h3>
                 <dl className="divide-y divide-border-muted">
-                  {items.map((r) => {
-                    const aliases = matchedAliases(r, words);
+                  {items.map((row) => {
+                    const aliases = matchedAliases(row, words);
                     return (
-                      <div key={r.id} className="grid gap-x-6 gap-y-1 px-4 py-3 sm:grid-cols-[13rem_minmax(0,1fr)]">
+                      <div key={row.id} className="grid gap-x-6 gap-y-1 px-4 py-3 sm:grid-cols-[13rem_minmax(0,1fr)]">
                         <dt className="text-sm font-medium">
-                          <Highlight text={r.term} pattern={pattern} />
+                          <Highlight text={row.term} pattern={pattern} />
                           {aliases.length ? <div className="mt-0.5 text-xs font-normal text-fg-subtle">{t('Also called {aliases}', { aliases: aliases.join(t(', ')) })}</div> : null}
                         </dt>
                         <dd className="text-sm text-fg-muted">
-                          <Highlight text={r.text} pattern={pattern} />
+                          <Highlight text={row.text} pattern={pattern} />
                         </dd>
                       </div>
                     );

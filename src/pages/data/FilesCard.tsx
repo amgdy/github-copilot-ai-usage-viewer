@@ -38,37 +38,37 @@ function Chip({ tone, children, title, className }: { tone: 'warn' | 'info'; chi
   );
 }
 
-function Count({ n, tone }: { n: number; tone?: 'warn' | 'info' }) {
-  if (n === 0 || !tone) return <span className={n === 0 ? 'text-fg-subtle' : undefined}>{fmtInt(n)}</span>;
-  return <Chip tone={tone}>{fmtInt(n)}</Chip>;
+function Count({ n: count, tone }: { n: number; tone?: 'warn' | 'info' }) {
+  if (count === 0 || !tone) return <span className={count === 0 ? 'text-fg-subtle' : undefined}>{fmtInt(count)}</span>;
+  return <Chip tone={tone}>{fmtInt(count)}</Chip>;
 }
 
 function buildColumns(multi: boolean): Column<Row>[] {
-  const total = (pick: (f: FileInfo) => number) => (multi ? (rows: Row[]) => fmtInt(rows.reduce((sum, r) => sum + pick(r.f), 0)) : undefined);
-  const count = (key: string, header: string, hint: string, pick: (f: FileInfo) => number, calc: CalcRef, tone?: 'warn' | 'info'): Column<Row> => ({
+  const total = (pick: (file: FileInfo) => number) => (multi ? (rows: Row[]) => fmtInt(rows.reduce((sum, row) => sum + pick(row.f), 0)) : undefined);
+  const count = (key: string, header: string, hint: string, pick: (file: FileInfo) => number, calc: CalcRef, tone?: 'warn' | 'info'): Column<Row> => ({
     key,
     header,
     hint,
     calc,
     align: 'end',
-    value: (r) => pick(r.f),
-    render: (r) => <Count n={pick(r.f)} tone={tone} />,
+    value: (row) => pick(row.f),
+    render: (row) => <Count n={pick(row.f)} tone={tone} />,
     total: total(pick),
   });
   const day = (pick: (rows: Row[]) => number | null) => (multi ? (rows: Row[]) => {
-    const d = pick(rows);
-    return d === null ? '–' : isoDate(d);
+    const pickedDay = pick(rows);
+    return pickedDay === null ? '–' : isoDate(pickedDay);
   } : undefined);
-  const withRows = (rows: Row[]) => rows.filter((r) => r.f.rowsKept > 0);
+  const withRows = (rows: Row[]) => rows.filter((row) => row.f.rowsKept > 0);
 
   return [
     {
       key: 'name',
       header: t('Name'),
-      value: (r) => r.f.name,
-      render: (r) => (
-        <span className="block max-w-72 truncate font-medium" title={r.f.name}>
-          {r.f.name}
+      value: (row) => row.f.name,
+      render: (row) => (
+        <span className="block max-w-72 truncate font-medium" title={row.f.name}>
+          {row.f.name}
         </span>
       ),
     },
@@ -78,45 +78,45 @@ function buildColumns(multi: boolean): Column<Row>[] {
       hint: t('File size as the browser reports it.'),
       calc: 'data-file-size',
       align: 'end',
-      value: (r) => r.f.size,
-      render: (r) => fmtBytes(r.f.size),
-      total: multi ? (rows) => fmtBytes(rows.reduce((sum, r) => sum + r.f.size, 0)) : undefined,
+      value: (row) => row.f.size,
+      render: (row) => fmtBytes(row.f.size),
+      total: multi ? (rows) => fmtBytes(rows.reduce((sum, row) => sum + row.f.size, 0)) : undefined,
     },
-    count('read', t('Rows read'), t('Data rows in the file, not counting the header.'), (f) => f.rowsRead, 'data-rows-read'),
+    count('read', t('Rows read'), t('Data rows in the file, not counting the header.'), (file) => file.rowsRead, 'data-rows-read'),
     {
-      ...count('kept', t('Rows kept'), t('Rows added to the dataset. A file that kept no rows added nothing.'), (f) => f.rowsKept, 'data-rows-kept'),
-      render: (r) => (r.f.rowsKept === 0 ? <Chip tone="warn">0</Chip> : fmtInt(r.f.rowsKept)),
+      ...count('kept', t('Rows kept'), t('Rows added to the dataset. A file that kept no rows added nothing.'), (file) => file.rowsKept, 'data-rows-kept'),
+      render: (row) => (row.f.rowsKept === 0 ? <Chip tone="warn">0</Chip> : fmtInt(row.f.rowsKept)),
     },
-    count('duplicates', t('Duplicates dropped'), t('Rows identical to a row already loaded from another file.'), (f) => f.duplicatesDropped, 'data-duplicates', 'info'),
-    count('badDates', t('Bad dates'), t('Rows skipped because the date could not be read.'), (f) => f.badDateRows, 'data-bad-dates', 'warn'),
-    count('badNumbers', t('Bad numbers'), t('Cells that are not numbers. They count as 0 and the row is kept.'), (f) => f.badNumberCells, 'data-bad-numbers', 'warn'),
-    count('balance', t('Balance mismatches'), t('Rows where usage is not covered plus billed.'), (f) => f.balanceMismatchRows, 'data-balance-mismatches', 'warn'),
-    count('price', t('Price mismatches'), t('Rows where usage is not quantity × the unit price.'), (f) => f.priceMismatchRows, 'data-price-mismatches', 'warn'),
-    count('negative', t('Negative rows'), t('Rows with a usage, covered or billed amount below 0.'), (f) => f.negativeRows, 'data-negative-rows', 'info'),
+    count('duplicates', t('Duplicates dropped'), t('Rows identical to a row already loaded from another file.'), (file) => file.duplicatesDropped, 'data-duplicates', 'info'),
+    count('badDates', t('Bad dates'), t('Rows skipped because the date could not be read.'), (file) => file.badDateRows, 'data-bad-dates', 'warn'),
+    count('badNumbers', t('Bad numbers'), t('Cells that are not numbers. They count as 0 and the row is kept.'), (file) => file.badNumberCells, 'data-bad-numbers', 'warn'),
+    count('balance', t('Balance mismatches'), t('Rows where usage is not covered plus billed.'), (file) => file.balanceMismatchRows, 'data-balance-mismatches', 'warn'),
+    count('price', t('Price mismatches'), t('Rows where usage is not quantity × the unit price.'), (file) => file.priceMismatchRows, 'data-price-mismatches', 'warn'),
+    count('negative', t('Negative rows'), t('Rows with a usage, covered or billed amount below 0.'), (file) => file.negativeRows, 'data-negative-rows', 'info'),
     {
       key: 'first',
       header: t('First day'),
       calc: 'data-first-day',
-      value: (r) => (r.f.rowsKept > 0 ? isoDate(r.f.minDay) : null),
-      total: day((rows) => (withRows(rows).length ? Math.min(...withRows(rows).map((r) => r.f.minDay)) : null)),
+      value: (row) => (row.f.rowsKept > 0 ? isoDate(row.f.minDay) : null),
+      total: day((rows) => (withRows(rows).length ? Math.min(...withRows(rows).map((row) => row.f.minDay)) : null)),
     },
     {
       key: 'last',
       header: t('Last day'),
       calc: 'data-last-day',
-      value: (r) => (r.f.rowsKept > 0 ? isoDate(r.f.maxDay) : null),
-      total: day((rows) => (withRows(rows).length ? Math.max(...withRows(rows).map((r) => r.f.maxDay)) : null)),
+      value: (row) => (row.f.rowsKept > 0 ? isoDate(row.f.maxDay) : null),
+      total: day((rows) => (withRows(rows).length ? Math.max(...withRows(rows).map((row) => row.f.maxDay)) : null)),
     },
     {
       key: 'missing',
       header: t('Missing columns'),
       hint: t('Optional report columns this file does not have.'),
       calc: 'data-missing-columns',
-      value: (r) => r.f.missingColumns.join(', '),
-      render: (r) =>
-        r.f.missingColumns.length ? (
-          <Chip tone="warn" title={r.f.missingColumns.join(', ')} className="inline-block max-w-56 truncate align-middle">
-            {r.f.missingColumns.join(', ')}
+      value: (row) => row.f.missingColumns.join(', '),
+      render: (row) =>
+        row.f.missingColumns.length ? (
+          <Chip tone="warn" title={row.f.missingColumns.join(', ')} className="inline-block max-w-56 truncate align-middle">
+            {row.f.missingColumns.join(', ')}
           </Chip>
         ) : (
           <span className="text-fg-subtle">{t('None')}</span>
@@ -127,11 +127,11 @@ function buildColumns(multi: boolean): Column<Row>[] {
       header: t('Extra columns'),
       hint: t('Columns the app does not use. They are ignored.'),
       calc: 'data-extra-columns',
-      value: (r) => r.f.extraColumns.join(', '),
-      render: (r) =>
-        r.f.extraColumns.length ? (
-          <span className="block max-w-56 truncate text-fg-muted" title={r.f.extraColumns.join(', ')}>
-            {r.f.extraColumns.join(', ')}
+      value: (row) => row.f.extraColumns.join(', '),
+      render: (row) =>
+        row.f.extraColumns.length ? (
+          <span className="block max-w-56 truncate text-fg-muted" title={row.f.extraColumns.join(', ')}>
+            {row.f.extraColumns.join(', ')}
           </span>
         ) : (
           <span className="text-fg-subtle">{t('None')}</span>
@@ -142,13 +142,13 @@ function buildColumns(multi: boolean): Column<Row>[] {
       header: t('Delimiter'),
       hint: t('The separator the app found between fields.'),
       calc: 'data-delimiter',
-      value: (r) => delimiterName(r.f.delimiter),
+      value: (row) => delimiterName(row.f.delimiter),
     },
   ];
 }
 
 export function FilesCard({ files }: { files: FileInfo[] }) {
-  const rows = useMemo<Row[]>(() => files.map((f, i) => ({ f, i })), [files]);
+  const rows = useMemo<Row[]>(() => files.map((file, index) => ({ f: file, i: index })), [files]);
   const columns = useMemo(() => buildColumns(files.length > 1), [files.length]);
 
   return (
@@ -156,7 +156,7 @@ export function FilesCard({ files }: { files: FileInfo[] }) {
       <DataTable
         rows={rows}
         columns={columns}
-        rowKey={(r) => r.i}
+        rowKey={(row) => row.i}
         exportName="github-copilot-files"
         pageSize={25}
         searchable={files.length > 10}

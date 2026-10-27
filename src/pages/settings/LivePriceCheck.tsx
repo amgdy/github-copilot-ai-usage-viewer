@@ -20,15 +20,15 @@ export function LivePriceCheck({ reportModels }: { reportModels: string[] }) {
 
   const run = async () => {
     abort.current?.abort();
-    const ctrl = new AbortController();
-    abort.current = ctrl;
+    const controller = new AbortController();
+    abort.current = controller;
     setState({ kind: 'loading' });
     try {
-      const check = await checkLivePrices(ctrl.signal);
-      if (!ctrl.signal.aborted) setState({ kind: 'done', check, applied: null });
-    } catch (e) {
-      if (ctrl.signal.aborted) return;
-      setState({ kind: 'error', message: e instanceof Error ? e.message : String(e) });
+      const check = await checkLivePrices(controller.signal);
+      if (!controller.signal.aborted) setState({ kind: 'done', check, applied: null });
+    } catch (error) {
+      if (controller.signal.aborted) return;
+      setState({ kind: 'error', message: error instanceof Error ? error.message : String(error) });
     }
   };
 
@@ -89,17 +89,17 @@ function Result({ check, applied, reportModels, onApply }: { check: LiveCheck; a
         })}
       </p>
       <ul className="space-y-0.5 text-xs text-fg-muted">
-        {shown.map((d) => (
-          <li key={`${d.kind}:${d.name}`}>
+        {shown.map((difference) => (
+          <li key={`${difference.kind}:${difference.name}`}>
             <span className="font-medium text-fg" dir="ltr">
-              {d.name}
+              {difference.name}
             </span>
             {': '}
-            {d.kind === 'new'
+            {difference.kind === 'new'
               ? t('New on the page')
-              : d.kind === 'missing'
+              : difference.kind === 'missing'
                 ? t('No longer on the page')
-                : t('Changed: {fields}', { fields: d.fields.map((f) => t(FIELD_LABEL[f])).join(t(', ')) })}
+                : t('Changed: {fields}', { fields: difference.fields.map((field) => t(FIELD_LABEL[field])).join(t(', ')) })}
           </li>
         ))}
       </ul>

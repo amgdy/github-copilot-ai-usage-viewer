@@ -1,7 +1,7 @@
 import type { Dict } from '../core';
 
 /** Arabic for the Data page metric docs in `lib/metrics/docs/data.ts`. Titles shared with the page live in `data.ts`. */
-const ar: Dict = {
+const arabic: Dict = {
   // Files and columns
   'The number of CSV files you loaded together. Every number in the app is built from the rows of these files.':
     'عدد ملفات CSV التي حمّلتها معًا. كل رقم في التطبيق مبني من صفوف هذه الملفات.',
@@ -466,4 +466,4 @@ const ar: Dict = {
     'الفحص الناجح يُظهر فقط أن اختباره لم يجد شيئًا. ولا يُظهر أن الملف المصدّر مكتمل أو أن المبالغ صحيحة. الملف الذي يتوقف مبكرًا قد ينجح في كل الفحوص.',
 };
 
-export default ar;
+export default arabic;

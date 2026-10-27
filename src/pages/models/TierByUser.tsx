@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { CheckCircle2 } from 'lucide-react';
 import { useChartColors, type EChartsOption } from '../../components/charts/EChart';
-import { esc, GRID } from '../../components/charts/helpers';
+import { escapeHtml, GRID } from '../../components/charts/helpers';
 import { Card, ChartCard, EmptyState } from '../../components/ui';
 import { t, T } from '../../i18n';
 import type { UserProfile } from '../../lib/analytics/users';
@@ -17,22 +17,22 @@ const TOP_USERS = 15;
 const LISTED = 6;
 const HEAVY_POWERFUL = 0.8;
 
-const TIERS: { tier: Category; share: (p: UserProfile) => number }[] = [
-  { tier: 'Powerful', share: (p) => p.powerfulShare },
-  { tier: 'Versatile', share: (p) => p.versatileShare },
-  { tier: 'Lightweight', share: (p) => p.lightweightShare },
-  { tier: 'Unknown', share: (p) => Math.max(0, 1 - p.powerfulShare - p.versatileShare - p.lightweightShare) },
+const TIERS: { tier: Category; share: (user: UserProfile) => number }[] = [
+  { tier: 'Powerful', share: (user) => user.powerfulShare },
+  { tier: 'Versatile', share: (user) => user.versatileShare },
+  { tier: 'Lightweight', share: (user) => user.lightweightShare },
+  { tier: 'Unknown', share: (user) => Math.max(0, 1 - user.powerfulShare - user.versatileShare - user.lightweightShare) },
 ];
 
 function TierChart() {
   const { analysis } = useAnalysis();
   const colors = useChartColors();
-  const selectUser = useApp((s) => s.selectUser);
+  const selectUser = useApp((state) => state.selectUser);
 
-  const top = useMemo(() => analysis.users.profiles.filter((p) => p.gross > 0).sort((a, b) => b.gross - a.gross).slice(0, TOP_USERS), [analysis.users.profiles]);
+  const top = useMemo(() => analysis.users.profiles.filter((user) => user.gross > 0).sort((a, b) => b.gross - a.gross).slice(0, TOP_USERS), [analysis.users.profiles]);
 
   const option = useMemo((): EChartsOption => {
-    const tiers = TIERS.filter((entry) => entry.tier !== 'Unknown' || top.some((p) => entry.share(p) >= 0.005));
+    const tiers = TIERS.filter((entry) => entry.tier !== 'Unknown' || top.some((user) => entry.share(user) >= 0.005));
     return {
       grid: { ...GRID, top: 32 },
       legend: { top: 0, data: tiers.map((entry) => tierLabel(entry.tier)) },
@@ -41,24 +41,24 @@ function TierChart() {
         axisPointer: { type: 'shadow' },
         formatter: (params: unknown): string => {
           const list = (Array.isArray(params) ? params : [params]) as { dataIndex?: number }[];
-          const p = top[list[0]?.dataIndex ?? -1];
-          if (!p) return '';
+          const user = top[list[0]?.dataIndex ?? -1];
+          if (!user) return '';
           const rows = tiers
-            .map((entry) => ({ tier: entry.tier, v: entry.share(p) }))
-            .filter((r) => r.v >= 0.005)
+            .map((entry) => ({ tier: entry.tier, v: entry.share(user) }))
+            .filter((tierShare) => tierShare.v >= 0.005)
             .map(
-              (r) =>
-                `<div style="display:flex;justify-content:space-between;gap:16px"><span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;margin-inline-end:6px;background:${CATEGORY_COLORS[r.tier]}"></span>${esc(tierLabel(r.tier))}</span><b>${fmtPct(r.v, 0)}</b></div>`,
+              (tierShare) =>
+                `<div style="display:flex;justify-content:space-between;gap:16px"><span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;margin-inline-end:6px;background:${CATEGORY_COLORS[tierShare.tier]}"></span>${escapeHtml(tierLabel(tierShare.tier))}</span><b>${fmtPct(tierShare.v, 0)}</b></div>`,
             )
             .join('');
-          return `<div style="font-weight:600;margin-bottom:4px">${esc(p.name)}</div>${rows}<div style="margin-top:4px;opacity:.75">${esc(t('Usage {amount}', { amount: fmtUSD(p.gross) }))}</div>`;
+          return `<div style="font-weight:600;margin-bottom:4px">${escapeHtml(user.name)}</div>${rows}<div style="margin-top:4px;opacity:.75">${escapeHtml(t('Usage {amount}', { amount: fmtUSD(user.gross) }))}</div>`;
         },
       },
-      xAxis: { type: 'value', min: 0, max: 1, axisLabel: { formatter: (v: number) => fmtPct(v, 0) } },
+      xAxis: { type: 'value', min: 0, max: 1, axisLabel: { formatter: (value: number) => fmtPct(value, 0) } },
       yAxis: {
         type: 'category',
         inverse: true,
-        data: top.map((p) => p.name),
+        data: top.map((user) => user.name),
         axisLabel: { width: 130, overflow: 'truncate', color: colors.text, fontSize: 12 },
         axisLine: { show: false },
       },
@@ -66,7 +66,7 @@ function TierChart() {
         name: tierLabel(entry.tier),
         type: 'bar' as const,
         stack: 'tier',
-        data: top.map((p) => entry.share(p)),
+        data: top.map((user) => entry.share(user)),
         color: CATEGORY_COLORS[entry.tier],
         barMaxWidth: 18,
         emphasis: { focus: 'series' as const },
@@ -86,9 +86,9 @@ function TierChart() {
       option={option}
       height={Math.max(220, top.length * 26 + 64)}
       empty={top.length === 0 ? t('No users in this scope') : false}
-      onClick={(p) => {
-        const u = top[p.dataIndex];
-        if (u) selectUser(u.id);
+      onClick={(event) => {
+        const user = top[event.dataIndex];
+        if (user) selectUser(user.id);
       }}
     />
   );
@@ -96,15 +96,15 @@ function TierChart() {
 
 function PowerfulOnlyCard() {
   const { analysis, settings } = useAnalysis();
-  const selectUser = useApp((s) => s.selectUser);
+  const selectUser = useApp((state) => state.selectUser);
   const perMonth = usePerMonth();
 
   const { list, share } = useMemo(() => {
     const list = analysis.users.profiles
-      .filter((p) => p.powerfulShare >= HEAVY_POWERFUL && p.gross >= settings.minSpendForTraits)
+      .filter((user) => user.powerfulShare >= HEAVY_POWERFUL && user.gross >= settings.minSpendForTraits)
       .sort((a, b) => b.gross - a.gross);
     const total = analysis.agg.totals.gross;
-    return { list, share: total > 0 ? list.reduce((a, p) => a + p.gross, 0) / total : 0 };
+    return { list, share: total > 0 ? list.reduce((sum, user) => sum + user.gross, 0) / total : 0 };
   }, [analysis, settings.minSpendForTraits]);
 
   const heavy = fmtPct(HEAVY_POWERFUL, 0);
@@ -141,24 +141,24 @@ function PowerfulOnlyCard() {
         />
       ) : (
         <ul className="-my-2 divide-y divide-border-muted">
-          {list.slice(0, LISTED).map((p) => (
-            <li key={p.id}>
-              <button type="button" className="flex w-full items-center justify-between gap-3 py-2 text-start hover:bg-surface-2" onClick={() => selectUser(p.id)}>
+          {list.slice(0, LISTED).map((user) => (
+            <li key={user.id}>
+              <button type="button" className="flex w-full items-center justify-between gap-3 py-2 text-start hover:bg-surface-2" onClick={() => selectUser(user.id)}>
                 <span className="min-w-0">
-                  <span className="block truncate text-sm font-medium">{p.name}</span>
+                  <span className="block truncate text-sm font-medium">{user.name}</span>
                   <span className="block text-xs text-fg-muted">
                     <T
                       text="{pct} on Powerful · {amount} usage"
                       values={{
-                        pct: <span className="num">{fmtPct(p.powerfulShare, 0)}</span>,
-                        amount: <span className="num">{fmtUSD(p.gross, 0)}</span>,
+                        pct: <span className="num">{fmtPct(user.powerfulShare, 0)}</span>,
+                        amount: <span className="num">{fmtUSD(user.gross, 0)}</span>,
                       }}
                     />
                   </span>
                 </span>
-                {p.potentialBy.modelShift * perMonth >= 0.5 ? (
+                {user.potentialBy.modelShift * perMonth >= 0.5 ? (
                   <span className="shrink-0 text-end text-xs text-fg-muted">
-                    <span className="num block text-sm font-medium text-fg">{fmtUSD(p.potentialBy.modelShift * perMonth, 0)}</span>
+                    <span className="num block text-sm font-medium text-fg">{fmtUSD(user.potentialBy.modelShift * perMonth, 0)}</span>
                     {t('less usage per month')}
                   </span>
                 ) : null}

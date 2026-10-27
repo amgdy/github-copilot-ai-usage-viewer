@@ -10,15 +10,15 @@ function setPrinting(on: boolean): void {
   // Paper is white, so only the light palette prints legibly. The charts redraw from the resolved theme.
   if (on) applyTheme('light');
   else applyTheme(useApp.getState().theme);
-  listeners.forEach((l) => l());
+  listeners.forEach((listener) => listener());
 }
 
 /** True while the page is being prepared for or sent to the printer. */
 export function usePrinting(): boolean {
   return useSyncExternalStore(
-    (cb) => {
-      listeners.add(cb);
-      return () => listeners.delete(cb);
+    (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
     },
     () => printing,
     () => false,

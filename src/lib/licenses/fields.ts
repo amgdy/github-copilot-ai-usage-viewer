@@ -22,17 +22,17 @@ const MAX_TEAM = 100;
 const MAX_SURFACE = 40;
 const EMAIL = /^[^\s@]+@[^\s@]+$/;
 
-const clean = (s: string | undefined, max: number): string | undefined => {
-  if (s === undefined) return undefined;
-  const t = s.trim();
-  return t === '' ? undefined : t.slice(0, max);
+const clean = (text: string | undefined, max: number): string | undefined => {
+  if (text === undefined) return undefined;
+  const trimmed = text.trim();
+  return trimmed === '' ? undefined : trimmed.slice(0, max);
 };
 
 /** The product of a surface such as "vscode/1.97.1/copilot-chat/0.24.1", which is "vscode". */
 export function surfaceName(raw: string | undefined): string | undefined {
-  const s = clean(raw, 200);
-  if (s === undefined) return undefined;
-  const head = s.split('/')[0].trim();
+  const surface = clean(raw, 200);
+  if (surface === undefined) return undefined;
+  const head = surface.split('/')[0].trim();
   return head === '' ? undefined : head.slice(0, MAX_SURFACE);
 }
 
@@ -60,12 +60,12 @@ export function seatFromFields(get: FieldGetter, source: SeatSource, stats: Read
   if (team !== undefined) seat.teams.push(team);
 
   const day = (field: SeatField): string | undefined => {
-    const d = readDay(get(field));
-    if (d === null) {
+    const parsedDay = readDay(get(field));
+    if (parsedDay === null) {
       stats.unreadableDates++;
       return undefined;
     }
-    return d;
+    return parsedDay;
   };
   const createdAt = day('created');
   if (createdAt !== undefined) seat.createdAt = createdAt;

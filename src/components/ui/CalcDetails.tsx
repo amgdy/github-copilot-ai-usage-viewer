@@ -26,7 +26,7 @@ function Part({ label, children }: { label: string; children: ReactNode }) {
 /** The title and badge are left out when `showTitle` is false: the Methodology page shows them in the row above. */
 export function CalcDetails({ doc, showTitle = true, className }: { doc: MetricDoc; showTitle?: boolean; className?: string }) {
   const settings = useEffectiveSettings();
-  const related = (doc.related ?? []).map(metricDoc).filter((d): d is MetricDoc => d !== undefined);
+  const related = (doc.related ?? []).map(metricDoc).filter((relatedDoc): relatedDoc is MetricDoc => relatedDoc !== undefined);
   return (
     <div className={cx('space-y-2.5 text-xs leading-snug text-fg', className)}>
       {showTitle ? (
@@ -42,9 +42,9 @@ export function CalcDetails({ doc, showTitle = true, className }: { doc: MetricD
         <p className="wrap-anywhere rounded-md border border-border-muted bg-surface-2 px-2 py-1.5 font-mono text-[11.5px] leading-relaxed">{t(doc.formula)}</p>
         {doc.steps?.length ? (
           <ol className="mt-1.5 list-decimal space-y-1 ps-4 marker:text-fg-subtle">
-            {doc.steps.map((s, i) => (
-              <li key={i} className="wrap-anywhere">
-                {t(s)}
+            {doc.steps.map((step, index) => (
+              <li key={index} className="wrap-anywhere">
+                {t(step)}
               </li>
             ))}
           </ol>
@@ -58,9 +58,9 @@ export function CalcDetails({ doc, showTitle = true, className }: { doc: MetricD
       {doc.columns?.length ? (
         <Part label={t('Columns of the report used')}>
           <div className="flex flex-wrap gap-1" dir="ltr">
-            {doc.columns.map((c) => (
-              <code key={c} className="rounded border border-border-muted bg-surface-2 px-1 py-0.5 font-mono text-[11px]">
-                {c}
+            {doc.columns.map((column) => (
+              <code key={column} className="rounded border border-border-muted bg-surface-2 px-1 py-0.5 font-mono text-[11px]">
+                {column}
               </code>
             ))}
           </div>
@@ -70,10 +70,10 @@ export function CalcDetails({ doc, showTitle = true, className }: { doc: MetricD
         <Part label={t('Settings that change it')}>
           <ul className="space-y-0.5">
             {doc.settings.map((ref) => {
-              const s = describeSetting(ref, settings);
+              const setting = describeSetting(ref, settings);
               return (
                 <li key={ref} className="wrap-anywhere">
-                  <span className="font-medium">{t(s.label)}:</span> <span className="text-fg-muted">{s.value}</span>
+                  <span className="font-medium">{t(setting.label)}:</span> <span className="text-fg-muted">{setting.value}</span>
                 </li>
               );
             })}
@@ -83,9 +83,9 @@ export function CalcDetails({ doc, showTitle = true, className }: { doc: MetricD
       {doc.notes?.length ? (
         <Part label={t('Good to know')}>
           <ul className="list-disc space-y-1 ps-4 text-fg-muted marker:text-fg-subtle">
-            {doc.notes.map((n, i) => (
-              <li key={i} className="wrap-anywhere">
-                {t(n)}
+            {doc.notes.map((note, index) => (
+              <li key={index} className="wrap-anywhere">
+                {t(note)}
               </li>
             ))}
           </ul>
@@ -94,9 +94,9 @@ export function CalcDetails({ doc, showTitle = true, className }: { doc: MetricD
       {related.length ? (
         <Part label={t('See also')}>
           <div className="flex flex-wrap gap-x-3 gap-y-1">
-            {related.map((r) => (
-              <a key={r.id} className="text-accent hover:underline" href={methodologyHref(r.id)}>
-                {t(r.title)}
+            {related.map((relatedDoc) => (
+              <a key={relatedDoc.id} className="text-accent hover:underline" href={methodologyHref(relatedDoc.id)}>
+                {t(relatedDoc.title)}
               </a>
             ))}
           </div>

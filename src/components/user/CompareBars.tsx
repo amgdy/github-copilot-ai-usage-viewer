@@ -11,7 +11,7 @@ interface Metric {
   label: string;
   user: number;
   typical: number;
-  format: (v: number) => string;
+  format: (value: number) => string;
   /** Share-type metrics never exceed 1, so their bars can use the whole track. */
   fraction: boolean;
   /** English reason, translated where it is shown. */
@@ -23,41 +23,41 @@ interface Coverage {
   tokens: boolean;
 }
 
-function metricsOf(p: UserProfile, m: PopulationMedians, coverage: Coverage): Metric[] {
+function metricsOf(user: UserProfile, medians: PopulationMedians, coverage: Coverage): Metric[] {
   return [
     {
       id: 'auto',
       label: msg('Auto share of usage'),
-      user: coverage.models ? p.autoShare : Number.NaN,
-      typical: coverage.models ? m.autoShare : Number.NaN,
-      format: (v) => fmtPct(v, 0),
+      user: coverage.models ? user.autoShare : Number.NaN,
+      typical: coverage.models ? medians.autoShare : Number.NaN,
+      format: (share) => fmtPct(share, 0),
       fraction: true,
       missing: msg('This file has no model names'),
     },
     {
       id: 'cache',
       label: msg('Cache hit rate'),
-      user: p.cacheHit,
-      typical: m.cacheHit,
-      format: (v) => fmtPct(v, 0),
+      user: user.cacheHit,
+      typical: medians.cacheHit,
+      format: (share) => fmtPct(share, 0),
       fraction: true,
       missing: coverage.tokens ? msg('No prompt tokens') : msg('This file has no token columns'),
     },
     {
       id: 'cost',
       label: msg('Cost per active day'),
-      user: p.costPerActiveDay,
-      typical: m.costPerActiveDay,
-      format: (v) => fmtUSD(v, 2),
+      user: user.costPerActiveDay,
+      typical: medians.costPerActiveDay,
+      format: (amount) => fmtUSD(amount, 2),
       fraction: false,
       missing: msg('No active days'),
     },
     {
       id: 'rate',
       label: msg('Active rate'),
-      user: p.activeRate,
-      typical: m.activeRate,
-      format: (v) => fmtPct(v, 0),
+      user: user.activeRate,
+      typical: medians.activeRate,
+      format: (share) => fmtPct(share, 0),
       fraction: true,
       missing: msg('Not available'),
     },
@@ -111,7 +111,7 @@ function CompareRow({ metric }: { metric: Metric }) {
   );
 }
 
-export function CompareBars({ p }: { p: UserProfile }) {
+export function CompareBars({ p: user }: { p: UserProfile }) {
   const medians = usePopulationMedians();
   const { coverage } = useAnalysis().analysis;
   const alone = medians.users < 2;
@@ -126,8 +126,8 @@ export function CompareBars({ p }: { p: UserProfile }) {
     >
       {alone ? null : (
         <ul className="space-y-3">
-          {metricsOf(p, medians, coverage).map((m) => (
-            <CompareRow key={m.id} metric={m} />
+          {metricsOf(user, medians, coverage).map((metric) => (
+            <CompareRow key={metric.id} metric={metric} />
           ))}
         </ul>
       )}

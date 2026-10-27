@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import type { EChartsOption } from 'echarts';
 import { useChartColors } from '../../components/charts/EChart';
-import { esc, usd } from '../../components/charts/helpers';
+import { escapeHtml, usd } from '../../components/charts/helpers';
 import { ChartCard } from '../../components/ui';
 import { t, tp } from '../../i18n';
 import { fmtInt, fmtPct, fmtPctAuto } from '../../lib/utils/format';
@@ -23,11 +23,11 @@ interface TreeNode {
   label: { show: boolean; color: string };
 }
 
-const gidOf = (p: unknown, byName: Map<string, number>): number | null => {
-  const q = p as { name?: string; data?: { gid?: unknown } } | null;
-  const gid = q?.data?.gid;
-  if (typeof gid === 'number') return gid;
-  return q?.name !== undefined ? (byName.get(q.name) ?? null) : null;
+const gidOf = (chartItem: unknown, byName: Map<string, number>): number | null => {
+  const tile = chartItem as { name?: string; data?: { gid?: unknown } } | null;
+  const groupIndex = tile?.data?.gid;
+  if (typeof groupIndex === 'number') return groupIndex;
+  return tile?.name !== undefined ? (byName.get(tile.name) ?? null) : null;
 };
 
 /** Tiles sized by usage and tinted by the part of the group's usage that is billed on top of seats. */
@@ -36,24 +36,24 @@ export function TreemapCard({ spec, groups, height }: { spec: DimSpec; groups: G
   const billing = useAnalysis().analysis.coverage.billing;
 
   const model = useMemo(() => {
-    const withUsage = groups.filter((g) => g.gross > 0);
+    const withUsage = groups.filter((group) => group.gross > 0);
     const shown = withUsage.slice(0, MAX_NODES);
     const rest = withUsage.slice(MAX_NODES);
     const steps = colors.ramp.slice(1);
     let maxBilled = 0;
-    if (billing) for (const g of shown) maxBilled = Math.max(maxBilled, g.net / g.gross);
-    const tint = (g: Group) => steps[maxBilled > 0 ? Math.min(steps.length - 1, Math.floor((g.net / g.gross / maxBilled) * steps.length)) : 0];
+    if (billing) for (const group of shown) maxBilled = Math.max(maxBilled, group.net / group.gross);
+    const tint = (group: Group) => steps[maxBilled > 0 ? Math.min(steps.length - 1, Math.floor((group.net / group.gross / maxBilled) * steps.length)) : 0];
 
-    const nodes: TreeNode[] = shown.map((g, gid) => {
-      const fill = tint(g);
-      return { name: g.name, value: g.gross, gid, itemStyle: { color: fill }, label: { show: g.share >= LABEL_MIN_SHARE, color: readableOn(fill, colors.text, colors.surface) } };
+    const nodes: TreeNode[] = shown.map((group, groupIndex) => {
+      const fill = tint(group);
+      return { name: group.name, value: group.gross, gid: groupIndex, itemStyle: { color: fill }, label: { show: group.share >= LABEL_MIN_SHARE, color: readableOn(fill, colors.text, colors.surface) } };
     });
     let other: { count: number; gross: number; share: number } | null = null;
     if (rest.length > 0) {
       other = { count: rest.length, gross: 0, share: 0 };
-      for (const g of rest) {
-        other.gross += g.gross;
-        other.share += g.share;
+      for (const group of rest) {
+        other.gross += group.gross;
+        other.share += group.share;
       }
       nodes.push({
         name: t('Other ({n} more)', { n: fmtInt(rest.length) }),
@@ -63,7 +63,7 @@ export function TreemapCard({ spec, groups, height }: { spec: DimSpec; groups: G
         label: { show: other.share >= LABEL_MIN_SHARE, color: readableOn(colors.muted, colors.text, colors.surface) },
       });
     }
-    return { nodes, shown, other, maxBilled, steps, byName: new Map(nodes.map((n) => [n.name, n.gid])) };
+    return { nodes, shown, other, maxBilled, steps, byName: new Map(nodes.map((node) => [node.name, node.gid])) };
   }, [groups, colors, billing]);
 
   const option = useMemo<EChartsOption>(() => {
@@ -71,32 +71,32 @@ export function TreemapCard({ spec, groups, height }: { spec: DimSpec; groups: G
     return {
       tooltip: {
         trigger: 'item',
-        formatter: (p: unknown) => {
-          const gid = gidOf(p, byName);
-          if (gid === null) return '';
-          if (gid < 0) {
+        formatter: (chartItem: unknown) => {
+          const groupIndex = gidOf(chartItem, byName);
+          if (groupIndex === null) return '';
+          if (groupIndex < 0) {
             return other
               ? [
-                  `<b>${esc(t('Other ({n} more)', { n: fmtInt(other.count) }))}</b>`,
-                  esc(t('{usd} usage · {pct}', { usd: usd(other.gross), pct: fmtPct(other.share, 1) })),
-                  `<span style="opacity:.75">${esc(t('The table lists every group.'))}</span>`,
+                  `<b>${escapeHtml(t('Other ({n} more)', { n: fmtInt(other.count) }))}</b>`,
+                  escapeHtml(t('{usd} usage · {pct}', { usd: usd(other.gross), pct: fmtPct(other.share, 1) })),
+                  `<span style="opacity:.75">${escapeHtml(t('The table lists every group.'))}</span>`,
                 ].join('<br/>')
               : '';
           }
-          const g = shown[gid];
-          if (!g) return '';
+          const group = shown[groupIndex];
+          if (!group) return '';
           return [
-            `<b>${esc(g.name)}</b>`,
-            esc(t('{usd} usage · {pct}', { usd: usd(g.gross), pct: fmtPct(g.share, 1) })),
+            `<b>${escapeHtml(group.name)}</b>`,
+            escapeHtml(t('{usd} usage · {pct}', { usd: usd(group.gross), pct: fmtPct(group.share, 1) })),
             billing
-              ? esc(
-                  g.gross > 0
-                    ? t('{usd} billed ({pct} of its usage)', { usd: usd(g.net), pct: fmtPctAuto(g.net / g.gross) })
-                    : t('{usd} billed', { usd: usd(g.net) }),
+              ? escapeHtml(
+                  group.gross > 0
+                    ? t('{usd} billed ({pct} of its usage)', { usd: usd(group.net), pct: fmtPctAuto(group.net / group.gross) })
+                    : t('{usd} billed', { usd: usd(group.net) }),
                 )
               : null,
-            esc(tp(g.users, '1 user', '{n} users', { n: fmtInt(g.users) })),
-            `<span style="opacity:.75">${esc(t('Click to filter the report.'))}</span>`,
+            escapeHtml(tp(group.users, '1 user', '{n} users', { n: fmtInt(group.users) })),
+            `<span style="opacity:.75">${escapeHtml(t('Click to filter the report.'))}</span>`,
           ]
             .filter(Boolean)
             .join('<br/>');
@@ -134,10 +134,10 @@ export function TreemapCard({ spec, groups, height }: { spec: DimSpec; groups: G
       exportName={`github-copilot-organization-${spec.id}-treemap`}
       label={billing ? t('Treemap of usage by group, tinted by the share that is billed on top of seats') : t('Treemap of usage by group')}
       empty={shown.length === 0 ? t('No usage in this view.') : false}
-      onClick={(p) => {
-        const gid = gidOf(p, byName);
-        const g = gid !== null && gid >= 0 ? shown[gid] : undefined;
-        if (g) filterToGroup(g);
+      onClick={(event) => {
+        const groupIndex = gidOf(event, byName);
+        const group = groupIndex !== null && groupIndex >= 0 ? shown[groupIndex] : undefined;
+        if (group) filterToGroup(group);
       }}
       footer={
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -147,8 +147,8 @@ export function TreemapCard({ spec, groups, height }: { spec: DimSpec; groups: G
               <span className="inline-flex items-center gap-1.5">
                 <span className="num">{fmtPctAuto(0)}</span>
                 <span className="inline-flex overflow-hidden rounded-sm ring-1 ring-border" aria-hidden>
-                  {steps.map((c) => (
-                    <span key={c} className="h-2.5 w-5" style={{ background: c }} />
+                  {steps.map((color) => (
+                    <span key={color} className="h-2.5 w-5" style={{ background: color }} />
                   ))}
                 </span>
                 <span className="num">{fmtPctAuto(maxBilled)}</span>

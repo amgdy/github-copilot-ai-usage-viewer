@@ -20,17 +20,17 @@ import { LEVER_DOC, leverColor, money, topOpportunities, type Opportunity } from
 const SHOWN = 10;
 
 type LeverId = LeverStep['id'];
-function opportunityOption(c: ChartColors, rows: Opportunity[], levers: LeverId[]): EChartsOption {
+function opportunityOption(colors: ChartColors, rows: Opportunity[], levers: LeverId[]): EChartsOption {
   return {
     grid: { left: 8, right: 72, top: 8, bottom: 8, containLabel: true },
     legend: { show: false },
     tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: stackTooltip(usd) },
-    xAxis: { type: 'value', axisLabel: { formatter: (v: number) => usdCompact(v) } },
+    xAxis: { type: 'value', axisLabel: { formatter: (amount: number) => usdCompact(amount) } },
     yAxis: {
       type: 'category',
       inverse: true,
-      data: rows.map((r) => r.profile.name),
-      axisLabel: { width: 150, overflow: 'truncate', color: c.text, fontSize: 12 },
+      data: rows.map((row) => row.profile.name),
+      axisLabel: { width: 150, overflow: 'truncate', color: colors.text, fontSize: 12 },
       axisLine: { show: false },
       axisTick: { show: false },
     },
@@ -40,9 +40,9 @@ function opportunityOption(c: ChartColors, rows: Opportunity[], levers: LeverId[
         type: 'bar' as const,
         stack: 'total',
         barMaxWidth: 20,
-        color: leverColor(c, id),
+        color: leverColor(colors, id),
         emphasis: { focus: 'series' as const },
-        data: rows.map((r) => r.by[id]),
+        data: rows.map((row) => row.by[id]),
       })),
       {
         name: t('Total'),
@@ -55,10 +55,10 @@ function opportunityOption(c: ChartColors, rows: Opportunity[], levers: LeverId[
         label: {
           show: true,
           position: 'right' as const,
-          color: c.text,
+          color: colors.text,
           fontSize: 12,
           fontWeight: 600,
-          formatter: (p: { dataIndex: number }) => money(rows[p.dataIndex]?.total ?? 0),
+          formatter: (params: { dataIndex: number }) => money(rows[params.dataIndex]?.total ?? 0),
         },
       },
     ],
@@ -68,22 +68,22 @@ function opportunityOption(c: ChartColors, rows: Opportunity[], levers: LeverId[
 /** Every user, the largest avoidable usage first. `userActionRows` keeps the order of `users.profiles`, so row i belongs to profile i. */
 function actionList(users: UserSet, settings: Settings) {
   const { headers, rows } = userActionRows(users, settings);
-  const potential = (i: number): number => {
-    const v = users.profiles[i]?.potential;
-    return Number.isFinite(v) ? (v as number) : 0;
+  const potential = (index: number): number => {
+    const userPotential = users.profiles[index]?.potential;
+    return Number.isFinite(userPotential) ? (userPotential as number) : 0;
   };
-  const order = rows.map((_, i) => i).sort((a, b) => potential(b) - potential(a));
-  return { headers, rows: order.map((i) => rows[i]) };
+  const order = rows.map((_, index) => index).sort((a, b) => potential(b) - potential(a));
+  return { headers, rows: order.map((index) => rows[index]) };
 }
 
 export function Opportunities() {
   const { analysis, settings } = useAnalysis();
   const colors = useChartColors();
-  const selectUser = useApp((s) => s.selectUser);
+  const selectUser = useApp((state) => state.selectUser);
   const perMonth = usePerMonth();
   const found = useMemo(() => topOpportunities(analysis.users.profiles, perMonth, SHOWN), [analysis.users, perMonth]);
   const levers = useMemo(() => {
-    const total = (id: LeverId): number => found.rows.reduce((a, r) => a + r.by[id], 0);
+    const total = (id: LeverId): number => found.rows.reduce((sum, row) => sum + row.by[id], 0);
     return LEVER_ORDER.map((id) => ({ id, total: total(id) })).sort((a, b) => b.total - a.total);
   }, [found.rows]);
   const option = useMemo(
@@ -91,7 +91,7 @@ export function Opportunities() {
       opportunityOption(
         colors,
         found.rows,
-        levers.map((l) => l.id),
+        levers.map((lever) => lever.id),
       ),
     [colors, found.rows, levers],
   );
@@ -102,9 +102,9 @@ export function Opportunities() {
   };
 
   const share = found.allTotal > 0 ? found.shownTotal / found.allTotal : 0;
-  const n = found.rows.length;
-  const subtitle = n
-    ? found.withSaving > n
+  const shownCount = found.rows.length;
+  const subtitle = shownCount
+    ? found.withSaving > shownCount
       ? tp(
           found.withSaving,
           'Together they could avoid {amount} per month, {share} of what the {n} user with a saving could avoid. Click a bar to open the user.',
@@ -120,7 +120,7 @@ export function Opportunities() {
       description={t('The users who could avoid the most usage by changing their habits, and which habit is worth the most for each. Amounts are usage per month, not cash.')}
     >
       <ChartCard
-        title={n ? tp(n, 'Top {n} user by avoidable usage per month', 'Top {n} users by avoidable usage per month', { n: fmtInt(n) }) : t('Avoidable usage per month')}
+        title={shownCount ? tp(shownCount, 'Top {n} user by avoidable usage per month', 'Top {n} users by avoidable usage per month', { n: fmtInt(shownCount) }) : t('Avoidable usage per month')}
         subtitle={subtitle}
         calc="opportunities-chart"
         actions={
@@ -135,16 +135,16 @@ export function Opportunities() {
           </button>
         }
         option={option}
-        height={Math.max(160, n * 34 + 28)}
+        height={Math.max(160, shownCount * 34 + 28)}
         exportName="github-copilot-biggest-opportunities"
         label={t('Avoidable usage per month for the ten users with the largest potential, split by habit')}
-        empty={n ? false : t('No user has avoidable usage with the default habit changes')}
-        onClick={(p) => {
-          const row = found.rows[p.dataIndex];
+        empty={shownCount ? false : t('No user has avoidable usage with the default habit changes')}
+        onClick={(event) => {
+          const row = found.rows[event.dataIndex];
           if (row) selectUser(row.profile.id);
         }}
         footer={
-          n ? (
+          shownCount ? (
             <ul className="grid gap-x-6 gap-y-1.5 sm:grid-cols-2">
               {levers.map(({ id, total }) => (
                 <li key={id} className="flex min-w-0 items-start gap-2">

@@ -48,12 +48,12 @@ export function modelUsage(store: DataStore): ModelUsage {
   const gross = new Float64Array(size);
   const rows = new Int32Array(size);
   const model = store.model;
-  const g = store.gross;
+  const rowGross = store.gross;
   let total = 0;
   for (let i = 0; i < store.n; i++) {
-    gross[model[i]] += g[i];
+    gross[model[i]] += rowGross[i];
     rows[model[i]]++;
-    total += g[i];
+    total += rowGross[i];
   }
   return { gross, rows, total };
 }
@@ -110,13 +110,13 @@ export function withoutOverride(all: ModelOverrides, name: string): ModelOverrid
   return out;
 }
 
-export const usdRate = (v: number) => `$${Number(v.toFixed(4))}`;
+export const usdRate = (rate: number) => `$${Number(rate.toFixed(4))}`;
 
 /** "Input $1.75, cache read $0.175, output $14", in the current language. */
-export function ratesText(r: Rates): string {
-  const parts = [t('Input {price}', { price: usdRate(r.input) }), t('cache read {price}', { price: usdRate(r.cachedInput) })];
-  if (r.cacheWrite > 0) parts.push(t('cache write {price}', { price: usdRate(r.cacheWrite) }));
-  parts.push(t('output {price}', { price: usdRate(r.output) }));
+export function ratesText(rates: Rates): string {
+  const parts = [t('Input {price}', { price: usdRate(rates.input) }), t('cache read {price}', { price: usdRate(rates.cachedInput) })];
+  if (rates.cacheWrite > 0) parts.push(t('cache write {price}', { price: usdRate(rates.cacheWrite) }));
+  parts.push(t('output {price}', { price: usdRate(rates.output) }));
   return parts.join(t(', '));
 }
 
@@ -131,17 +131,17 @@ export interface RatesParse {
 export function parseRates(values: Record<RateKey, string>): RatesParse {
   const errors: Partial<Record<RateKey, string>> = {};
   const rates: Rates = { input: 0, cachedInput: 0, cacheWrite: 0, output: 0 };
-  for (const f of RATE_FIELDS) {
-    const raw = values[f.key].trim();
+  for (const field of RATE_FIELDS) {
+    const raw = values[field.key].trim();
     if (raw === '') {
-      if (!f.optional) errors[f.key] = t('Required.');
+      if (!field.optional) errors[field.key] = t('Required.');
       continue;
     }
-    const n = raw.includes('%') ? null : parseNumber(raw);
-    if (n === null) errors[f.key] = t('Enter a number.');
-    else if (n < 0) errors[f.key] = t('Must be 0 or more.');
-    else if (n > MAX_RATE) errors[f.key] = t('Must be at most {value}.', { value: fmtInt(MAX_RATE) });
-    else rates[f.key] = Number(n.toFixed(6));
+    const price = raw.includes('%') ? null : parseNumber(raw);
+    if (price === null) errors[field.key] = t('Enter a number.');
+    else if (price < 0) errors[field.key] = t('Must be 0 or more.');
+    else if (price > MAX_RATE) errors[field.key] = t('Must be at most {value}.', { value: fmtInt(MAX_RATE) });
+    else rates[field.key] = Number(price.toFixed(6));
   }
   if (Object.keys(errors).length > 0) return { rates: null, errors, formError: null };
   if (rates.input <= 0 && rates.output <= 0) return { rates: null, errors, formError: t('Enter a price above 0 for input or output.') };

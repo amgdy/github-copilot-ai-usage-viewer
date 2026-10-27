@@ -14,9 +14,9 @@ A report viewer for the **GitHub Copilot AI credits usage report** (the CSV you 
 
 | Command | Use it to |
 | --- | --- |
-| `npm install` | Install packages (Node 22.12 or newer). |
+| `npm install` | Install packages (Node 26 only). |
 | `npm run dev` | Start the app at http://localhost:5173. |
-| `npm run typecheck` | Check types (`tsc --noEmit`). Run it after every change. |
+| `npm run typecheck` | Check types for the app (`tsconfig.app.json`) and for the tests and scripts (`tsconfig.node.json`). Run it after every change. |
 | `npm test` | Run all tests (Vitest). Run single files while you work: `npx vitest run tests/users.test.ts`. |
 | `npm run build` | Production build in `dist/`. |
 | `npm run build:single` | One self-contained `dist/index.html` that works offline. |
@@ -43,7 +43,7 @@ src/
   state/              store (Zustand), router (hash), analysis provider, theme
   components/         shared UI: layout, ui kit, charts (ECharts), icons, user drawer
   pages/              one file per page plus a folder of its parts
-tests/                Vitest suites, including guard tests (naming, i18n, metric docs)
+tests/                Vitest suites, including guard tests (naming, i18n, metric docs, readable names)
 scripts/              demo data and price check scripts
 docs/FEATURES.md      what the app does and the value it gives admins
 ```
@@ -100,6 +100,19 @@ Pages: Overview, Usage and pool, Users, Segments, Models, Efficiency, Organizati
 ### Icons
 - Use the vector icons in `src/components/icons` for products and vendors, and `lucide-react` for general icons. No bitmap images.
 
+### Names in code
+- Name variables, parameters and functions with full words that say what they hold: `seatCount`, `monthlyQuota`, `taxonomy`, `octoberRows`. Avoid single letters and short forms such as `e`, `cb`, `cfg`, `idx`, `tmp`, `tax` or `q0`.
+- Allowed short names: `i`, `j` and `k` as the counter of a classic `for` loop, `a` and `b` as the two parameters of a sort comparator, `x` and `y` for chart coordinates, names that start with `_` for values that are not used, and the helpers `t`, `T`, `tp`, `msg` and `cx` where they are defined.
+- Plain words (`out`, `pick`, `spec`), standard terms (`html`, `iso`, `sku`) and the project words `calc`, `doc` and `lens` are fine.
+- `tests/readable-names.test.ts` checks `src/`, `tests/`, `scripts/` and `vite.config.ts`.
+
+### Node and TypeScript
+- The project uses **Node 26 only**. `engines` in `package.json`, `.nvmrc`, the CI workflow and the Pages workflow all use that one version. Dependabot skips major updates of `@types/node` so the types stay on version 26.
+- Files in `scripts/` run with plain `node` and its built-in TypeScript support. Keep them to syntax that only needs the types removed: no `enum`, no `namespace` and no constructor parameter properties such as `constructor(private x: T)`. Import local files with the `.ts` extension. `tsc` enforces this (`erasableSyntaxOnly`).
+- Types are checked with two configs. `tsconfig.app.json` covers the browser code in `src/` and stops at ES2023, so `tsc` fails if that code uses features that not every browser has yet, such as `Temporal`. `tsconfig.node.json` covers the code that runs only in Node (`scripts/`, `tests/`, `vite.config.ts`) and allows the newest features (`ESNext`).
+- In code that runs only in Node, use the built-ins: `import.meta.dirname` for paths, `fs.globSync` to list files, `util.parseArgs` for options, `Temporal` for dates and `Map.prototype.getOrInsert` or `getOrInsertComputed` to group values. The date helpers in `tests/helpers.ts` use `Temporal`, so the tests check the app's own date math against a separate calendar.
+- Tests start Node with `--no-experimental-webstorage` (see `vite.config.ts`), so `localStorage` is undefined in tests. A test that needs it must stub it.
+
 ### Data and privacy
 - Never read, copy, bundle or test with real customer exports. Git ignores a local `samples/` folder, `*.csv` and `seats*.json` because they may hold private files: do not open them. Tests use made-up data (`tests/fixtures.ts`, `makeCsv`, `generateDemo`).
 - The start page has two ways in: choose or drop your own files, or **View a sample report**. The sample is made up in the browser by `src/state/loadSample.ts`, which loads the generator only when clicked and never reads a file. While the sample is open, every page says so (`SampleNotice`), and the saved license list is left out of the analysis (`withoutRoster`), so real names never mix with invented data. Settings and Licenses say why the list is not used (`SampleListNote`), never compare the list with the sample's users, and turn off the button that fills the list from the loaded report, so invented users are never saved as seats. Any new code that reads `useApp((s) => s.dataset)` directly must check `dataset.sample` in the same way. `tests/landing.test.ts`, `tests/sample-report.test.ts`, `tests/sample-license-list.test.ts` and `tests/data-isolation.test.ts` guard this.
@@ -116,5 +129,5 @@ Pages: Overview, Usage and pool, Users, Segments, Models, Efficiency, Organizati
 ## Before you finish
 
 1. `npm run typecheck` is clean.
-2. The tests for the files you touched pass, and so do the guards: `npx vitest run tests/naming.test.ts tests/i18n.test.ts tests/metric-docs.test.ts`.
+2. The tests for the files you touched pass, and so do the guards: `npx vitest run tests/naming.test.ts tests/i18n.test.ts tests/metric-docs.test.ts tests/readable-names.test.ts`.
 3. Check the page in the browser in English and Arabic, light and dark, wide and narrow.

@@ -15,10 +15,10 @@ interface Props {
 }
 
 /** "Set on every row", "Empty on every row" or the count of rows without a value, written by `missing`. */
-function blankNote(d: DimScan, rows: number, missing: (n: number) => string): string {
-  if (d.blankRows === 0) return t('Set on every row');
-  if (d.blankRows === rows) return t('Empty on every row');
-  return missing(d.blankRows);
+function blankNote(dimension: DimScan, rows: number, missing: (blankRows: number) => string): string {
+  if (dimension.blankRows === 0) return t('Set on every row');
+  if (dimension.blankRows === rows) return t('Empty on every row');
+  return missing(dimension.blankRows);
 }
 
 export function KpiRow({ store, scan, gaps }: Props) {
@@ -27,7 +27,7 @@ export function KpiRow({ store, scan, gaps }: Props) {
   const billing = dataCoverage(store).billing;
   const span = scan.daysSeen.length;
   const empty = span - scan.daysWithData;
-  const size = files.reduce((sum, f) => sum + f.size, 0);
+  const size = files.reduce((sum, file) => sum + file.size, 0);
   const { user, model, org, costCenter, repo } = scan.dims;
 
   const rowNote = [
@@ -56,7 +56,7 @@ export function KpiRow({ store, scan, gaps }: Props) {
         sub={
           user.blankRows === 0
             ? t('Every row has a username')
-            : blankNote(user, scan.rows, (n) => tp(n, '{n} row has no username', '{n} rows have no username', { n: fmtInt(n) }))
+            : blankNote(user, scan.rows, (blankRows) => tp(blankRows, '{n} row has no username', '{n} rows have no username', { n: fmtInt(blankRows) }))
         }
         hint={t('Distinct usernames. Rows without a username, such as repository-level products, are counted separately.')}
         calc="data-users"
@@ -97,28 +97,28 @@ export function KpiRow({ store, scan, gaps }: Props) {
       <Kpi
         label={t('Models')}
         value={fmtInt(model.distinct)}
-        sub={blankNote(model, scan.rows, (n) => tp(n, '{n} row has no model', '{n} rows have no model', { n: fmtInt(n) }))}
+        sub={blankNote(model, scan.rows, (blankRows) => tp(blankRows, '{n} row has no model', '{n} rows have no model', { n: fmtInt(blankRows) }))}
         hint={t('Distinct model names. The Auto prefix is removed from the name and the row is marked as an Auto row.')}
         calc="data-models"
       />
       <Kpi
         label={t('Organizations')}
         value={fmtInt(org.distinct)}
-        sub={blankNote(org, scan.rows, (n) => tp(n, '{n} row has no organization', '{n} rows have no organization', { n: fmtInt(n) }))}
+        sub={blankNote(org, scan.rows, (blankRows) => tp(blankRows, '{n} row has no organization', '{n} rows have no organization', { n: fmtInt(blankRows) }))}
         hint={t('Distinct organizations in the data.')}
         calc="data-distinct-values"
       />
       <Kpi
         label={t('Cost centers')}
         value={fmtInt(costCenter.distinct)}
-        sub={blankNote(costCenter, scan.rows, (n) => tp(n, '{n} row has no cost center', '{n} rows have no cost center', { n: fmtInt(n) }))}
+        sub={blankNote(costCenter, scan.rows, (blankRows) => tp(blankRows, '{n} row has no cost center', '{n} rows have no cost center', { n: fmtInt(blankRows) }))}
         hint={t('Distinct cost centers in the data.')}
         calc="data-distinct-values"
       />
       <Kpi
         label={t('Repositories')}
         value={fmtInt(repo.distinct)}
-        sub={blankNote(repo, scan.rows, (n) => tp(n, '{n} row has no repository', '{n} rows have no repository', { n: fmtInt(n) }))}
+        sub={blankNote(repo, scan.rows, (blankRows) => tp(blankRows, '{n} row has no repository', '{n} rows have no repository', { n: fmtInt(blankRows) }))}
         hint={t('Distinct repositories in the data. Rows without a repository are counted separately.')}
         calc="data-distinct-values"
       />

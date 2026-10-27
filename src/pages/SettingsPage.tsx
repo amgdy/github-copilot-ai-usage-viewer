@@ -29,7 +29,7 @@ export default function SettingsPage() {
           <RosterSection />
           <ThresholdsSection />
           <ModelsSection />
-          <DataSection onReplaced={() => setEpoch((e) => e + 1)} />
+          <DataSection onReplaced={() => setEpoch((prev) => prev + 1)} />
           <AppearanceSection />
           <GlossarySection />
         </div>

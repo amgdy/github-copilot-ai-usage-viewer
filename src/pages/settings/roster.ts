@@ -27,10 +27,10 @@ export function userProblem(user: string): string | null {
 /** The plan as the reader sees it, translated. */
 export function planText(plan: string | undefined): string {
   if (!plan) return t('Not set');
-  const c = planCredits(plan);
-  if (c === BUSINESS) return 'Business';
-  if (c === ENTERPRISE) return 'Enterprise';
-  return Number.isFinite(c) ? t('Custom ({credits} credits)', { credits: fmtInt(c) }) : plan;
+  const credits = planCredits(plan);
+  if (credits === BUSINESS) return 'Business';
+  if (credits === ENTERPRISE) return 'Enterprise';
+  return Number.isFinite(credits) ? t('Custom ({credits} credits)', { credits: fmtInt(credits) }) : plan;
 }
 
 /**
@@ -74,48 +74,48 @@ interface Header {
 const USER_HEADER = /^(user ?name|user|login|github ?(user ?name|login|handle|user)?|handle|account|member)$/;
 const PLAN_HEADERS = [/^plan$/, /^seat( ?(plan|type))?$/, /^licen[cs]e$/, /^(total )?monthly ?quota$/, /^(included )?credits$/, /^quota$/];
 
-const cell = (s: string) => s.trim().replace(/^"|"$/g, '').trim().toLowerCase().replace(/[_-]+/g, ' ');
+const cell = (text: string) => text.trim().replace(/^"|"$/g, '').trim().toLowerCase().replace(/[_-]+/g, ' ');
 
 /** Splits one CSV line, honoring double quotes. */
 function splitFields(line: string, delimiter: string): string[] {
   if (!line.includes('"')) return line.split(delimiter);
   const out: string[] = [];
-  let cur = '';
+  let field = '';
   let quoted = false;
   for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
+    const character = line[i];
     if (quoted) {
-      if (ch !== '"') cur += ch;
+      if (character !== '"') field += character;
       else if (line[i + 1] === '"') {
-        cur += '"';
+        field += '"';
         i++;
       } else quoted = false;
-    } else if (ch === '"') quoted = true;
-    else if (ch === delimiter) {
-      out.push(cur);
-      cur = '';
-    } else cur += ch;
+    } else if (character === '"') quoted = true;
+    else if (character === delimiter) {
+      out.push(field);
+      field = '';
+    } else field += character;
   }
-  out.push(cur);
+  out.push(field);
   return out;
 }
 
 function detectHeader(line: string): Header | null {
   let best = ',';
   let most = -1;
-  for (const d of [',', ';', '\t']) {
-    const count = line.split(d).length;
+  for (const delimiter of [',', ';', '\t']) {
+    const count = line.split(delimiter).length;
     if (count > most) {
       most = count;
-      best = d;
+      best = delimiter;
     }
   }
   const names = splitFields(line, best).map(cell);
-  const user = names.findIndex((n) => USER_HEADER.test(n));
+  const user = names.findIndex((columnName) => USER_HEADER.test(columnName));
   if (user < 0) return null;
   let plan = -1;
-  for (const re of PLAN_HEADERS) {
-    plan = names.findIndex((n, i) => i !== user && re.test(n));
+  for (const pattern of PLAN_HEADERS) {
+    plan = names.findIndex((columnName, columnIndex) => columnIndex !== user && pattern.test(columnName));
     if (plan >= 0) break;
   }
   return { delimiter: best, user, plan };
@@ -124,18 +124,18 @@ function detectHeader(line: string): Header | null {
 /** Splits a line without a header at the first comma, semicolon or tab, or at a space when the rest of the line is a plan. */
 function splitFirst(line: string): [string, string] {
   // "alice Business" or "alice Custom (2,500 credits)": checked first, because a custom plan label has a comma in it.
-  const m = /^([^\s,;]+)\s+(\S.*)$/.exec(line);
-  if (m && typeof parsePlan(m[2]) === 'string') return [m[1], m[2]];
+  const match = /^([^\s,;]+)\s+(\S.*)$/.exec(line);
+  if (match && typeof parsePlan(match[2]) === 'string') return [match[1], match[2]];
   let at = -1;
-  for (const d of [',', ';', '\t']) {
-    const i = line.indexOf(d);
-    if (i >= 0 && (at < 0 || i < at)) at = i;
+  for (const delimiter of [',', ';', '\t']) {
+    const index = line.indexOf(delimiter);
+    if (index >= 0 && (at < 0 || index < at)) at = index;
   }
   if (at >= 0) return [line.slice(0, at), line.slice(at + 1)];
   return [line, ''];
 }
 
-const unquote = (s: string) => s.trim().replace(/^"+|"+$/g, '').trim();
+const unquote = (text: string) => text.trim().replace(/^"+|"+$/g, '').trim();
 
 /**
  * Reads a roster from pasted text or a file in one pass. Accepts lines of "username" or "username,plan".
@@ -181,9 +181,9 @@ export function parseRoster(input: string): RosterParse {
       userText = fields[header.user] ?? '';
       planText = header.plan >= 0 ? fields[header.plan] ?? '' : '';
     } else {
-      const [u, p] = splitFirst(raw);
-      userText = u;
-      planText = p;
+      const [userPart, planPart] = splitFirst(raw);
+      userText = userPart;
+      planText = planPart;
     }
 
     let user = unquote(userText);
@@ -227,28 +227,28 @@ export interface MergeResult {
 export function mergeRoster(current: RosterEntry[], incoming: RosterEntry[], overwritePlans: boolean): MergeResult {
   const roster: RosterEntry[] = [];
   const at = new Map<string, number>();
-  for (const e of current) {
-    const k = rosterKey(e.user);
-    if (!k || at.has(k)) continue;
-    at.set(k, roster.length);
-    roster.push(e);
+  for (const entry of current) {
+    const userKey = rosterKey(entry.user);
+    if (!userKey || at.has(userKey)) continue;
+    at.set(userKey, roster.length);
+    roster.push(entry);
   }
   let added = 0;
   let updated = 0;
   let unchanged = 0;
-  for (const e of incoming) {
-    const k = rosterKey(e.user);
-    if (!k) continue;
-    const i = at.get(k);
-    if (i === undefined) {
-      at.set(k, roster.length);
-      roster.push(e);
+  for (const entry of incoming) {
+    const userKey = rosterKey(entry.user);
+    if (!userKey) continue;
+    const index = at.get(userKey);
+    if (index === undefined) {
+      at.set(userKey, roster.length);
+      roster.push(entry);
       added++;
       continue;
     }
-    const cur = roster[i];
-    if (e.plan !== undefined && e.plan !== cur.plan && (overwritePlans || cur.plan === undefined)) {
-      roster[i] = { ...cur, plan: e.plan };
+    const existing = roster[index];
+    if (entry.plan !== undefined && entry.plan !== existing.plan && (overwritePlans || existing.plan === undefined)) {
+      roster[index] = { ...existing, plan: entry.plan };
       updated++;
     } else unchanged++;
   }
@@ -264,20 +264,20 @@ export function rosterFromStore(store: DataStore): RosterEntry[] {
   const quota = new Float32Array(names.length);
   const seen = new Uint8Array(names.length);
   for (let i = 0; i < store.n; i++) {
-    const u = store.user[i];
-    const d = store.day[i];
-    const q = store.quota[i];
-    if (!seen[u] || d > latest[u]) {
-      seen[u] = 1;
-      latest[u] = d;
-      quota[u] = q;
-    } else if (d === latest[u] && q > quota[u]) quota[u] = q;
+    const userId = store.user[i];
+    const day = store.day[i];
+    const rowQuota = store.quota[i];
+    if (!seen[userId] || day > latest[userId]) {
+      seen[userId] = 1;
+      latest[userId] = day;
+      quota[userId] = rowQuota;
+    } else if (day === latest[userId] && rowQuota > quota[userId]) quota[userId] = rowQuota;
   }
   const out: RosterEntry[] = [];
-  for (let u = 0; u < names.length; u++) {
-    const user = names[u].trim();
-    if (!user || !seen[u]) continue;
-    out.push(quota[u] > 0 ? { user, plan: canonicalPlan(quota[u]) } : { user });
+  for (let userId = 0; userId < names.length; userId++) {
+    const user = names[userId].trim();
+    if (!user || !seen[userId]) continue;
+    out.push(quota[userId] > 0 ? { user, plan: canonicalPlan(quota[userId]) } : { user });
   }
   return out.sort((a, b) => collator.compare(a.user, b.user));
 }
@@ -285,9 +285,9 @@ export function rosterFromStore(store: DataStore): RosterEntry[] {
 /** Lowercase names of every user in the report, for matching roster seats against it. */
 export function reportUsers(store: DataStore): Set<string> {
   const set = new Set<string>();
-  for (const v of store.dicts.user.values) {
-    const k = rosterKey(v);
-    if (k) set.add(k);
+  for (const userName of store.dicts.user.values) {
+    const userKey = rosterKey(userName);
+    if (userKey) set.add(userKey);
   }
   return set;
 }
@@ -309,15 +309,15 @@ export function rosterStats(roster: RosterEntry[], inReport: Set<string> | null)
   let custom = 0;
   let noPlan = 0;
   let present = 0;
-  for (const e of roster) {
-    if (!e.plan) noPlan++;
+  for (const entry of roster) {
+    if (!entry.plan) noPlan++;
     else {
-      const c = planCredits(e.plan);
-      if (c === BUSINESS) business++;
-      else if (c === ENTERPRISE) enterprise++;
+      const credits = planCredits(entry.plan);
+      if (credits === BUSINESS) business++;
+      else if (credits === ENTERPRISE) enterprise++;
       else custom++;
     }
-    if (inReport?.has(rosterKey(e.user))) present++;
+    if (inReport?.has(rosterKey(entry.user))) present++;
   }
   return {
     seats: roster.length,

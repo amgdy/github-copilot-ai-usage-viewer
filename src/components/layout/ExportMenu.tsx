@@ -30,7 +30,7 @@ function Item({ icon, title, hint, onClick }: { icon: ReactNode; title: string; 
  */
 export function ExportMenu() {
   const { analysis, settings, taxonomy, dataset, store } = useAnalysis();
-  const filters = useApp((s) => s.filters);
+  const filters = useApp((state) => state.filters);
   const [copied, setCopied] = useState<'ok' | 'fail' | null>(null);
   const stamp = `${isoDate(analysis.range.start)}_${isoDate(analysis.range.end)}`;
   const summary = () =>
@@ -47,12 +47,12 @@ export function ExportMenu() {
   };
 
   // Most valuable first, like the Recommendations page sorted by value.
-  const recs = () => {
+  const downloadRecommendations = () => {
     const sorted = sortRecs(analysis.recs, 'value');
     downloadCsv(
       `github-copilot-recommendations_${stamp}`,
       ['Rank', 'Severity', 'Theme', 'Title', 'Summary', 'Impact per month (USD)', 'Impact measures', 'Cash saving per month (USD)', 'Cash saving is a lower bound (filtered view)', 'Confidence', 'Audience', 'Affected users', 'Actions'],
-      sorted.map((r, i) => [i + 1, r.severity, r.theme, r.title, r.summary, Math.round(r.impactUsd * 100) / 100, r.impactKind === 'seats' ? 'seat value' : 'usage avoided', Math.round(r.cashUsd * 100) / 100, r.cashLowerBound ? 'yes' : 'no', r.confidence, r.audience.join(', '), r.affectedCount, r.actions.join(' | ')]),
+      sorted.map((recommendation, index) => [index + 1, recommendation.severity, recommendation.theme, recommendation.title, recommendation.summary, Math.round(recommendation.impactUsd * 100) / 100, recommendation.impactKind === 'seats' ? 'seat value' : 'usage avoided', Math.round(recommendation.cashUsd * 100) / 100, recommendation.cashLowerBound ? 'yes' : 'no', recommendation.confidence, recommendation.audience.join(', '), recommendation.affectedCount, recommendation.actions.join(' | ')]),
     );
   };
 
@@ -88,7 +88,7 @@ export function ExportMenu() {
             hint={t('Paste the summary into an email, a wiki page or a chat.')}
             onClick={copy}
           />
-          <Item icon={<Lightbulb size={16} />} title={t('Recommendations (CSV)')} hint={t('Actions with their value, most valuable first.')} onClick={() => { recs(); close(); }} />
+          <Item icon={<Lightbulb size={16} />} title={t('Recommendations (CSV)')} hint={t('Actions with their value, most valuable first.')} onClick={() => { downloadRecommendations(); close(); }} />
           <Item icon={<Users size={16} />} title={t('Next step for each user (CSV)')} hint={t('Every user with their group, usage and suggested next step.')} onClick={() => { users(); close(); }} />
           <Item icon={<Printer size={16} />} title={t('Print or save as PDF')} hint={t('Prints this page in light colors, without the menus.')} onClick={() => { close(); printReport(); }} />
         </div>

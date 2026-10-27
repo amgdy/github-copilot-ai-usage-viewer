@@ -7,7 +7,7 @@ export function LanguageButton({ className = 'btn btn-ghost' }: { className?: st
   const locale = useLocale();
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
-  const next = LOCALES.find((l) => l.id !== locale)!;
+  const next = LOCALES.find((language) => language.id !== locale)!;
   return (
     <>
       <button

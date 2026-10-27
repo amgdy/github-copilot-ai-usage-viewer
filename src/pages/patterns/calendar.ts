@@ -15,7 +15,7 @@ import {
   monthLabel,
   monthStartDay,
   parseIsoDay,
-  ymd,
+  dateParts,
 } from '../../lib/utils/date';
 import { fmtInt, fmtUSD, fmtUSDCompact, pluralize } from '../../lib/utils/format';
 import { readableOn } from './colors';
@@ -54,15 +54,15 @@ export interface CalendarPlan {
   note: string | null;
 }
 
-const weekStart = (d: number): number => d - dowOf(d);
+const weekStart = (day: number): number => day - dowOf(day);
 
 function makeTile(key: string, label: string, from: number, to: number, partial: boolean, range: DayRange, days: DaySeries): CalendarTile {
   let usage = 0;
   let usageDays = 0;
-  for (let d = from; d <= to; d++) {
-    const g = days.gross[d - range.start];
-    if (g > 0) {
-      usage += g;
+  for (let day = from; day <= to; day++) {
+    const gross = days.gross[day - range.start];
+    if (gross > 0) {
+      usage += gross;
       usageDays++;
     }
   }
@@ -70,28 +70,28 @@ function makeTile(key: string, label: string, from: number, to: number, partial:
 }
 
 export function planCalendar(range: DayRange, days: DaySeries): CalendarPlan {
-  const m0 = monthIndexOf(range.start);
-  const m1 = monthIndexOf(range.end);
-  if (m1 - m0 + 1 <= MAX_TILE_MONTHS) {
+  const startMonth = monthIndexOf(range.start);
+  const endMonth = monthIndexOf(range.end);
+  if (endMonth - startMonth + 1 <= MAX_TILE_MONTHS) {
     const tiles: CalendarTile[] = [];
-    for (let m = m0; m <= m1; m++) {
-      const from = Math.max(monthStartDay(m), range.start);
-      const to = Math.min(monthEndDay(m), range.end);
-      const partial = from > monthStartDay(m) || to < monthEndDay(m);
-      tiles.push(makeTile(monthKey(m), monthLabel(m), from, to, partial, range, days));
+    for (let month = startMonth; month <= endMonth; month++) {
+      const from = Math.max(monthStartDay(month), range.start);
+      const to = Math.min(monthEndDay(month), range.end);
+      const partial = from > monthStartDay(month) || to < monthEndDay(month);
+      tiles.push(makeTile(monthKey(month), monthLabel(month), from, to, partial, range, days));
     }
     return { mode: 'tiles', tiles, from: range.start, to: range.end, note: null };
   }
-  const firstMonth = Math.max(m0, m1 - YEAR_MONTHS + 1);
+  const firstMonth = Math.max(startMonth, endMonth - YEAR_MONTHS + 1);
   const from = Math.max(monthStartDay(firstMonth), range.start);
   const note =
-    firstMonth > m0
+    firstMonth > startMonth
       ? t('Showing the latest {months}, {from} to {to}. Narrow the date range to see earlier months.', {
           months: pluralize(YEAR_MONTHS, 'month'),
           from: monthLabel(firstMonth),
-          to: monthLabel(m1),
+          to: monthLabel(endMonth),
         })
-      : t('Showing all {months} of the range.', { months: pluralize(m1 - m0 + 1, 'month') });
+      : t('Showing all {months} of the range.', { months: pluralize(endMonth - startMonth + 1, 'month') });
   return { mode: 'year', tiles: [makeTile('year', t('Calendar'), from, range.end, false, range, days)], from, to: range.end, note };
 }
 
@@ -110,34 +110,34 @@ const PICKS: Record<number, number[]> = { 1: [3], 2: [2, 4], 3: [1, 3, 5], 4: [1
 /** Up to five usage bands cut at quantiles of the days shown, so a few huge days do not turn the rest pale. */
 export function makeScale(colors: ChartColors, days: DaySeries, range: DayRange, from: number, to: number): Scale {
   const positive: number[] = [];
-  for (let d = from; d <= to; d++) {
-    const g = days.gross[d - range.start];
-    if (g > 0) positive.push(g);
+  for (let day = from; day <= to; day++) {
+    const gross = days.gross[day - range.start];
+    if (gross > 0) positive.push(gross);
   }
   positive.sort((a, b) => a - b);
   const max = positive.length ? positive[positive.length - 1] : 0;
   const parts = Math.min(5, positive.length);
-  const cuts: number[] = [];
+  const thresholds: number[] = [];
   for (let j = 1; j < parts; j++) {
-    const c = Number(quantile(positive, j / parts).toPrecision(2));
-    if (c > 0 && c < max && (cuts.length === 0 || c > cuts[cuts.length - 1])) cuts.push(c);
+    const threshold = Number(quantile(positive, j / parts).toPrecision(2));
+    if (threshold > 0 && threshold < max && (thresholds.length === 0 || threshold > thresholds[thresholds.length - 1])) thresholds.push(threshold);
   }
-  const bands = positive.length ? cuts.length + 1 : 0;
-  const fills = [colors.grid, ...(PICKS[bands] ?? []).map((i) => colors.ramp[i])];
+  const bands = positive.length ? thresholds.length + 1 : 0;
+  const fills = [colors.grid, ...(PICKS[bands] ?? []).map((rampIndex) => colors.ramp[rampIndex])];
   const labels = [t('No usage')];
   if (bands === 1) labels.push(t('Has usage'));
   else {
     for (let j = 1; j <= bands; j++) {
-      if (j === 1) labels.push(t('Up to {amount}', { amount: fmtUSDCompact(cuts[0]) }));
-      else if (j === bands) labels.push(t('Over {amount}', { amount: fmtUSDCompact(cuts[bands - 2]) }));
-      else labels.push(t('{from} to {to}', { from: fmtUSDCompact(cuts[j - 2]), to: fmtUSDCompact(cuts[j - 1]) }));
+      if (j === 1) labels.push(t('Up to {amount}', { amount: fmtUSDCompact(thresholds[0]) }));
+      else if (j === bands) labels.push(t('Over {amount}', { amount: fmtUSDCompact(thresholds[bands - 2]) }));
+      else labels.push(t('{from} to {to}', { from: fmtUSDCompact(thresholds[j - 2]), to: fmtUSDCompact(thresholds[j - 1]) }));
     }
   }
-  const band = (g: number): number => {
-    if (!(g > 0)) return 0;
-    let b = 1;
-    for (const c of cuts) if (g > c) b++;
-    return b;
+  const band = (gross: number): number => {
+    if (!(gross > 0)) return 0;
+    let bandIndex = 1;
+    for (const threshold of thresholds) if (gross > threshold) bandIndex++;
+    return bandIndex;
   };
   return { fills, labels, band };
 }
@@ -160,12 +160,12 @@ interface Cell {
 
 function cellsOf({ colors, scale, tile, range, days }: TileInput): Cell[] {
   const cells: Cell[] = [];
-  for (let d = tile.from; d <= tile.to; d++) {
-    const i = d - range.start;
-    const gross = days.gross[i];
+  for (let day = tile.from; day <= tile.to; day++) {
+    const dayIndex = day - range.start;
+    const gross = days.gross[dayIndex];
     const band = scale.band(gross);
     cells.push({
-      value: [isoDate(d), band, gross, days.activeUsers[i], ymd(d).d],
+      value: [isoDate(day), band, gross, days.activeUsers[dayIndex], dateParts(day).d],
       label: { color: band === 0 ? colors.textMuted : readableOn(colors, scale.fills[band]) },
     });
   }
@@ -178,7 +178,7 @@ function cellsOf({ colors, scale, tile, range, days }: TileInput): Cell[] {
  */
 function outlineOf({ colors, tile, anomalies }: TileInput): HeatmapSeriesOption | null {
   const data: [string, number][] = [];
-  for (let d = tile.from; d <= tile.to; d++) if (anomalies.has(d)) data.push([isoDate(d), -1]);
+  for (let day = tile.from; day <= tile.to; day++) if (anomalies.has(day)) data.push([isoDate(day), -1]);
   if (data.length === 0) return null;
   return {
     type: 'heatmap',
@@ -199,8 +199,8 @@ export function cellDay(value: unknown): number | null {
 }
 
 function cellTooltip(anomalies: Map<number, AnomalyDay>) {
-  return (p: unknown): string => {
-    const value = (p as { value?: unknown }).value;
+  return (chartItem: unknown): string => {
+    const value = (chartItem as { value?: unknown }).value;
     if (!Array.isArray(value)) return '';
     const day = parseIsoDay(String(value[0]));
     if (!Number.isFinite(day)) return '';
@@ -241,8 +241,8 @@ export function tileOption(input: TileInput): EChartsOption {
           color: colors.textMuted,
           fontSize: 12,
           margin: 8,
-          formatter: ({ nameMap, yyyy, M }) =>
-            M === 1 || Number(yyyy) * 12 + (M - 1) === firstShown ? `${nameMap} ${yyyy}` : nameMap,
+          formatter: ({ nameMap, yyyy, M: month }) =>
+            month === 1 || Number(yyyy) * 12 + (month - 1) === firstShown ? `${nameMap} ${yyyy}` : nameMap,
         },
         dayLabel: { firstDay: 1, nameMap: ['', weekdayShort(0), '', weekdayShort(2), '', weekdayShort(4), ''], color: colors.textMuted, fontSize: 12, margin: 6 },
       }
@@ -270,9 +270,9 @@ export function tileOption(input: TileInput): EChartsOption {
       : {
           show: true,
           fontSize: 12,
-          formatter: (p: unknown) => {
-            const v = (p as { value?: unknown[] }).value;
-            return Array.isArray(v) ? String(v[4]) : '';
+          formatter: (chartItem: unknown) => {
+            const cellValue = (chartItem as { value?: unknown[] }).value;
+            return Array.isArray(cellValue) ? String(cellValue[4]) : '';
           },
         },
     emphasis: { itemStyle: { borderColor: colors.text, borderWidth: 2 } },

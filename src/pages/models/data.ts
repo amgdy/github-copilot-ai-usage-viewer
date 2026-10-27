@@ -45,48 +45,48 @@ export interface ModelRow {
   topUser: TopUser | null;
 }
 
-function topUsers(agg: Aggregates, store: DataStore): (TopUser | null)[] | null {
-  const um = agg.userModel;
-  const nM = agg.nModels;
-  if (!um || nM === 0) return null;
-  const best = new Float64Array(nM);
-  const bestUser = new Int32Array(nM).fill(-1);
-  const nU = Math.floor(um.length / nM);
+function topUsers(aggregates: Aggregates, store: DataStore): (TopUser | null)[] | null {
+  const grossByUserModel = aggregates.userModel;
+  const modelCount = aggregates.nModels;
+  if (!grossByUserModel || modelCount === 0) return null;
+  const best = new Float64Array(modelCount);
+  const bestUser = new Int32Array(modelCount).fill(-1);
+  const userCount = Math.floor(grossByUserModel.length / modelCount);
   // User 0 is the blank (unattributed) user.
-  for (let u = 1; u < nU; u++) {
-    const base = u * nM;
-    for (let k = 0; k < nM; k++) {
-      const v = um[base + k];
-      if (v > best[k]) {
-        best[k] = v;
-        bestUser[k] = u;
+  for (let userId = 1; userId < userCount; userId++) {
+    const base = userId * modelCount;
+    for (let k = 0; k < modelCount; k++) {
+      const userGross = grossByUserModel[base + k];
+      if (userGross > best[k]) {
+        best[k] = userGross;
+        bestUser[k] = userId;
       }
     }
   }
   const names = store.dicts.user.values;
-  return Array.from({ length: nM }, (_, k) => {
-    const u = bestUser[k];
-    const total = agg.model.gross[k];
-    return u < 0 ? null : { id: u, name: names[u], share: total > 0 ? best[k] / total : 0 };
+  return Array.from({ length: modelCount }, (_, modelId) => {
+    const topUserId = bestUser[modelId];
+    const total = aggregates.model.gross[modelId];
+    return topUserId < 0 ? null : { id: topUserId, name: names[topUserId], share: total > 0 ? best[modelId] / total : 0 };
   });
 }
 
 /** One row per model that has usage in the current scope, largest usage first. */
-export function buildModelRows(agg: Aggregates, models: ModelTable, store: DataStore, shift: ShiftRow[]): ModelRow[] {
-  const m = agg.model;
-  const extra = agg.modelExtra;
-  const total = agg.totals.gross;
+export function buildModelRows(aggregates: Aggregates, models: ModelTable, store: DataStore, shift: ShiftRow[]): ModelRow[] {
+  const measures = aggregates.model;
+  const extra = aggregates.modelExtra;
+  const total = aggregates.totals.gross;
   const cheaper = new Map<number, ShiftRow>();
-  for (const s of shift) if (s.ratio < 1) cheaper.set(s.modelId, s);
-  const top = topUsers(agg, store);
+  for (const shiftRow of shift) if (shiftRow.ratio < 1) cheaper.set(shiftRow.modelId, shiftRow);
+  const top = topUsers(aggregates, store);
 
   const rows: ModelRow[] = [];
   for (let id = 0; id < models.meta.length; id++) {
-    if (m.rows[id] <= 0) continue;
+    if (measures.rows[id] <= 0) continue;
     const meta = models.meta[id];
-    const gross = m.gross[id];
-    const prompt = m.input[id] + m.cacheRead[id] + m.cacheWrite[id];
-    const c = cheaper.get(id);
+    const gross = measures.gross[id];
+    const prompt = measures.input[id] + measures.cacheRead[id] + measures.cacheWrite[id];
+    const shiftRow = cheaper.get(id);
     rows.push({
       id,
       value: meta.name,
@@ -94,24 +94,24 @@ export function buildModelRows(agg: Aggregates, models: ModelTable, store: DataS
       vendor: meta.vendor,
       tier: meta.category,
       priced: meta.priced,
-      users: agg.usersIn.model[id],
-      requests: m.rows[id],
-      credits: m.credits[id],
+      users: aggregates.usersIn.model[id],
+      requests: measures.rows[id],
+      credits: measures.credits[id],
       gross,
-      net: m.net[id],
+      net: measures.net[id],
       share: total > 0 ? gross / total : 0,
-      creditsPerRequest: m.credits[id] / m.rows[id],
-      input: m.input[id],
-      output: m.output[id],
-      cacheRead: m.cacheRead[id],
-      cacheWrite: m.cacheWrite[id],
-      cacheHit: prompt > 0 ? m.cacheRead[id] / prompt : Number.NaN,
+      creditsPerRequest: measures.credits[id] / measures.rows[id],
+      input: measures.input[id],
+      output: measures.output[id],
+      cacheRead: measures.cacheRead[id],
+      cacheWrite: measures.cacheWrite[id],
+      cacheHit: prompt > 0 ? measures.cacheRead[id] / prompt : Number.NaN,
       priceIn: meta.base ? meta.base.input : Number.NaN,
       priceOut: meta.base ? meta.base.output : Number.NaN,
       autoGross: extra.autoGross[id],
       autoShare: gross > 0 ? extra.autoGross[id] / gross : Number.NaN,
       longPremium: extra.longPremium[id],
-      cheaper: c ? { target: c.target, ratio: c.ratio } : null,
+      cheaper: shiftRow ? { target: shiftRow.target, ratio: shiftRow.ratio } : null,
       topUser: top ? top[id] : null,
     });
   }
@@ -128,25 +128,25 @@ export interface AutoSeries {
 
 /** Usage chosen by Auto and by hand, per bucket, from one scan of the rows in scope. */
 export function autoManualSeries(store: DataStore, mask: Uint8Array | null, range: { start: number; end: number }, bucket: Bucket): AutoSeries {
-  const b = makeBucketer(range.start, range.end, bucket);
-  const auto = new Float64Array(b.count);
-  const manual = new Float64Array(b.count);
+  const bucketer = makeBucketer(range.start, range.end, bucket);
+  const auto = new Float64Array(bucketer.count);
+  const manual = new Float64Array(bucketer.count);
   const { day, gross, auto: isAuto } = store;
   for (let i = 0; i < store.n; i++) {
     if (mask !== null && mask[i] === 0) continue;
-    const d = day[i];
-    if (d < range.start || d > range.end) continue;
-    const k = b.indexOf(d);
-    if (isAuto[i] === 1) auto[k] += gross[i];
-    else manual[k] += gross[i];
+    const rowDay = day[i];
+    if (rowDay < range.start || rowDay > range.end) continue;
+    const bucketIndex = bucketer.indexOf(rowDay);
+    if (isAuto[i] === 1) auto[bucketIndex] += gross[i];
+    else manual[bucketIndex] += gross[i];
   }
-  return { bucketer: b, labels: Array.from({ length: b.count }, (_, i) => b.label(i)), auto, manual };
+  return { bucketer: bucketer, labels: Array.from({ length: bucketer.count }, (_, bucketIndex) => bucketer.label(bucketIndex)), auto, manual };
 }
 
 /** Date filter that zooms into bucket `i`. Null when the index is outside the series. */
-export function bucketPatch(b: Bucketer, i: number, rangeEnd: number): { dateFrom: number; dateTo: number } | null {
-  if (i < 0 || i >= b.count) return null;
-  return { dateFrom: b.start(i), dateTo: i + 1 < b.count ? b.start(i + 1) - 1 : rangeEnd };
+export function bucketPatch(bucketer: Bucketer, bucketIndex: number, rangeEnd: number): { dateFrom: number; dateTo: number } | null {
+  if (bucketIndex < 0 || bucketIndex >= bucketer.count) return null;
+  return { dateFrom: bucketer.start(bucketIndex), dateTo: bucketIndex + 1 < bucketer.count ? bucketer.start(bucketIndex + 1) - 1 : rangeEnd };
 }
 
 /**

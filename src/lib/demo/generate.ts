@@ -28,27 +28,27 @@ export interface DemoResult {
 type Rng = () => number;
 
 function mulberry32(seed: number): Rng {
-  let a = seed >>> 0;
+  let state = seed >>> 0;
   return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    state = (state + 0x6d2b79f5) >>> 0;
+    let mixed = state;
+    mixed = Math.imul(mixed ^ (mixed >>> 15), mixed | 1);
+    mixed ^= mixed + Math.imul(mixed ^ (mixed >>> 7), mixed | 61);
+    return ((mixed ^ (mixed >>> 14)) >>> 0) / 4294967296;
   };
 }
 
-const normal = (r: Rng): number => Math.sqrt(-2 * Math.log(1 - r())) * Math.cos(2 * Math.PI * r());
-const logNormal = (r: Rng, median: number, sigma: number): number => median * Math.exp(sigma * normal(r));
-const between = (r: Rng, lo: number, hi: number): number => lo + (hi - lo) * r();
-const chance = (r: Rng, p: number): boolean => r() < p;
+const normal = (random: Rng): number => Math.sqrt(-2 * Math.log(1 - random())) * Math.cos(2 * Math.PI * random());
+const logNormal = (random: Rng, median: number, sigma: number): number => median * Math.exp(sigma * normal(random));
+const between = (random: Rng, low: number, high: number): number => low + (high - low) * random();
+const chance = (random: Rng, probability: number): boolean => random() < probability;
 
-function pickWeighted<T>(r: Rng, items: [T, number][]): T {
-  const total = items.reduce((a, [, w]) => a + w, 0);
-  let x = r() * total;
-  for (const [v, w] of items) {
-    x -= w;
-    if (x <= 0) return v;
+function pickWeighted<T>(random: Rng, items: [T, number][]): T {
+  const total = items.reduce((sum, [, weight]) => sum + weight, 0);
+  let remaining = random() * total;
+  for (const [choice, weight] of items) {
+    remaining -= weight;
+    if (remaining <= 0) return choice;
   }
   return items[items.length - 1][0];
 }
@@ -176,11 +176,11 @@ interface Row {
   seq: number;
 }
 
-const round9 = (x: number): number => Math.round(x * 1e9) / 1e9;
-const CARD = new Map<string, CardEntry>(PRICE_CARD.map((c) => [c.name, c]));
+const round9 = (value: number): number => Math.round(value * 1e9) / 1e9;
+const CARD = new Map<string, CardEntry>(PRICE_CARD.map((card) => [card.name, card]));
 
-function tokenCost(rate: CardEntry['base'], i: number, cr: number, cw: number, o: number): number {
-  return (i * rate.input + cr * rate.cachedInput + cw * rate.cacheWrite + o * rate.output) / 1e6;
+function tokenCost(rate: CardEntry['base'], inputTokens: number, cacheReadTokens: number, cacheWriteTokens: number, outputTokens: number): number {
+  return (inputTokens * rate.input + cacheReadTokens * rate.cachedInput + cacheWriteTokens * rate.cacheWrite + outputTokens * rate.output) / 1e6;
 }
 
 interface Priced {
@@ -193,155 +193,155 @@ interface Priced {
 }
 
 /** List price of the tokens; a share `longFrac` of them is billed at the long-context rates. */
-function listCost(card: CardEntry, t: Omit<Priced, 'cost'>, longFrac: number): number {
-  let cost = tokenCost(card.base, t.input, t.cacheRead, t.cacheWrite, t.output);
+function listCost(card: CardEntry, tokens: Omit<Priced, 'cost'>, longFrac: number): number {
+  let cost = tokenCost(card.base, tokens.input, tokens.cacheRead, tokens.cacheWrite, tokens.output);
   if (longFrac > 0 && card.long) {
-    cost = (1 - longFrac) * cost + longFrac * tokenCost(card.long, t.input, t.cacheRead, t.cacheWrite, t.output);
+    cost = (1 - longFrac) * cost + longFrac * tokenCost(card.long, tokens.input, tokens.cacheRead, tokens.cacheWrite, tokens.output);
   }
   return cost;
 }
 
 /** Builds one daily usage row for a model so that the token counts add up to roughly `targetUsd` at list price. */
-function priceRow(r: Rng, card: CardEntry, targetUsd: number, cacheGood: boolean, longFrac: number): Priced {
+function priceRow(random: Rng, card: CardEntry, targetUsd: number, cacheGood: boolean, longFrac: number): Priced {
   const rate = card.base;
-  let sIn = cacheGood ? between(r, 0.01, 0.04) : between(r, 0.1, 0.16);
-  let sCr = cacheGood ? between(r, 0.4, 0.62) : between(r, 0.02, 0.05);
-  let sCw = cacheGood ? between(r, 0.1, 0.22) : between(r, 0.45, 0.58);
+  let inputShare = cacheGood ? between(random, 0.01, 0.04) : between(random, 0.1, 0.16);
+  let cacheReadShare = cacheGood ? between(random, 0.4, 0.62) : between(random, 0.02, 0.05);
+  let cacheWriteShare = cacheGood ? between(random, 0.1, 0.22) : between(random, 0.45, 0.58);
   if (rate.cacheWrite === 0) {
-    sCr += sCw * 0.7;
-    sIn += sCw * 0.3;
-    sCw = 0;
+    cacheReadShare += cacheWriteShare * 0.7;
+    inputShare += cacheWriteShare * 0.3;
+    cacheWriteShare = 0;
   }
-  const sOut = Math.max(0.05, 1 - sIn - sCr - sCw);
-  const t = Math.max(targetUsd, 1e-6);
-  const input = Math.round((t * sIn * 1e6) / rate.input);
-  const cacheRead = Math.round((t * sCr * 1e6) / rate.cachedInput);
-  const cacheWrite = rate.cacheWrite > 0 ? Math.round((t * sCw * 1e6) / rate.cacheWrite) : 0;
-  const output = Math.round((t * sOut * 1e6) / rate.output);
+  const outputShare = Math.max(0.05, 1 - inputShare - cacheReadShare - cacheWriteShare);
+  const target = Math.max(targetUsd, 1e-6);
+  const input = Math.round((target * inputShare * 1e6) / rate.input);
+  const cacheRead = Math.round((target * cacheReadShare * 1e6) / rate.cachedInput);
+  const cacheWrite = rate.cacheWrite > 0 ? Math.round((target * cacheWriteShare * 1e6) / rate.cacheWrite) : 0;
+  const output = Math.round((target * outputShare * 1e6) / rate.output);
   const tokens = { input, output, cacheRead, cacheWrite };
   return { ...tokens, cost: listCost(card, tokens, longFrac) };
 }
 
 /** Auto bills a fixed share of the list price, so a row that lands on its target amount carries more tokens: scale them up to match. */
-function throughAuto(card: CardEntry, t: Priced, longFrac: number): Priced {
-  const k = 1 / AUTO_PRICE_FACTOR;
+function throughAuto(card: CardEntry, priced: Priced, longFrac: number): Priced {
+  const scale = 1 / AUTO_PRICE_FACTOR;
   const tokens = {
-    input: Math.round(t.input * k),
-    output: Math.round(t.output * k),
-    cacheRead: Math.round(t.cacheRead * k),
-    cacheWrite: Math.round(t.cacheWrite * k),
+    input: Math.round(priced.input * scale),
+    output: Math.round(priced.output * scale),
+    cacheRead: Math.round(priced.cacheRead * scale),
+    cacheWrite: Math.round(priced.cacheWrite * scale),
   };
   return { ...tokens, cost: listCost(card, tokens, longFrac) };
 }
 
-function buildUsers(r: Rng, firstDay: number, lastDay: number): DemoUser[] {
+function buildUsers(random: Rng, firstDay: number, lastDay: number): DemoUser[] {
   const users: DemoUser[] = [];
   const nameKeys = new Set<string>();
-  const total = PERSONAS.reduce((a, p) => a + p.count, 0);
+  const total = PERSONAS.reduce((sum, persona) => sum + persona.count, 0);
   const span = lastDay - firstDay;
-  let idx = 0;
+  let userCount = 0;
   for (const persona of PERSONAS) {
     for (let k = 0; k < persona.count; k++) {
       let name = '';
       do {
-        name = `${FIRST[Math.floor(r() * FIRST.length)]}-${LAST[Math.floor(r() * LAST.length)]}`;
+        name = `${FIRST[Math.floor(random() * FIRST.length)]}-${LAST[Math.floor(random() * LAST.length)]}`;
       } while (nameKeys.has(name));
       nameKeys.add(name);
-      const org = pickWeighted(r, ORGS.map((o) => [o, o.weight] as [(typeof ORGS)[number], number]));
-      const enterprise = chance(r, persona.id === 'runaway' ? 0.4 : 0.34);
+      const org = pickWeighted(random, ORGS.map((orgOption) => [orgOption, orgOption.weight] as [(typeof ORGS)[number], number]));
+      const enterprise = chance(random, persona.id === 'runaway' ? 0.4 : 0.34);
       const quota = enterprise ? 3900 : 1900;
-      const util = between(r, persona.util[0], persona.util[1]);
-      const pWork = between(r, persona.pWork[0], persona.pWork[1]);
+      const utilization = between(random, persona.util[0], persona.util[1]);
+      const pWork = between(random, persona.pWork[0], persona.pWork[1]);
       const expectedDays = Math.max(0.5, 21.7 * pWork + 8.7 * persona.pWeekend);
-      const base = (util * quota * 0.01) / (expectedDays * Math.exp((persona.sigma * persona.sigma) / 2));
+      const base = (utilization * quota * 0.01) / (expectedDays * Math.exp((persona.sigma * persona.sigma) / 2));
       let first = firstDay;
       let last = lastDay;
-      if (persona.id === 'new') first = lastDay - Math.floor(between(r, 3, 12));
-      if (persona.id === 'lapsed') last = lastDay - Math.floor(between(r, 9, 30));
-      if (persona.id === 'burst' && chance(r, 0.3)) first = firstDay + Math.floor(between(r, 3, span / 2));
-      const noCostCenter = persona.id !== 'runaway' && chance(r, 0.09);
+      if (persona.id === 'new') first = lastDay - Math.floor(between(random, 3, 12));
+      if (persona.id === 'lapsed') last = lastDay - Math.floor(between(random, 9, 30));
+      if (persona.id === 'burst' && chance(random, 0.3)) first = firstDay + Math.floor(between(random, 3, span / 2));
+      const noCostCenter = persona.id !== 'runaway' && chance(random, 0.09);
       users.push({
         name,
         persona,
         org: org.name,
-        org2: !noCostCenter && chance(r, 0.04) ? ORGS.find((o) => o.name !== org.name)!.name : null,
-        costCenter: noCostCenter ? '' : org.centers[Math.floor(r() * org.centers.length)],
+        org2: !noCostCenter && chance(random, 0.04) ? ORGS.find((otherOrg) => otherOrg.name !== org.name)!.name : null,
+        costCenter: noCostCenter ? '' : org.centers[Math.floor(random() * org.centers.length)],
         quota,
         first,
         last,
         base,
-        growth: between(r, persona.growth[0], persona.growth[1]),
+        growth: between(random, persona.growth[0], persona.growth[1]),
         pWork,
         pWeekend: persona.pWeekend,
-        mix: pickWeighted(r, persona.mix),
-        autoRate: between(r, persona.autoRate[0], persona.autoRate[1]),
-        cacheGood: chance(r, persona.cacheGood),
-        longFrac: between(r, persona.longFrac[0], persona.longFrac[1]),
+        mix: pickWeighted(random, persona.mix),
+        autoRate: between(random, persona.autoRate[0], persona.autoRate[1]),
+        cacheGood: chance(random, persona.cacheGood),
+        longFrac: between(random, persona.longFrac[0], persona.longFrac[1]),
         sigma: persona.sigma,
       });
-      idx++;
+      userCount++;
     }
   }
-  if (idx !== total) throw new Error('persona counts do not add up');
+  if (userCount !== total) throw new Error('persona counts do not add up');
   return users;
 }
 
-const q = (s: string): string => `"${s.replace(/"/g, '""')}"`;
-const num = (x: number): string => String(Number(x.toFixed(9)));
+const quote = (cell: string): string => `"${cell.replace(/"/g, '""')}"`;
+const formatNumber = (value: number): string => String(Number(value.toFixed(9)));
 
-export function generateDemo(opts: DemoOptions = {}): DemoResult {
-  const r = mulberry32(opts.seed ?? 20261026);
-  const [sy, sm, sd] = (opts.start ?? '2026-09-01').split('-').map(Number);
-  const [ey, em, ed] = (opts.end ?? '2026-10-26').split('-').map(Number);
-  const firstDay = dayFromYMD(sy, sm - 1, sd);
-  const lastDay = dayFromYMD(ey, em - 1, ed);
-  const users = buildUsers(r, firstDay, lastDay);
+export function generateDemo(options: DemoOptions = {}): DemoResult {
+  const random = mulberry32(options.seed ?? 20261026);
+  const [startYear, startMonth, startDayOfMonth] = (options.start ?? '2026-09-01').split('-').map(Number);
+  const [endYear, endMonth, endDayOfMonth] = (options.end ?? '2026-10-26').split('-').map(Number);
+  const firstDay = dayFromYMD(startYear, startMonth - 1, startDayOfMonth);
+  const lastDay = dayFromYMD(endYear, endMonth - 1, endDayOfMonth);
+  const users = buildUsers(random, firstDay, lastDay);
   const rows: Row[] = [];
-  let seq = 0;
+  let sequence = 0;
   const span = Math.max(1, lastDay - firstDay);
   // Team-wide spike days (e.g. a hackathon): everybody uses a bit more.
   const spikeDays = new Set<number>([firstDay + Math.floor(span * 0.45), firstDay + Math.floor(span * 0.78)]);
 
   /** One active day of one user: one to three model rows. */
-  const emitUserDay = (rng: Rng, u: DemoUser, day: number, spike: boolean): void => {
-    const growth = 1 + (u.growth - 1) * ((day - firstDay) / span);
-    const dayTarget = logNormal(rng, u.base * growth * (spike ? 2.4 : 1), u.sigma);
-    const k = 1 + (chance(rng, 0.45) ? 1 : 0) + (chance(rng, 0.15) ? 1 : 0);
+  const emitUserDay = (randomStream: Rng, user: DemoUser, day: number, spike: boolean): void => {
+    const growth = 1 + (user.growth - 1) * ((day - firstDay) / span);
+    const dayTarget = logNormal(randomStream, user.base * growth * (spike ? 2.4 : 1), user.sigma);
+    const modelCount = 1 + (chance(randomStream, 0.45) ? 1 : 0) + (chance(randomStream, 0.15) ? 1 : 0);
     const used = new Set<string>();
-    const weights = Array.from({ length: k }, () => 0.25 + rng());
-    const wSum = weights.reduce((a, b) => a + b, 0);
-    for (let m = 0; m < k; m++) {
-      let model = pickWeighted(rng, MIXES[u.mix]);
+    const weights = Array.from({ length: modelCount }, () => 0.25 + randomStream());
+    const totalWeight = weights.reduce((a, b) => a + b, 0);
+    for (let modelIndex = 0; modelIndex < modelCount; modelIndex++) {
+      let model = pickWeighted(randomStream, MIXES[user.mix]);
       let guard = 0;
-      while (used.has(model) && guard++ < 6) model = pickWeighted(rng, MIXES[u.mix]);
+      while (used.has(model) && guard++ < 6) model = pickWeighted(randomStream, MIXES[user.mix]);
       if (used.has(model)) continue;
       used.add(model);
       const card = CARD.get(model);
       if (!card) continue;
-      const target = (dayTarget * weights[m]) / wSum;
-      const long = u.longFrac > 0 && card.long && card.category === 'Powerful' && chance(rng, 0.7) ? u.longFrac : 0;
-      const priced = priceRow(rng, card, target, u.cacheGood, long);
-      const auto = chance(rng, u.autoRate);
-      const t = auto ? throughAuto(card, priced, long) : priced;
-      const billed = auto ? t.cost * AUTO_PRICE_FACTOR : t.cost;
-      const billingOrg = u.org2 && chance(rng, 0.3) ? u.org2 : u.org;
+      const target = (dayTarget * weights[modelIndex]) / totalWeight;
+      const long = user.longFrac > 0 && card.long && card.category === 'Powerful' && chance(randomStream, 0.7) ? user.longFrac : 0;
+      const priced = priceRow(randomStream, card, target, user.cacheGood, long);
+      const auto = chance(randomStream, user.autoRate);
+      const usage = auto ? throughAuto(card, priced, long) : priced;
+      const billed = auto ? usage.cost * AUTO_PRICE_FACTOR : usage.cost;
+      const billingOrg = user.org2 && chance(randomStream, 0.3) ? user.org2 : user.org;
       rows.push({
         day,
-        user: u.name,
+        user: user.name,
         product: 'copilot',
         sku: 'copilot_ai_credit',
         model: auto ? `Auto: ${model}` : model,
-        quota: u.quota,
+        quota: user.quota,
         org: billingOrg,
         repo: '',
-        costCenter: u.costCenter,
+        costCenter: user.costCenter,
         gross: billed,
         qty: billed / 0.01,
-        input: t.input,
-        output: t.output,
-        cacheRead: t.cacheRead,
-        cacheWrite: t.cacheWrite,
-        seq: seq++,
+        input: usage.input,
+        output: usage.output,
+        cacheRead: usage.cacheRead,
+        cacheWrite: usage.cacheWrite,
+        seq: sequence++,
       });
     }
   };
@@ -350,21 +350,21 @@ export function generateDemo(opts: DemoOptions = {}): DemoResult {
   for (let day = firstDay; day <= lastDay; day++) {
     const weekday = dowOf(day) < 5;
     const spike = spikeDays.has(day);
-    for (const u of users) {
-      if (day < u.first || day > u.last) continue;
-      const p = (weekday ? u.pWork : u.pWeekend) * (spike && weekday ? 1.25 : 1);
-      if (!chance(r, Math.min(0.99, p))) continue;
-      active.add(u);
-      emitUserDay(r, u, day, spike);
+    for (const user of users) {
+      if (day < user.first || day > user.last) continue;
+      const probability = (weekday ? user.pWork : user.pWeekend) * (spike && weekday ? 1.25 : 1);
+      if (!chance(random, Math.min(0.99, probability))) continue;
+      active.add(user);
+      emitUserDay(random, user, day, spike);
     }
     // Repository-level products (no user): code quality and code security scans.
-    if (weekday && chance(r, 0.55)) {
-      const n = 1 + Math.floor(r() * 3);
-      for (let i = 0; i < n; i++) {
-        const security = chance(r, 0.35);
+    if (weekday && chance(random, 0.55)) {
+      const scanCount = 1 + Math.floor(random() * 3);
+      for (let i = 0; i < scanCount; i++) {
+        const security = chance(random, 0.35);
         const model = security ? 'GPT-5.3-Codex' : 'GPT-5.6 Terra';
         const card = CARD.get(model)!;
-        const t = priceRow(r, card, between(r, 0.002, 0.06), true, 0);
+        const usage = priceRow(random, card, between(random, 0.002, 0.06), true, 0);
         rows.push({
           day,
           user: '',
@@ -372,16 +372,16 @@ export function generateDemo(opts: DemoOptions = {}): DemoResult {
           sku: security ? 'code_security_ai_credit' : 'code_quality_ai_credit',
           model,
           quota: 0,
-          org: ORGS[Math.floor(r() * ORGS.length)].name,
-          repo: REPOS[Math.floor(r() * REPOS.length)],
+          org: ORGS[Math.floor(random() * ORGS.length)].name,
+          repo: REPOS[Math.floor(random() * REPOS.length)],
           costCenter: '',
-          gross: t.cost,
-          qty: t.cost / 0.01,
-          input: t.input,
-          output: t.output,
-          cacheRead: t.cacheRead,
-          cacheWrite: t.cacheWrite,
-          seq: seq++,
+          gross: usage.cost,
+          qty: usage.cost / 0.01,
+          input: usage.input,
+          output: usage.output,
+          cacheRead: usage.cacheRead,
+          cacheWrite: usage.cacheWrite,
+          seq: sequence++,
         });
       }
     }
@@ -389,14 +389,14 @@ export function generateDemo(opts: DemoOptions = {}): DemoResult {
 
   // A seat that never used GitHub Copilot does not appear in an export, but every planned seat should show up. A seat that stayed silent by chance
   // gets one working day. It draws from its own random stream, so the rest of the file is unchanged.
-  const rescue = mulberry32(((opts.seed ?? 20261026) ^ 0x9e3779b9) >>> 0);
-  for (const u of users) {
-    if (active.has(u)) continue;
+  const rescue = mulberry32(((options.seed ?? 20261026) ^ 0x9e3779b9) >>> 0);
+  for (const user of users) {
+    if (active.has(user)) continue;
     const days: number[] = [];
-    for (let d = Math.max(u.first, firstDay); d <= Math.min(u.last, lastDay); d++) if (dowOf(d) < 5) days.push(d);
+    for (let candidateDay = Math.max(user.first, firstDay); candidateDay <= Math.min(user.last, lastDay); candidateDay++) if (dowOf(candidateDay) < 5) days.push(candidateDay);
     if (days.length === 0) continue;
     const day = days[Math.floor(rescue() * days.length)];
-    emitUserDay(rescue, u, day, spikeDays.has(day));
+    emitUserDay(rescue, user, day, spikeDays.has(day));
   }
 
   // Pool per calendar month = sum of the included credits of every seat seen that month; it drains in date order.
@@ -406,12 +406,12 @@ export function generateDemo(opts: DemoOptions = {}): DemoResult {
   const seen = new Map<string, Set<string>>();
   for (const row of rows) {
     if (!row.user) continue;
-    const mk = monthOf(row.day);
-    let s = seen.get(mk);
-    if (!s) seen.set(mk, (s = new Set()));
-    if (!s.has(row.user)) {
-      s.add(row.user);
-      pool.set(mk, (pool.get(mk) ?? 0) + row.quota * 0.01);
+    const month = monthOf(row.day);
+    let seenUsers = seen.get(month);
+    if (!seenUsers) seen.set(month, (seenUsers = new Set()));
+    if (!seenUsers.has(row.user)) {
+      seenUsers.add(row.user);
+      pool.set(month, (pool.get(month) ?? 0) + row.quota * 0.01);
     }
   }
 
@@ -419,14 +419,14 @@ export function generateDemo(opts: DemoOptions = {}): DemoResult {
     'date', 'username', 'product', 'sku', 'model', 'quantity', 'unit_type', 'applied_cost_per_quantity', 'gross_amount', 'discount_amount', 'net_amount',
     'total_monthly_quota', 'organization', 'app_client_id', 'repository', 'cost_center_name', 'aic_quantity', 'aic_gross_amount', 'input', 'output', 'cache_read', 'cache_write',
   ];
-  const lines: string[] = [head.map(q).join(',')];
+  const lines: string[] = [head.map(quote).join(',')];
   for (const row of rows) {
-    const mk = monthOf(row.day);
-    const qty = round9(row.qty);
-    const gross = round9(qty * 0.01);
-    const left = pool.get(mk) ?? 0;
+    const month = monthOf(row.day);
+    const quantity = round9(row.qty);
+    const gross = round9(quantity * 0.01);
+    const left = pool.get(month) ?? 0;
     const discount = round9(Math.min(gross, left));
-    pool.set(mk, left - discount);
+    pool.set(month, left - discount);
     const net = round9(gross - discount);
     lines.push(
       [
@@ -435,12 +435,12 @@ export function generateDemo(opts: DemoOptions = {}): DemoResult {
         row.product,
         row.sku,
         row.model,
-        num(qty),
+        formatNumber(quantity),
         'ai-credits',
         '0.01',
-        num(gross),
-        num(discount),
-        num(net),
+        formatNumber(gross),
+        formatNumber(discount),
+        formatNumber(net),
         String(row.quota),
         row.org,
         '',
@@ -453,7 +453,7 @@ export function generateDemo(opts: DemoOptions = {}): DemoResult {
         String(row.cacheRead),
         String(row.cacheWrite),
       ]
-        .map(q)
+        .map(quote)
         .join(','),
     );
   }

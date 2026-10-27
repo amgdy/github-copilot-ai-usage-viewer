@@ -70,14 +70,14 @@ describe('parsePrice and parseThreshold', () => {
 
 describe('parsePricingMarkdown', () => {
   const { models, warnings } = parsePricingMarkdown(PAGE);
-  const get = (name: string) => models.find((m) => m.name === name);
+  const get = (name: string) => models.find((model) => model.name === name);
 
   it('reads every priced model once, skips filler rows and ignores tables without prices', () => {
-    expect(models.map((m) => m.name)).toEqual(['Test GPT A', 'Test GPT B', 'Claude Test (preview)', 'Gemini Test', 'Kimi T']);
+    expect(models.map((model) => model.name)).toEqual(['Test GPT A', 'Test GPT B', 'Claude Test (preview)', 'Gemini Test', 'Kimi T']);
   });
 
   it('takes the vendor from the heading above the table', () => {
-    expect(models.map((m) => m.vendor)).toEqual(['OpenAI', 'OpenAI', 'Anthropic', 'Google', 'Moonshot']);
+    expect(models.map((model) => model.vendor)).toEqual(['OpenAI', 'OpenAI', 'Anthropic', 'Google', 'Moonshot']);
   });
 
   it('reads the four rates; a missing cache write becomes 0', () => {
@@ -87,10 +87,10 @@ describe('parsePricingMarkdown', () => {
   });
 
   it('joins Default and Long context rows into one model with its threshold', () => {
-    const b = get('Test GPT B')!;
-    expect(b.base).toEqual({ input: 1, cachedInput: 0.05, cacheWrite: 1.25, output: 5 });
-    expect(b.long).toEqual({ input: 2, cachedInput: 0.1, cacheWrite: 2.5, output: 7.5 });
-    expect(b.longThreshold).toBe(272_000);
+    const testGptB = get('Test GPT B')!;
+    expect(testGptB.base).toEqual({ input: 1, cachedInput: 0.05, cacheWrite: 1.25, output: 5 });
+    expect(testGptB.long).toEqual({ input: 2, cachedInput: 0.1, cacheWrite: 2.5, output: 7.5 });
+    expect(testGptB.longThreshold).toBe(272_000);
     expect(get('Test GPT A')?.long).toBeUndefined();
     expect(get('Test GPT A')?.longThreshold).toBeUndefined();
   });
@@ -123,7 +123,7 @@ describe('compareWithCard', () => {
   const diffs = compareWithCard(parsePricingMarkdown(PAGE).models, card);
 
   it('lists changed models first, then new ones, then models no longer on the page', () => {
-    expect(diffs.map((d) => [d.kind, d.name])).toEqual([
+    expect(diffs.map((diff) => [diff.kind, diff.name])).toEqual([
       ['changed', 'Test GPT B'],
       ['new', 'Gemini Test'],
       ['new', 'Kimi T'],
@@ -136,11 +136,11 @@ describe('compareWithCard', () => {
   });
 
   it('matches names the same way reports do: "(preview)" and vendor words do not matter', () => {
-    expect(diffs.some((d) => d.name.startsWith('Claude Test'))).toBe(false);
+    expect(diffs.some((diff) => diff.name.startsWith('Claude Test'))).toBe(false);
   });
 
   it('finds no difference between the built-in card and itself', () => {
-    expect(compareWithCard(PRICE_CARD.map((e) => ({ ...e })))).toEqual([]);
+    expect(compareWithCard(PRICE_CARD.map((cardEntry) => ({ ...cardEntry })))).toEqual([]);
   });
 });
 
@@ -150,15 +150,15 @@ describe('liveOverrides', () => {
   const brandNew = { name: 'Brand New Model', vendor: 'xAI' as const, category: 'Versatile' as const, base: { input: 1, cachedInput: 0.1, cacheWrite: 0, output: 3 } };
 
   it('adds overrides only for report models whose live price differs from the price the app uses', () => {
-    const ov = liveOverrides([first.name, PRICE_CARD[1].name, 'Brand New Model', 'Not on any card'], [changed, PRICE_CARD[1], brandNew]);
-    expect(Object.keys(ov).sort()).toEqual(['Brand New Model', first.name].sort());
-    expect(ov[first.name].base?.output).toBe(first.base.output + 1);
-    expect(ov['Brand New Model']).toEqual({ vendor: 'xAI', category: 'Versatile', base: brandNew.base, long: null });
+    const overrides = liveOverrides([first.name, PRICE_CARD[1].name, 'Brand New Model', 'Not on any card'], [changed, PRICE_CARD[1], brandNew]);
+    expect(Object.keys(overrides).sort()).toEqual(['Brand New Model', first.name].sort());
+    expect(overrides[first.name].base?.output).toBe(first.base.output + 1);
+    expect(overrides['Brand New Model']).toEqual({ vendor: 'xAI', category: 'Versatile', base: brandNew.base, long: null });
   });
 
   it('keeps existing overrides for other models', () => {
-    const ov = liveOverrides([first.name], [changed], { 'My Model': { category: 'Lightweight' } });
-    expect(ov['My Model']).toEqual({ category: 'Lightweight' });
+    const overrides = liveOverrides([first.name], [changed], { 'My Model': { category: 'Lightweight' } });
+    expect(overrides['My Model']).toEqual({ category: 'Lightweight' });
   });
 });
 

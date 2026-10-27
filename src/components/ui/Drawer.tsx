@@ -28,8 +28,8 @@ export function Drawer({ open, onClose, title, subtitle, children, footer, side 
     if (!open) return;
     previous.current = document.activeElement;
     panel.current?.focus();
-    const key = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+    const key = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
     };
     document.addEventListener('keydown', key);
     return () => {

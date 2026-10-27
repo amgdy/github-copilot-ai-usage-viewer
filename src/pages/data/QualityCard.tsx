@@ -26,8 +26,8 @@ function CheckItem({ check }: { check: Check }) {
         <p className="text-sm text-fg-muted">{check.result}</p>
         {check.details?.length ? (
           <ul className="list-disc space-y-0.5 ps-4 text-xs text-fg-muted">
-            {check.details.map((line, i) => (
-              <li key={i}>{line}</li>
+            {check.details.map((line, index) => (
+              <li key={index}>{line}</li>
             ))}
           </ul>
         ) : null}
@@ -44,7 +44,7 @@ function CheckItem({ check }: { check: Check }) {
 
 export function QualityCard({ checks }: { checks: Check[] }) {
   const sorted = useMemo(() => [...checks].sort((a, b) => ORDER[a.status] - ORDER[b.status]), [checks]);
-  const count = (status: CheckStatus) => checks.filter((c) => c.status === status).length;
+  const count = (status: CheckStatus) => checks.filter((check) => check.status === status).length;
   const warn = count('warn');
   const info = count('info');
   const pass = count('pass');

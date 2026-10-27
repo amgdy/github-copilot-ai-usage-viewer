@@ -10,27 +10,27 @@ function fakeStorage(initial: Record<string, string> = {}) {
   const data = new Map<string, string>(Object.entries(initial));
   return {
     data,
-    getItem: (k: string): string | null => data.get(k) ?? null,
-    setItem: (k: string, v: string): void => void data.set(k, String(v)),
-    removeItem: (k: string): void => void data.delete(k),
+    getItem: (key: string): string | null => data.get(key) ?? null,
+    setItem: (key: string, value: string): void => void data.set(key, String(value)),
+    removeItem: (key: string): void => void data.delete(key),
   };
 }
 
 describe('DEFAULT_SETTINGS', () => {
   it('has ordered thresholds', () => {
-    const { tiers: t, engagement: e, pareto: p } = DEFAULT_SETTINGS;
-    expect(0 < t.minimal && t.minimal < t.light && t.light < t.core && t.core < t.power).toBe(true);
-    expect(e.daily > e.regular && e.regular > e.occasional && e.occasional > 0 && e.daily <= 1).toBe(true);
-    expect(0 < p.a && p.a < p.b && p.b <= 1).toBe(true);
+    const { tiers: tiers, engagement: engagement, pareto: pareto } = DEFAULT_SETTINGS;
+    expect(0 < tiers.minimal && tiers.minimal < tiers.light && tiers.light < tiers.core && tiers.core < tiers.power).toBe(true);
+    expect(engagement.daily > engagement.regular && engagement.regular > engagement.occasional && engagement.occasional > 0 && engagement.daily <= 1).toBe(true);
+    expect(0 < pareto.a && pareto.a < pareto.b && pareto.b <= 1).toBe(true);
   });
 
   it('keeps shares inside (0, 1], and counts and amounts positive', () => {
-    for (const k of ['frontierHeavy', 'efficientShare', 'spikeShare', 'lowAuto', 'lowCacheHit', 'longContextShare', 'autoDiscount'] as const) {
-      expect(DEFAULT_SETTINGS[k], k).toBeGreaterThan(0);
-      expect(DEFAULT_SETTINGS[k], k).toBeLessThanOrEqual(1);
+    for (const shareKey of ['frontierHeavy', 'efficientShare', 'spikeShare', 'lowAuto', 'lowCacheHit', 'longContextShare', 'autoDiscount'] as const) {
+      expect(DEFAULT_SETTINGS[shareKey], shareKey).toBeGreaterThan(0);
+      expect(DEFAULT_SETTINGS[shareKey], shareKey).toBeLessThanOrEqual(1);
     }
-    for (const k of ['lapsedDays', 'newUserDays', 'topN'] as const) {
-      expect(Number.isInteger(DEFAULT_SETTINGS[k]) && DEFAULT_SETTINGS[k] > 0, k).toBe(true);
+    for (const countKey of ['lapsedDays', 'newUserDays', 'topN'] as const) {
+      expect(Number.isInteger(DEFAULT_SETTINGS[countKey]) && DEFAULT_SETTINGS[countKey] > 0, countKey).toBe(true);
     }
     expect(DEFAULT_SETTINGS.activeThreshold).toBeGreaterThan(0);
     expect(DEFAULT_SETTINGS.minSpendForTraits).toBeGreaterThan(0);
@@ -51,43 +51,43 @@ describe('DEFAULT_SETTINGS', () => {
 describe('mergeSettings', () => {
   it('returns the defaults for an empty object, as a deep copy that cannot touch DEFAULT_SETTINGS', () => {
     const before = structuredClone(DEFAULT_SETTINGS);
-    const s = mergeSettings({});
-    expect(s).toEqual(DEFAULT_SETTINGS);
-    expect(s).not.toBe(DEFAULT_SETTINGS);
-    for (const k of ['tiers', 'engagement', 'pareto', 'extraSeats', 'roster', 'modelOverrides'] as const) expect(s[k], k).not.toBe(DEFAULT_SETTINGS[k]);
-    s.tiers.power = 99;
-    s.pareto.a = 0.1;
-    s.engagement.daily = 0;
-    s.extraSeats.business = 5;
-    s.roster.push({ user: 'x' });
-    s.modelOverrides['m'] = {};
+    const settings = mergeSettings({});
+    expect(settings).toEqual(DEFAULT_SETTINGS);
+    expect(settings).not.toBe(DEFAULT_SETTINGS);
+    for (const nestedKey of ['tiers', 'engagement', 'pareto', 'extraSeats', 'roster', 'modelOverrides'] as const) expect(settings[nestedKey], nestedKey).not.toBe(DEFAULT_SETTINGS[nestedKey]);
+    settings.tiers.power = 99;
+    settings.pareto.a = 0.1;
+    settings.engagement.daily = 0;
+    settings.extraSeats.business = 5;
+    settings.roster.push({ user: 'x' });
+    settings.modelOverrides['m'] = {};
     expect(DEFAULT_SETTINGS).toEqual(before);
     expect(mergeSettings({})).toEqual(before);
   });
 
   it('overrides top-level values and keeps the rest', () => {
-    const s = mergeSettings({ topN: 25, budgetMonthlyBilled: 500, activeThreshold: 0.2 });
-    expect([s.topN, s.budgetMonthlyBilled, s.activeThreshold]).toEqual([25, 500, 0.2]);
-    expect(s.lapsedDays).toBe(DEFAULT_SETTINGS.lapsedDays);
-    expect(s.tiers).toEqual(DEFAULT_SETTINGS.tiers);
+    const settings = mergeSettings({ topN: 25, budgetMonthlyBilled: 500, activeThreshold: 0.2 });
+    expect([settings.topN, settings.budgetMonthlyBilled, settings.activeThreshold]).toEqual([25, 500, 0.2]);
+    expect(settings.lapsedDays).toBe(DEFAULT_SETTINGS.lapsedDays);
+    expect(settings.tiers).toEqual(DEFAULT_SETTINGS.tiers);
   });
 
   it('merges nested groups key by key, so a file saved by an older version still gets the new keys', () => {
     const partial = { tiers: { minimal: 0.2 }, pareto: { a: 0.7 }, engagement: { daily: 0.5 }, extraSeats: { enterprise: 3 } } as unknown as Partial<Settings>;
-    const s = mergeSettings(partial);
-    expect(s.tiers).toEqual({ ...DEFAULT_SETTINGS.tiers, minimal: 0.2 });
-    expect(s.pareto).toEqual({ ...DEFAULT_SETTINGS.pareto, a: 0.7 });
-    expect(s.engagement).toEqual({ ...DEFAULT_SETTINGS.engagement, daily: 0.5 });
-    expect(s.extraSeats).toEqual({ business: 0, enterprise: 3 });
+    const settings = mergeSettings(partial);
+    expect(settings.tiers).toEqual({ ...DEFAULT_SETTINGS.tiers, minimal: 0.2 });
+    expect(settings.pareto).toEqual({ ...DEFAULT_SETTINGS.pareto, a: 0.7 });
+    expect(settings.engagement).toEqual({ ...DEFAULT_SETTINGS.engagement, daily: 0.5 });
+    expect(settings.extraSeats).toEqual({ business: 0, enterprise: 3 });
   });
 
   it('keeps the roster and model overrides it is given, and a null budget', () => {
     const roster = [{ user: 'a', plan: 'Business' }, { user: 'b' }];
     const modelOverrides = { 'GPT-6 Astra': { long: null } };
-    const s = mergeSettings({ roster, modelOverrides, budgetMonthlyBilled: null });
-    expect(s.roster).toEqual(roster);
-    expect(s.modelOverrides).toEqual(modelOverrides);
-    expect(s.budgetMonthlyBilled).toBeNull();
+    const settings = mergeSettings({ roster, modelOverrides, budgetMonthlyBilled: null });
+    expect(settings.roster).toEqual(roster);
+    expect(settings.modelOverrides).toEqual(modelOverrides);
+    expect(settings.budgetMonthlyBilled).toBeNull();
   });
 
   it('does not change its argument, and merging a merged result changes nothing', () => {
@@ -107,8 +107,8 @@ describe('saveSettings', () => {
   });
 
   it('writes the settings as JSON under one key, and the stored text merges back to the same settings', () => {
-    const st = fakeStorage();
-    vi.stubGlobal('localStorage', st);
+    const storage = fakeStorage();
+    vi.stubGlobal('localStorage', storage);
     const custom = mergeSettings({
       topN: 7,
       budgetMonthlyBilled: 123.45,
@@ -117,20 +117,20 @@ describe('saveSettings', () => {
       modelOverrides: { 'GPT-6 Astra': { vendor: 'OpenAI', long: null } },
     });
     saveSettings(custom);
-    expect([...st.data.keys()]).toEqual([SETTINGS_STORAGE_KEY]);
-    expect(mergeSettings(JSON.parse(st.data.get(SETTINGS_STORAGE_KEY) as string))).toEqual(custom);
+    expect([...storage.data.keys()]).toEqual([SETTINGS_STORAGE_KEY]);
+    expect(mergeSettings(JSON.parse(storage.data.get(SETTINGS_STORAGE_KEY) as string))).toEqual(custom);
   });
 
   it('replaces the previous value instead of adding to it, and does not change what it saves', () => {
-    const st = fakeStorage();
-    vi.stubGlobal('localStorage', st);
+    const storage = fakeStorage();
+    vi.stubGlobal('localStorage', storage);
     const first = mergeSettings({ topN: 3 });
     const second = mergeSettings({ topN: 4 });
     const snapshot = structuredClone(second);
     saveSettings(first);
     saveSettings(second);
-    expect(st.data.size).toBe(1);
-    expect(JSON.parse(st.data.get(SETTINGS_STORAGE_KEY) as string).topN).toBe(4);
+    expect(storage.data.size).toBe(1);
+    expect(JSON.parse(storage.data.get(SETTINGS_STORAGE_KEY) as string).topN).toBe(4);
     expect(second).toEqual(snapshot);
   });
 
@@ -164,10 +164,10 @@ describe('plans and seat prices', () => {
     expect(seatPrice(1)).toBeCloseTo(0.01, 12);
     expect(seatPrice(0)).toBe(0);
     let prev = -1;
-    for (let q = 0; q <= 5000; q += 7) {
-      const p = seatPrice(q);
-      expect(p, `quota ${q}`).toBeGreaterThanOrEqual(prev);
-      prev = p;
+    for (let quota = 0; quota <= 5000; quota += 7) {
+      const price = seatPrice(quota);
+      expect(price, `quota ${quota}`).toBeGreaterThanOrEqual(prev);
+      prev = price;
     }
   });
 
@@ -180,7 +180,7 @@ describe('budgetOf', () => {
   it('is the amount for a positive budget and null for anything else', () => {
     expect(budgetOf({ budgetMonthlyBilled: 150 })).toBe(150);
     expect(budgetOf({ budgetMonthlyBilled: 0.01 })).toBe(0.01);
-    for (const v of [null, 0, -1, Number.NaN, -Infinity]) expect(budgetOf({ budgetMonthlyBilled: v }), String(v)).toBeNull();
+    for (const budget of [null, 0, -1, Number.NaN, -Infinity]) expect(budgetOf({ budgetMonthlyBilled: budget }), String(budget)).toBeNull();
   });
 });
 
@@ -219,15 +219,15 @@ describe('planCredits and seatCredits', () => {
 });
 
 describe('live price check', () => {
-  const asLive = (): LiveModel[] => PRICE_CARD.map((c) => structuredClone({ name: c.name, vendor: c.vendor, category: c.category, base: c.base, long: c.long, longThreshold: c.longThreshold }));
+  const asLive = (): LiveModel[] => PRICE_CARD.map((cardEntry) => structuredClone({ name: cardEntry.name, vendor: cardEntry.vendor, category: cardEntry.category, base: cardEntry.base, long: cardEntry.long, longThreshold: cardEntry.longThreshold }));
 
   afterEach(() => {
     vi.unstubAllGlobals();
   });
 
   it('finds no difference when the page matches the price card', () => {
-    const r = summarizeLive(asLive());
-    expect([r.changed, r.added, r.missing, r.warnings]).toEqual([0, 0, 0, 0]);
+    const check = summarizeLive(asLive());
+    expect([check.changed, check.added, check.missing, check.warnings]).toEqual([0, 0, 0, 0]);
   });
 
   it('counts changed, new and missing models', () => {
@@ -236,10 +236,10 @@ describe('live price check', () => {
     changed.base = { ...changed.base, output: changed.base.output * 2 };
     const dropped = live.pop()!;
     live.push({ name: 'Test Model X', vendor: 'OpenAI', category: 'Versatile', base: { input: 1, cachedInput: 0.1, cacheWrite: 0, output: 4 } });
-    const r = summarizeLive(live, 2);
-    expect([r.changed, r.added, r.missing, r.warnings]).toEqual([1, 1, 1, 2]);
-    expect(r.diffs[0]).toMatchObject({ name: changed.name, kind: 'changed', fields: ['output'] });
-    expect(r.diffs.find((d) => d.kind === 'missing')?.name).toBe(dropped.name);
+    const check = summarizeLive(live, 2);
+    expect([check.changed, check.added, check.missing, check.warnings]).toEqual([1, 1, 1, 2]);
+    expect(check.diffs[0]).toMatchObject({ name: changed.name, kind: 'changed', fields: ['output'] });
+    expect(check.diffs.find((difference) => difference.kind === 'missing')?.name).toBe(dropped.name);
   });
 
   it('saves prices only for report models whose live price differs, once', () => {
@@ -255,12 +255,12 @@ describe('live price check', () => {
   });
 
   it('reads a GitHub Docs page from a stubbed fetch', async () => {
-    const md = ['## OpenAI', '| Model | Category | Input | Cached input | Output |', '|---|---|---|---|---|', '| Test Model X | Versatile | $1 | $0.1 | $4 |'].join('\n');
-    vi.stubGlobal('fetch', vi.fn(async () => new Response(md, { status: 200 })));
-    const r = await checkLivePrices();
-    expect(r.added).toBe(1);
-    expect(r.missing).toBe(PRICE_CARD.length);
-    expect(r.live[0]).toMatchObject({ name: 'Test Model X', vendor: 'OpenAI', category: 'Versatile', base: { input: 1, cachedInput: 0.1, output: 4 } });
+    const markdown = ['## OpenAI', '| Model | Category | Input | Cached input | Output |', '|---|---|---|---|---|', '| Test Model X | Versatile | $1 | $0.1 | $4 |'].join('\n');
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(markdown, { status: 200 })));
+    const check = await checkLivePrices();
+    expect(check.added).toBe(1);
+    expect(check.missing).toBe(PRICE_CARD.length);
+    expect(check.live[0]).toMatchObject({ name: 'Test Model X', vendor: 'OpenAI', category: 'Versatile', base: { input: 1, cachedInput: 0.1, output: 4 } });
   });
 
   it('throws when GitHub Docs cannot be read', async () => {

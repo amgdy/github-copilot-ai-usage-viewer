@@ -40,10 +40,10 @@ const SPECS: RowSpec[] = [
   { date: '2026-05-15', org: 'acme', repo: 'acme/site', gross: 1 },
 ];
 
-const must = <T>(v: T | null | undefined): T => {
-  expect(v).toBeDefined();
-  expect(v).not.toBeNull();
-  return v as T;
+const must = <T>(value: T | null | undefined): T => {
+  expect(value).toBeDefined();
+  expect(value).not.toBeNull();
+  return value as T;
 };
 
 describe('organization: firstListed', () => {
@@ -64,25 +64,25 @@ describe('organization: firstListed', () => {
 });
 
 describe('organization: team groups and seats by organization', () => {
-  let pl: Pipeline;
+  let pipeline: Pipeline;
   beforeAll(async () => {
-    pl = await analyzeCsv(makeCsv(SPECS), { settings: { roster: ROSTER, rosterAsOf: AS_OF } });
+    pipeline = await analyzeCsv(makeCsv(SPECS), { settings: { roster: ROSTER, rosterAsOf: AS_OF } });
   });
 
   const teamGroups = (): Group[] => {
-    const { store, analysis } = pl;
+    const { store, analysis } = pipeline;
     const team = must(teamColumn(store, ROSTER, AS_OF));
     const trends = computeTrends(store, analysis.mask, analysis.range, team);
     return buildTeamGroups(store, analysis.mask, analysis.range, team, trends, analysis.agg.totals.gross);
   };
 
   it('has no team column without teams in the license list', () => {
-    expect(teamColumn(pl.store, [seat('alice'), seat('bob')], AS_OF)).toBeNull();
+    expect(teamColumn(pipeline.store, [seat('alice'), seat('bob')], AS_OF)).toBeNull();
   });
 
   it('groups usage by the first team of the seat, ignoring case', () => {
     const groups = teamGroups();
-    const byName = new Map(groups.filter((g) => !g.blank).map((g) => [g.name, g]));
+    const byName = new Map(groups.filter((group) => !group.blank).map((group) => [group.name, group]));
     expect([...byName.keys()]).toEqual(['Platform']);
     const platform = must(byName.get('Platform'));
     expect(platform.gross).toBeCloseTo(9, 9);
@@ -93,7 +93,7 @@ describe('organization: team groups and seats by organization', () => {
 
   it('keeps the people without a team apart', () => {
     const groups = teamGroups();
-    const blank = new Map(groups.filter((g) => g.blank).map((g) => [g.id, g]));
+    const blank = new Map(groups.filter((group) => group.blank).map((group) => [group.id, group]));
     expect([...blank.keys()].sort()).toEqual([TEAM_NO_USER, TEAM_NOT_LISTED, TEAM_NO_TEAM].sort());
     expect(must(blank.get(TEAM_NO_TEAM)).gross).toBeCloseTo(5, 9);
     expect(must(blank.get(TEAM_NO_TEAM)).filter.users).toEqual(['carol']);
@@ -101,33 +101,33 @@ describe('organization: team groups and seats by organization', () => {
     expect(must(blank.get(TEAM_NOT_LISTED)).filter.users).toEqual(['dave']);
     expect(must(blank.get(TEAM_NO_USER)).gross).toBeCloseTo(1, 9);
     expect(must(blank.get(TEAM_NO_USER)).users).toBe(0);
-    for (const g of blank.values()) expect(g.value).toBe('');
+    for (const group of blank.values()) expect(group.value).toBe('');
   });
 
   it('adds up to the whole view, largest usage first', () => {
     const groups = teamGroups();
-    const total = pl.analysis.agg.totals.gross;
-    expect(groups.reduce((a, g) => a + g.gross, 0)).toBeCloseTo(total, 9);
-    expect(groups.reduce((a, g) => a + g.share, 0)).toBeCloseTo(1, 9);
+    const total = pipeline.analysis.agg.totals.gross;
+    expect(groups.reduce((grossSum, group) => grossSum + group.gross, 0)).toBeCloseTo(total, 9);
+    expect(groups.reduce((shareSum, group) => shareSum + group.share, 0)).toBeCloseTo(1, 9);
     for (let i = 1; i < groups.length; i++) expect(groups[i - 1].gross).toBeGreaterThanOrEqual(groups[i].gross);
   });
 
   it('puts the groups without a value together in the summary', () => {
-    const s = summarize(teamGroups());
-    expect(s.named.map((g) => g.name)).toEqual(['Platform']);
-    expect(must(s.blank).gross).toBeCloseTo(13, 9);
-    expect(must(s.blank).share).toBeCloseTo(13 / 22, 9);
-    expect(must(s.largest).name).toBe('Platform');
+    const summary = summarize(teamGroups());
+    expect(summary.named.map((group) => group.name)).toEqual(['Platform']);
+    expect(must(summary.blank).gross).toBeCloseTo(13, 9);
+    expect(must(summary.blank).share).toBeCloseTo(13 / 22, 9);
+    expect(must(summary.largest).name).toBe('Platform');
   });
 
   const coverage = () =>
     must(
       seatCoverageByOrg({
-        users: pl.analysis.population,
-        population: pl.analysis.population,
+        users: pipeline.analysis.population,
+        population: pipeline.analysis.population,
         roster: ROSTER,
         rosterAsOf: AS_OF,
-        orgValues: pl.store.dicts.org.values,
+        orgValues: pipeline.store.dicts.org.values,
         perMonth: 1,
       }),
     );
@@ -135,19 +135,19 @@ describe('organization: team groups and seats by organization', () => {
   it('is null without a license list', () => {
     expect(
       seatCoverageByOrg({
-        users: pl.analysis.population,
-        population: pl.analysis.population,
+        users: pipeline.analysis.population,
+        population: pipeline.analysis.population,
         roster: [],
-        orgValues: pl.store.dicts.org.values,
+        orgValues: pipeline.store.dicts.org.values,
         perMonth: 1,
       }),
     ).toBeNull();
   });
 
   it('counts each seat in the first organization, else in the report organization', () => {
-    const c = coverage();
-    const rows = new Map(c.rows.map((r) => [r.key, r]));
-    expect(c.rows.map((r) => r.key)).toEqual(['gamma', 'acme', 'beta', '']);
+    const seatCoverage = coverage();
+    const rows = new Map(seatCoverage.rows.map((orgRow) => [orgRow.key, orgRow]));
+    expect(seatCoverage.rows.map((orgRow) => orgRow.key)).toEqual(['gamma', 'acme', 'beta', '']);
 
     const acme = must(rows.get('acme'));
     expect(acme).toMatchObject({ name: 'acme', value: 'acme', known: true, seats: 2, used: 2, unused: 0, noSeat: 0 });
@@ -165,18 +165,18 @@ describe('organization: team groups and seats by organization', () => {
     const unknown = must(rows.get(''));
     expect(unknown).toMatchObject({ known: false, value: null, seats: 1, used: 0, unused: 1 });
 
-    expect(c.multiOrg).toBe(1);
+    expect(seatCoverage.multiOrg).toBe(1);
   });
 
   it('reconciles with the Licenses page', () => {
-    const c = coverage();
-    const r = must(pl.analysis.licenses);
-    expect(c.totals.seats).toBe(r.seats);
-    expect(c.totals.used).toBe(r.matched);
-    expect(c.totals.noSeat).toBe(r.unmatched.length);
-    expect(c.totals.seatCost).toBeCloseTo(r.seatCost, 6);
-    expect(c.totals.seats).toBe(c.totals.used + c.totals.unused);
-    expect(c.totals.seats).toBe(5);
-    expect(c.totals.seatCost).toBe(4 * 19 + 39);
+    const seatCoverage = coverage();
+    const report = must(pipeline.analysis.licenses);
+    expect(seatCoverage.totals.seats).toBe(report.seats);
+    expect(seatCoverage.totals.used).toBe(report.matched);
+    expect(seatCoverage.totals.noSeat).toBe(report.unmatched.length);
+    expect(seatCoverage.totals.seatCost).toBeCloseTo(report.seatCost, 6);
+    expect(seatCoverage.totals.seats).toBe(seatCoverage.totals.used + seatCoverage.totals.unused);
+    expect(seatCoverage.totals.seats).toBe(5);
+    expect(seatCoverage.totals.seatCost).toBe(4 * 19 + 39);
   });
 });

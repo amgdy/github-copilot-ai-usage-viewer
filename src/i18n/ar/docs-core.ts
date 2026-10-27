@@ -1,7 +1,7 @@
 import type { Dict } from '../core';
 
 /** Arabic for the shared metric docs in `lib/metrics/docs/core.ts`: money, tokens and the Auto discount. */
-const ar: Dict = {
+const arabic: Dict = {
   // Money and credits
   'AI credit and dollar amounts': 'رصيد الذكاء الاصطناعي والمبالغ بالدولار',
   'GitHub meters GitHub Copilot usage in AI credits, and one credit is worth $0.01. The report already states every amount in dollars, and this app shows those dollars.':
@@ -272,4 +272,4 @@ const ar: Dict = {
     'بالقيم الافتراضية، المستخدم الذي 60% من استخدامه على Auto «يعتمد على Auto»، ومن نسبته 30% «مختلط»، ومن نسبته 5% «نماذج مباشرة».',
 };
 
-export default ar;
+export default arabic;

@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 import { createElement, type ReactElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeAll, describe, expect, it } from 'vitest';
@@ -47,7 +47,7 @@ import {
   type Pipeline,
   type RowSpec,
 } from './helpers';
-import { agreementCsv, longRow, sep, SEP_WEEKDAYS, spread, terra } from './scenarios';
+import { agreementCsv, longRow, septemberDate, SEP_WEEKDAYS, spread, terra } from './scenarios';
 
 const CASES = [
   'fixture A',
@@ -63,25 +63,25 @@ const CASES = [
 ] as const;
 type CaseName = (typeof CASES)[number];
 
-const P = {} as Record<CaseName, Pipeline>;
+const PIPELINES = {} as Record<CaseName, Pipeline>;
 let demoCsv = '';
 
 beforeAll(async () => {
-  P['fixture A'] = await analyzeFixtures([FIXTURE_A]);
-  P['fixture B'] = await analyzeFixtures([FIXTURE_B]);
-  P['A + B'] = await analyzeFixtures([FIXTURE_A, FIXTURE_B]);
+  PIPELINES['fixture A'] = await analyzeFixtures([FIXTURE_A]);
+  PIPELINES['fixture B'] = await analyzeFixtures([FIXTURE_B]);
+  PIPELINES['A + B'] = await analyzeFixtures([FIXTURE_A, FIXTURE_B]);
   const demo = await analyzeDemo();
   demoCsv = demo.demo.csv;
-  P.demo = demo;
+  PIPELINES.demo = demo;
   const { store } = demo;
-  P['demo last 20 days'] = pipelineOf(store, { filters: { dateFrom: store.maxDay - 19 } });
-  P['demo one model'] = pipelineOf(store, { filters: { models: ['GPT-6 Astra'] } });
-  P['demo one org'] = pipelineOf(store, { filters: { orgs: ['northwind-data'] } });
-  P['demo runaway segment'] = pipelineOf(store, { filters: { tiers: ['runaway'] } });
-  P['demo with roster and budget'] = pipelineOf(store, {
+  PIPELINES['demo last 20 days'] = pipelineOf(store, { filters: { dateFrom: store.maxDay - 19 } });
+  PIPELINES['demo one model'] = pipelineOf(store, { filters: { models: ['GPT-6 Astra'] } });
+  PIPELINES['demo one org'] = pipelineOf(store, { filters: { orgs: ['northwind-data'] } });
+  PIPELINES['demo runaway segment'] = pipelineOf(store, { filters: { tiers: ['runaway'] } });
+  PIPELINES['demo with roster and budget'] = pipelineOf(store, {
     settings: { budgetMonthlyBilled: 120, roster: [{ user: 'seat-without-usage', plan: 'Enterprise' }] },
   });
-  P['A with $100 budget'] = await analyzeFixtures([FIXTURE_A], { settings: { budgetMonthlyBilled: 100 } });
+  PIPELINES['A with $100 budget'] = await analyzeFixtures([FIXTURE_A], { settings: { budgetMonthlyBilled: 100 } });
 });
 
 const SEVERITIES = Object.keys(SEVERITY_ORDER) as Severity[];
@@ -105,219 +105,219 @@ const VALID_VALUES: Record<string, readonly string[]> = {
   attribution: ['all', 'attributed', 'unattributed'],
 };
 
-const ids = (a: Analysis): string[] => a.recs.map((r) => r.id);
-const rec = (a: Analysis, id: string): Recommendation => {
-  const r = a.recs.find((x) => x.id === id);
-  if (!r) throw new Error(`no "${id}" recommendation; got ${ids(a).join(', ')}`);
-  return r;
+const ids = (analysis: Analysis): string[] => analysis.recs.map((recommendation) => recommendation.id);
+const findRecommendation = (analysis: Analysis, id: string): Recommendation => {
+  const recommendation = analysis.recs.find((candidate) => candidate.id === id);
+  if (!recommendation) throw new Error(`no "${id}" recommendation; got ${ids(analysis).join(', ')}`);
+  return recommendation;
 };
-const usd0 = (x: number): string => `$${Math.round(x).toLocaleString('en-US')}`;
-const plural = (n: number, one: string): string => `${n} ${n === 1 ? one : `${one}s`}`;
+const formatUsd = (amount: number): string => `$${Math.round(amount).toLocaleString('en-US')}`;
+const plural = (count: number, one: string): string => `${count} ${count === 1 ? one : `${one}s`}`;
 
-const ctxOf = (p: Pipeline, over: Partial<RecContext> = {}): RecContext => {
-  const a = p.analysis;
+const ctxOf = (pipeline: Pipeline, over: Partial<RecContext> = {}): RecContext => {
+  const analysis = pipeline.analysis;
   return {
-    store: p.store,
-    models: p.models,
-    agg: a.agg,
-    mask: a.mask,
-    users: a.users,
-    pool: a.pool,
-    seats: a.seats,
-    levers: a.levers,
-    anomalies: a.anomalies,
-    trend: a.trend,
-    settings: p.settings,
-    narrowed: a.narrowed,
-    coverage: a.coverage,
-    auto: a.auto,
+    store: pipeline.store,
+    models: pipeline.models,
+    agg: analysis.agg,
+    mask: analysis.mask,
+    users: analysis.users,
+    pool: analysis.pool,
+    seats: analysis.seats,
+    levers: analysis.levers,
+    anomalies: analysis.anomalies,
+    trend: analysis.trend,
+    settings: pipeline.settings,
+    narrowed: analysis.narrowed,
+    coverage: analysis.coverage,
+    auto: analysis.auto,
     ...over,
   };
 };
 
 /** Expected title of the count-based recommendations, written without the library's pluralize/verb helpers. */
-const COUNT_TITLES: Record<string, (n: number) => string> = {
-  runaway: (n) => `${plural(n, 'user')} used at least 3× their included credits`,
-  lapsed: (n) => `${plural(n, 'user')} stopped using AI credits`,
-  'new-users': (n) => `${plural(n, 'new user')} started in the last 14 days`,
-  champions: (n) => `${plural(n, 'champion')} ${n === 1 ? 'uses' : 'use'} GitHub Copilot often and heavily`,
-  spiky: (n) => `${plural(n, 'user')} ${n === 1 ? 'concentrates' : 'concentrate'} their usage on a single day`,
-  'multi-org': (n) => `${plural(n, 'user')} ${n === 1 ? 'bills' : 'bill'} to more than one organization`,
-  'cost-center-coverage': (n) => `${plural(n, 'user')} ${n === 1 ? 'is' : 'are'} not assigned to a cost center`,
-  downgrade: (n) => `${plural(n, 'Enterprise user')} never needed more than the Business allotment`,
+const COUNT_TITLES: Record<string, (count: number) => string> = {
+  runaway: (count) => `${plural(count, 'user')} used at least 3× their included credits`,
+  lapsed: (count) => `${plural(count, 'user')} stopped using AI credits`,
+  'new-users': (count) => `${plural(count, 'new user')} started in the last 14 days`,
+  champions: (count) => `${plural(count, 'champion')} ${count === 1 ? 'uses' : 'use'} GitHub Copilot often and heavily`,
+  spiky: (count) => `${plural(count, 'user')} ${count === 1 ? 'concentrates' : 'concentrate'} their usage on a single day`,
+  'multi-org': (count) => `${plural(count, 'user')} ${count === 1 ? 'bills' : 'bill'} to more than one organization`,
+  'cost-center-coverage': (count) => `${plural(count, 'user')} ${count === 1 ? 'is' : 'are'} not assigned to a cost center`,
+  downgrade: (count) => `${plural(count, 'Enterprise user')} never needed more than the Business allotment`,
 };
 
 describe.each(CASES)('recommendation invariants: %s', (name) => {
-  const pipe = (): Pipeline => P[name];
-  const an = (): Analysis => P[name].analysis;
+  const pipe = (): Pipeline => PIPELINES[name];
+  const analysisOf = (): Analysis => PIPELINES[name].analysis;
 
   it('has unique ids and exactly one data-notes entry', () => {
-    const recs = an().recs;
-    expect(recs.length).toBeGreaterThan(0);
-    expect(new Set(recs.map((r) => r.id)).size).toBe(recs.length);
-    expect(recs.filter((r) => r.id === 'data-notes')).toHaveLength(1);
+    const recommendations = analysisOf().recs;
+    expect(recommendations.length).toBeGreaterThan(0);
+    expect(new Set(recommendations.map((recommendation) => recommendation.id)).size).toBe(recommendations.length);
+    expect(recommendations.filter((recommendation) => recommendation.id === 'data-notes')).toHaveLength(1);
   });
 
   it('every recommendation is complete and uses the allowed vocabularies', () => {
-    for (const r of an().recs) {
-      expect(r.id, 'id').toMatch(/^[a-z]+(-[a-z]+)*$/);
-      expect(r.title.trim(), `${r.id} title`).not.toBe('');
-      expect(r.summary.trim(), `${r.id} summary`).not.toBe('');
-      if (r.id !== 'data-notes') expect(r.actions.length, `${r.id} actions`).toBeGreaterThan(0);
-      for (const s of [...r.evidence, ...r.actions]) expect(s.trim(), `${r.id} line`).not.toBe('');
-      expect(SEVERITIES, `${r.id} severity`).toContain(r.severity);
-      expect(THEMES, `${r.id} theme`).toContain(r.theme);
-      expect(r.audience.length, `${r.id} audience`).toBeGreaterThan(0);
-      for (const au of r.audience) expect(AUDIENCES, `${r.id} audience`).toContain(au);
-      expect(CONFIDENCES, `${r.id} confidence`).toContain(r.confidence);
-      expect(typeof r.cashLowerBound, `${r.id} cashLowerBound`).toBe('boolean');
+    for (const recommendation of analysisOf().recs) {
+      expect(recommendation.id, 'id').toMatch(/^[a-z]+(-[a-z]+)*$/);
+      expect(recommendation.title.trim(), `${recommendation.id} title`).not.toBe('');
+      expect(recommendation.summary.trim(), `${recommendation.id} summary`).not.toBe('');
+      if (recommendation.id !== 'data-notes') expect(recommendation.actions.length, `${recommendation.id} actions`).toBeGreaterThan(0);
+      for (const line of [...recommendation.evidence, ...recommendation.actions]) expect(line.trim(), `${recommendation.id} line`).not.toBe('');
+      expect(SEVERITIES, `${recommendation.id} severity`).toContain(recommendation.severity);
+      expect(THEMES, `${recommendation.id} theme`).toContain(recommendation.theme);
+      expect(recommendation.audience.length, `${recommendation.id} audience`).toBeGreaterThan(0);
+      for (const audience of recommendation.audience) expect(AUDIENCES, `${recommendation.id} audience`).toContain(audience);
+      expect(CONFIDENCES, `${recommendation.id} confidence`).toContain(recommendation.confidence);
+      expect(typeof recommendation.cashLowerBound, `${recommendation.id} cashLowerBound`).toBe('boolean');
     }
   });
 
   it('impact and cash are finite and non-negative, and cash never exceeds impact', () => {
-    for (const r of an().recs) {
-      expect(Number.isFinite(r.impactUsd), `${r.id} impact`).toBe(true);
-      expect(Number.isFinite(r.cashUsd), `${r.id} cash`).toBe(true);
-      expect(r.impactUsd, `${r.id} impact`).toBeGreaterThanOrEqual(0);
-      expect(r.cashUsd, `${r.id} cash`).toBeGreaterThanOrEqual(0);
-      expect(r.cashUsd, `${r.id} cash vs impact`).toBeLessThanOrEqual(r.impactUsd + 1e-6);
-      expect(Number.isInteger(r.affectedCount) && r.affectedCount >= 0, `${r.id} affectedCount`).toBe(true);
+    for (const recommendation of analysisOf().recs) {
+      expect(Number.isFinite(recommendation.impactUsd), `${recommendation.id} impact`).toBe(true);
+      expect(Number.isFinite(recommendation.cashUsd), `${recommendation.id} cash`).toBe(true);
+      expect(recommendation.impactUsd, `${recommendation.id} impact`).toBeGreaterThanOrEqual(0);
+      expect(recommendation.cashUsd, `${recommendation.id} cash`).toBeGreaterThanOrEqual(0);
+      expect(recommendation.cashUsd, `${recommendation.id} cash vs impact`).toBeLessThanOrEqual(recommendation.impactUsd + 1e-6);
+      expect(Number.isInteger(recommendation.affectedCount) && recommendation.affectedCount >= 0, `${recommendation.id} affectedCount`).toBe(true);
     }
   });
 
   it('is sorted by monthly value, largest first, then by severity', () => {
-    const recs = an().recs;
-    for (let i = 1; i < recs.length; i++) {
-      const prev = recs[i - 1];
-      const next = recs[i];
+    const recommendations = analysisOf().recs;
+    for (let i = 1; i < recommendations.length; i++) {
+      const prev = recommendations[i - 1];
+      const next = recommendations[i];
       expect(recValue(prev), `${prev.id} before ${next.id}`).toBeGreaterThanOrEqual(recValue(next));
       if (recValue(prev) === recValue(next)) expect(SEVERITY_ORDER[prev.severity], `${prev.id} before ${next.id}`).toBeLessThanOrEqual(SEVERITY_ORDER[next.severity]);
     }
-    expect(sortRecs(recs, 'value').map((r) => r.id)).toEqual(recs.map((r) => r.id));
+    expect(sortRecs(recommendations, 'value').map((recommendation) => recommendation.id)).toEqual(recommendations.map((recommendation) => recommendation.id));
   });
 
   it('never shows NaN, undefined, Infinity or [object] to the user', () => {
-    for (const t of analysisTexts(an())) expect(t).not.toMatch(BAD_TEXT);
+    for (const text of analysisTexts(analysisOf())) expect(text).not.toMatch(BAD_TEXT);
   });
 
   it('has a headline that agrees with the severities', () => {
-    const a = an();
-    const sev = a.recs.map((r) => r.severity);
-    const urgent = sev.filter((s) => s === 'critical' || s === 'high').length;
-    const watch = sev.filter((s) => s === 'medium').length;
-    const net = a.agg.totals.net;
-    const h = a.headline;
+    const analysis = analysisOf();
+    const severities = analysis.recs.map((recommendation) => recommendation.severity);
+    const urgent = severities.filter((severity) => severity === 'critical' || severity === 'high').length;
+    const watch = severities.filter((severity) => severity === 'medium').length;
+    const net = analysis.agg.totals.net;
+    const headline = analysis.headline;
     if (urgent > 0) {
-      expect(h.status).toBe('action');
+      expect(headline.status).toBe('action');
       const actions = `${urgent} high-priority action${urgent === 1 ? '' : 's'}`;
-      expect(h.title).toBe(net > 0.005 ? `${usd0(net)} billed overage and ${actions}` : actions);
+      expect(headline.title).toBe(net > 0.005 ? `${formatUsd(net)} billed overage and ${actions}` : actions);
     } else if (watch > 0) {
-      expect(h.status).toBe('watch');
-      expect(h.title).toBe(`No urgent issues, ${watch} item${watch === 1 ? '' : 's'} worth a look`);
+      expect(headline.status).toBe('watch');
+      expect(headline.title).toBe(`No urgent issues, ${watch} item${watch === 1 ? '' : 's'} worth a look`);
     } else {
-      expect(h.status).toBe('healthy');
-      expect(h.title).toBe('Usage looks healthy');
+      expect(headline.status).toBe('healthy');
+      expect(headline.title).toBe('Usage looks healthy');
     }
-    const n = a.users.profiles.length;
-    const poolPart = !a.narrowed && !a.pool.capacityExceeded ? 'Pool utilization \\d+% · ' : '';
-    expect(h.detail).toMatch(new RegExp(`^${poolPart}Auto \\d+% of usage · ${n} active users?$`));
-    expect(h.detail.endsWith(n === 1 ? '1 active user' : `${n} active users`)).toBe(true);
+    const userCount = analysis.users.profiles.length;
+    const poolPart = !analysis.narrowed && !analysis.pool.capacityExceeded ? 'Pool utilization \\d+% · ' : '';
+    expect(headline.detail).toMatch(new RegExp(`^${poolPart}Auto \\d+% of usage · ${userCount} active users?$`));
+    expect(headline.detail.endsWith(userCount === 1 ? '1 active user' : `${userCount} active users`)).toBe(true);
   });
 
   it('lists affected users that exist in the analysed scope', () => {
-    const a = an();
-    for (const r of a.recs) {
-      expect(r.affected.length, `${r.id} affected`).toBeLessThanOrEqual(12);
-      expect(new Set(r.affected.map((x) => x.id)).size, `${r.id} affected ids`).toBe(r.affected.length);
-      for (const x of r.affected) {
-        const p = a.users.byId.get(x.id);
-        expect(p, `${r.id}: affected user ${x.name}`).toBeDefined();
-        expect(p!.name).toBe(x.name);
+    const analysis = analysisOf();
+    for (const recommendation of analysis.recs) {
+      expect(recommendation.affected.length, `${recommendation.id} affected`).toBeLessThanOrEqual(12);
+      expect(new Set(recommendation.affected.map((affectedUser) => affectedUser.id)).size, `${recommendation.id} affected ids`).toBe(recommendation.affected.length);
+      for (const affectedUser of recommendation.affected) {
+        const profile = analysis.users.byId.get(affectedUser.id);
+        expect(profile, `${recommendation.id}: affected user ${affectedUser.name}`).toBeDefined();
+        expect(profile!.name).toBe(affectedUser.name);
       }
     }
   });
 
   it('links only to official GitHub Copilot documentation', () => {
-    const known = new Set(Object.values(DOCS).map((d) => `${d.label}|${d.url}`));
-    for (const r of an().recs) {
-      for (const d of r.docs ?? []) {
-        expect(d.url, `${r.id} docs`).toMatch(/^https:\/\/docs\.github\.com\/en\/copilot\//);
-        expect(known.has(`${d.label}|${d.url}`), `${r.id}: ${d.label}`).toBe(true);
+    const known = new Set(Object.values(DOCS).map((link) => `${link.label}|${link.url}`));
+    for (const recommendation of analysisOf().recs) {
+      for (const link of recommendation.docs ?? []) {
+        expect(link.url, `${recommendation.id} docs`).toMatch(/^https:\/\/docs\.github\.com\/en\/copilot\//);
+        expect(known.has(`${link.label}|${link.url}`), `${recommendation.id}: ${link.label}`).toBe(true);
       }
     }
   });
 
   it('data-notes is informational, has no actions and carries the AI-credit disclaimer', () => {
-    const r = rec(an(), 'data-notes');
-    expect(r.severity).toBe('info');
-    expect(r.theme).toBe('data');
-    expect(r.actions).toEqual([]);
-    expect(r.evidence).toContain(DISCLAIMER);
-    expect(r.jump?.page).toBe('data');
+    const dataNotes = findRecommendation(analysisOf(), 'data-notes');
+    expect(dataNotes.severity).toBe('info');
+    expect(dataNotes.theme).toBe('data');
+    expect(dataNotes.actions).toEqual([]);
+    expect(dataNotes.evidence).toContain(DISCLAIMER);
+    expect(dataNotes.jump?.page).toBe('data');
   });
 
   it('jump targets are valid pages and valid filter patches', () => {
     const empty = emptyFilters() as unknown as Record<string, unknown>;
-    for (const r of an().recs) {
-      if (!r.jump) continue;
-      expect(PAGES, `${r.id} page`).toContain(r.jump.page);
-      expect(r.jump.label.trim(), `${r.id} jump label`).not.toBe('');
-      for (const [k, v] of Object.entries(r.jump.filters ?? {})) {
-        expect(Object.keys(empty), `${r.id}: unknown filter "${k}"`).toContain(k);
-        const base = empty[k];
-        const allowed = VALID_VALUES[k];
+    for (const recommendation of analysisOf().recs) {
+      if (!recommendation.jump) continue;
+      expect(PAGES, `${recommendation.id} page`).toContain(recommendation.jump.page);
+      expect(recommendation.jump.label.trim(), `${recommendation.id} jump label`).not.toBe('');
+      for (const [filterKey, filterValue] of Object.entries(recommendation.jump.filters ?? {})) {
+        expect(Object.keys(empty), `${recommendation.id}: unknown filter "${filterKey}"`).toContain(filterKey);
+        const base = empty[filterKey];
+        const allowed = VALID_VALUES[filterKey];
         if (Array.isArray(base)) {
-          expect(Array.isArray(v), `${r.id}.${k}`).toBe(true);
-          expect((v as unknown[]).length, `${r.id}.${k}`).toBeGreaterThan(0);
-          if (allowed) for (const x of v as string[]) expect(allowed, `${r.id}.${k}`).toContain(x);
+          expect(Array.isArray(filterValue), `${recommendation.id}.${filterKey}`).toBe(true);
+          expect((filterValue as unknown[]).length, `${recommendation.id}.${filterKey}`).toBeGreaterThan(0);
+          if (allowed) for (const option of filterValue as string[]) expect(allowed, `${recommendation.id}.${filterKey}`).toContain(option);
         } else if (base === null) {
-          expect(typeof v, `${r.id}.${k}`).toBe('number');
-          expect(Number.isFinite(v as number), `${r.id}.${k}`).toBe(true);
+          expect(typeof filterValue, `${recommendation.id}.${filterKey}`).toBe('number');
+          expect(Number.isFinite(filterValue as number), `${recommendation.id}.${filterKey}`).toBe(true);
         } else {
-          expect(typeof v, `${r.id}.${k}`).toBe(typeof base);
-          if (allowed) expect(allowed, `${r.id}.${k}`).toContain(v as string);
+          expect(typeof filterValue, `${recommendation.id}.${filterKey}`).toBe(typeof base);
+          if (allowed) expect(allowed, `${recommendation.id}.${filterKey}`).toContain(filterValue as string);
         }
       }
     }
   });
 
   it('every jump filter patch can be analysed and still finds rows', () => {
-    for (const r of an().recs) {
-      if (!r.jump?.filters) continue;
-      const res = pipe().run({ ...emptyFilters(), ...r.jump.filters });
-      expect(res.agg.totals.rows, `${r.id}: "${r.jump.label}" finds nothing`).toBeGreaterThan(0);
+    for (const recommendation of analysisOf().recs) {
+      if (!recommendation.jump?.filters) continue;
+      const filteredAnalysis = pipe().run({ ...emptyFilters(), ...recommendation.jump.filters });
+      expect(filteredAnalysis.agg.totals.rows, `${recommendation.id}: "${recommendation.jump.label}" finds nothing`).toBeGreaterThan(0);
     }
   });
 
   it('count-based titles agree with the number of users and use the right verb form', () => {
-    for (const r of an().recs) {
-      const expected = COUNT_TITLES[r.id];
-      if (expected) expect(r.title, r.id).toBe(expected(r.affectedCount));
+    for (const recommendation of analysisOf().recs) {
+      const expected = COUNT_TITLES[recommendation.id];
+      if (expected) expect(recommendation.title, recommendation.id).toBe(expected(recommendation.affectedCount));
     }
   });
 
   it('can be rebuilt from the analysis context and is deterministic', () => {
-    const p = pipe();
-    const a = an();
-    const recs = buildRecommendations(ctxOf(p));
-    expect(recs).toEqual(a.recs);
-    expect(buildHeadline(ctxOf(p), recs)).toEqual(a.headline);
-    expect(p.run().recs).toEqual(a.recs);
+    const pipeline = pipe();
+    const analysis = analysisOf();
+    const recommendations = buildRecommendations(ctxOf(pipeline));
+    expect(recommendations).toEqual(analysis.recs);
+    expect(buildHeadline(ctxOf(pipeline), recommendations)).toEqual(analysis.headline);
+    expect(pipeline.run().recs).toEqual(analysis.recs);
   });
 
   it('marks cash as a lower bound exactly when the scope is narrowed or has no pool months', () => {
-    const a = an();
-    const poolWhole = !a.narrowed && monthInputs(a.pool).length > 0;
-    for (const r of a.recs) expect(r.cashLowerBound, r.id).toBe(!poolWhole);
+    const analysis = analysisOf();
+    const poolWhole = !analysis.narrowed && monthInputs(analysis.pool).length > 0;
+    for (const recommendation of analysis.recs) expect(recommendation.cashLowerBound, recommendation.id).toBe(!poolWhole);
   });
 });
 
 describe('pool-used fixture: a drained pool and one runaway user', () => {
-  const a = (): Analysis => P['fixture A'].analysis;
+  const analysis = (): Analysis => PIPELINES['fixture A'].analysis;
 
   it('contains the rules that apply and none that do not', () => {
-    const sev = Object.fromEntries(a().recs.map((r) => [r.id, r.severity]));
-    expect(sev).toMatchObject({
+    const severityById = Object.fromEntries(analysis().recs.map((recommendation) => [recommendation.id, recommendation.severity]));
+    expect(severityById).toMatchObject({
       overage: 'high',
       'pool-exhaustion': 'high',
       runaway: 'high',
@@ -326,81 +326,81 @@ describe('pool-used fixture: a drained pool and one runaway user', () => {
       'data-notes': 'info',
     });
     for (const id of ['trend-up', 'trend-down', 'pool-underuse', 'idle-seats', 'downgrade', 'healthy', 'budgets', 'unattributed', 'multi-org']) {
-      expect(ids(a()), id).not.toContain(id);
+      expect(ids(analysis()), id).not.toContain(id);
     }
   });
 
   it('describes the billed overage from independent numbers', () => {
     const rows = naiveRows(readFixture(FIXTURE_A));
-    const col = (name: string, who?: string): number => sum(rows.filter((x) => !who || x.username === who).map((x) => numOf(x, name)));
-    const [gross, covered, billed] = [col('gross_amount'), col('discount_amount'), col('net_amount')];
-    const r = rec(a(), 'overage');
-    expect(r.title).toBe(`${usd0(billed)} was billed beyond included credits`);
-    expect(r.summary).toMatch(new RegExp(`^${Math.round((100 * billed) / gross)}% of usage was billed as overage`));
-    expect(r.evidence[0]).toBe(`Usage ${usd0(gross)}: ${usd0(covered)} covered by the pool, ${usd0(billed)} billed.`);
-    expect(r.evidence[1]).toBe(`alex-dev: ${usd0(col('net_amount', 'alex-dev'))} billed (100% of all overage), ${Math.round((100 * col('gross_amount', 'alex-dev')) / 39)}% of their own allotment.`);
-    expect(r.impactUsd).toBe(0);
-    expect(r.cashUsd).toBe(0);
+    const columnTotal = (name: string, who?: string): number => sum(rows.filter((row) => !who || row.username === who).map((row) => numOf(row, name)));
+    const [gross, covered, billed] = [columnTotal('gross_amount'), columnTotal('discount_amount'), columnTotal('net_amount')];
+    const overage = findRecommendation(analysis(), 'overage');
+    expect(overage.title).toBe(`${formatUsd(billed)} was billed beyond included credits`);
+    expect(overage.summary).toMatch(new RegExp(`^${Math.round((100 * billed) / gross)}% of usage was billed as overage`));
+    expect(overage.evidence[0]).toBe(`Usage ${formatUsd(gross)}: ${formatUsd(covered)} covered by the pool, ${formatUsd(billed)} billed.`);
+    expect(overage.evidence[1]).toBe(`alex-dev: ${formatUsd(columnTotal('net_amount', 'alex-dev'))} billed (100% of all overage), ${Math.round((100 * columnTotal('gross_amount', 'alex-dev')) / 39)}% of their own allotment.`);
+    expect(overage.impactUsd).toBe(0);
+    expect(overage.cashUsd).toBe(0);
   });
 
   it('counts the users with a billed amount from the raw CSV, largest first', () => {
     const rows = naiveRows(readFixture(FIXTURE_A));
-    const billed = [...groupSum(rows, (r) => r.username, (r) => numOf(r, 'net_amount')).entries()].filter(([, v]) => v > 0).sort((x, y) => y[1] - x[1]);
-    const r = rec(a(), 'overage');
-    expect(r.affectedCount).toBe(billed.length);
-    expect(r.affected.map((x) => x.name)).toEqual(billed.map(([u]) => u));
+    const billed = [...groupSum(rows, (row) => row.username, (row) => numOf(row, 'net_amount')).entries()].filter(([, netAmount]) => netAmount > 0).sort((first, second) => second[1] - first[1]);
+    const overage = findRecommendation(analysis(), 'overage');
+    expect(overage.affectedCount).toBe(billed.length);
+    expect(overage.affected.map((affectedUser) => affectedUser.name)).toEqual(billed.map(([username]) => username));
   });
 
   it('dates the pool exhaustion and projects the overage with an ordered range', () => {
-    const r = rec(a(), 'pool-exhaustion');
-    expect(r.title).toBe('The shared pool runs out before month end');
-    expect(r.evidence).toContain('Oct 2026: pool used up on Oct 3 (day 3 of 31).');
-    const line = r.evidence.find((l) => l.includes('projected billed overage'))!;
-    const m = /^Oct 2026: projected billed overage \$([\d,]+) \(range \$([\d,]+) to \$([\d,]+)\)\.$/.exec(line);
-    expect(m, line).not.toBeNull();
-    const [mid, lo, hi] = [m![1], m![2], m![3]].map((s) => Number(s.replace(/,/g, '')));
+    const poolExhaustion = findRecommendation(analysis(), 'pool-exhaustion');
+    expect(poolExhaustion.title).toBe('The shared pool runs out before month end');
+    expect(poolExhaustion.evidence).toContain('Oct 2026: pool used up on Oct 3 (day 3 of 31).');
+    const line = poolExhaustion.evidence.find((evidenceLine) => evidenceLine.includes('projected billed overage'))!;
+    const match = /^Oct 2026: projected billed overage \$([\d,]+) \(range \$([\d,]+) to \$([\d,]+)\)\.$/.exec(line);
+    expect(match, line).not.toBeNull();
+    const [mid, low, high] = [match![1], match![2], match![3]].map((amountText) => Number(amountText.replace(/,/g, '')));
     expect(mid).toBe(158);
-    expect(lo).toBeLessThanOrEqual(mid);
-    expect(hi).toBeGreaterThanOrEqual(mid);
-    expect(r.impactUsd).toBe(0);
+    expect(low).toBeLessThanOrEqual(mid);
+    expect(high).toBeGreaterThanOrEqual(mid);
+    expect(poolExhaustion.impactUsd).toBe(0);
   });
 
   it('flags the runaway user and the new user', () => {
-    const run = rec(a(), 'runaway');
+    const run = findRecommendation(analysis(), 'runaway');
     expect(run.title).toBe('1 user used at least 3× their included credits');
-    expect(run.affected.map((x) => x.name)).toEqual(['alex-dev']);
+    expect(run.affected.map((affectedUser) => affectedUser.name)).toEqual(['alex-dev']);
     expect(run.cashUsd).toBeGreaterThan(0);
-    const fresh = rec(a(), 'new-users');
+    const fresh = findRecommendation(analysis(), 'new-users');
     expect(fresh.title).toBe('1 new user started in the last 14 days');
-    expect(fresh.affected.map((x) => x.name)).toEqual(['sam-lee']);
+    expect(fresh.affected.map((affectedUser) => affectedUser.name)).toEqual(['sam-lee']);
   });
 
   it('puts the powerful-model share and the headline in plain numbers', () => {
-    const t = a().agg.totals;
-    const share = t.tierGross[CATEGORIES.indexOf('Powerful')] / t.gross;
-    expect(rec(a(), 'model-rightsizing').title).toBe(`${Math.round(share * 100)}% of usage runs on Powerful models`);
-    expect(a().headline).toMatchObject({ status: 'action', title: '$93 billed overage and 3 high-priority actions' });
-    expect(a().headline.detail).toMatch(/^Pool utilization 100% · Auto \d+% of usage · 2 active users$/);
+    const totals = analysis().agg.totals;
+    const share = totals.tierGross[CATEGORIES.indexOf('Powerful')] / totals.gross;
+    expect(findRecommendation(analysis(), 'model-rightsizing').title).toBe(`${Math.round(share * 100)}% of usage runs on Powerful models`);
+    expect(analysis().headline).toMatchObject({ status: 'action', title: '$93 billed overage and 3 high-priority actions' });
+    expect(analysis().headline.detail).toMatch(/^Pool utilization 100% · Auto \d+% of usage · 2 active users$/);
   });
 
   it('notes that the included credits are a lower bound', () => {
-    expect(rec(a(), 'data-notes').evidence[0]).toMatch(/^The current estimate only includes users in this report\./);
+    expect(findRecommendation(analysis(), 'data-notes').evidence[0]).toMatch(/^The current estimate only includes users in this report\./);
   });
 });
 
 describe('partial-export fixture: everything covered by a pool larger than the visible seat', () => {
-  const a = (): Analysis => P['fixture B'].analysis;
+  const analysis = (): Analysis => PIPELINES['fixture B'].analysis;
 
   it('has an unknown pool size and therefore no pool statements', () => {
-    expect(a().pool.capacityExceeded).toBe(true);
-    expect(a().pool.utilization).toBeNaN();
-    for (const id of [...POOL_RECS, 'overage', 'budgets', 'trend-up']) expect(ids(a()), id).not.toContain(id);
-    for (const t of analysisTexts(a())) expect(t).not.toMatch(/Pool utilization|NaN|undefined|Infinity/);
+    expect(analysis().pool.capacityExceeded).toBe(true);
+    expect(analysis().pool.utilization).toBeNaN();
+    for (const id of [...POOL_RECS, 'overage', 'budgets', 'trend-up']) expect(ids(analysis()), id).not.toContain(id);
+    for (const text of analysisTexts(analysis())) expect(text).not.toMatch(/Pool utilization|NaN|undefined|Infinity/);
   });
 
   it('recommends the efficiency rules that apply', () => {
-    const sev = Object.fromEntries(a().recs.map((r) => [r.id, r.severity]));
-    expect(sev).toMatchObject({
+    const severityById = Object.fromEntries(analysis().recs.map((recommendation) => [recommendation.id, recommendation.severity]));
+    expect(severityById).toMatchObject({
       runaway: 'medium',
       'model-rightsizing': 'medium',
       'auto-adoption': 'medium',
@@ -414,53 +414,53 @@ describe('partial-export fixture: everything covered by a pool larger than the v
   });
 
   it('values every saving at zero cash, because nothing is billed', () => {
-    for (const r of a().recs) expect(r.cashUsd, r.id).toBeLessThan(0.01);
-    expect(a().agg.totals.net).toBe(0);
+    for (const recommendation of analysis().recs) expect(recommendation.cashUsd, recommendation.id).toBeLessThan(0.01);
+    expect(analysis().agg.totals.net).toBe(0);
   });
 
   it('quotes the long-context surcharge, the Auto share and the spikes', () => {
-    const t = a().agg.totals;
-    expect(rec(a(), 'long-context').title).toBe(`Long-context surcharges cost at least ${usd0(t.longPremium)}`);
-    expect(rec(a(), 'long-context').evidence[0]).toBe('4 requests were billed at the long-context rate.');
-    expect(rec(a(), 'long-context').evidence[1]).toMatch(/^Mostly on GPT-6 Astra \(\$123\)/);
-    expect(rec(a(), 'auto-adoption').title).toBe('Only 0% of usage goes through Auto model selection');
-    expect(rec(a(), 'anomalies').title).toBe('3 days with unusually high usage');
-    expect(rec(a(), 'anomalies').summary).toBe('The biggest, Oct 16, 2026, reached 25× a typical day.');
-    expect(rec(a(), 'trend-down').title).toBe('Usage dropped 54% week over week');
+    const totals = analysis().agg.totals;
+    expect(findRecommendation(analysis(), 'long-context').title).toBe(`Long-context surcharges cost at least ${formatUsd(totals.longPremium)}`);
+    expect(findRecommendation(analysis(), 'long-context').evidence[0]).toBe('4 requests were billed at the long-context rate.');
+    expect(findRecommendation(analysis(), 'long-context').evidence[1]).toMatch(/^Mostly on GPT-6 Astra \(\$123\)/);
+    expect(findRecommendation(analysis(), 'auto-adoption').title).toBe('Only 0% of usage goes through Auto model selection');
+    expect(findRecommendation(analysis(), 'anomalies').title).toBe('3 days with unusually high usage');
+    expect(findRecommendation(analysis(), 'anomalies').summary).toBe('The biggest, Oct 16, 2026, reached 25× a typical day.');
+    expect(findRecommendation(analysis(), 'trend-down').title).toBe('Usage dropped 54% week over week');
   });
 
   it('has a watch headline without a pool part, and explains why the pool is hidden', () => {
-    const covered = sum(naiveRows(readFixture(FIXTURE_B)).map((r) => numOf(r, 'discount_amount')));
-    expect(a().headline).toEqual({ status: 'watch', title: 'No urgent issues, 5 items worth a look', detail: 'Auto 0% of usage · 1 active user' });
-    expect(rec(a(), 'data-notes').evidence[0]).toMatch(new RegExp(`^The pool covered \\${usd0(covered)}, more than the \\$39 that the seats in this file fund\\.`));
+    const covered = sum(naiveRows(readFixture(FIXTURE_B)).map((row) => numOf(row, 'discount_amount')));
+    expect(analysis().headline).toEqual({ status: 'watch', title: 'No urgent issues, 5 items worth a look', detail: 'Auto 0% of usage · 1 active user' });
+    expect(findRecommendation(analysis(), 'data-notes').evidence[0]).toMatch(new RegExp(`^The pool covered \\${formatUsd(covered)}, more than the \\$39 that the seats in this file fund\\.`));
   });
 });
 
 describe('both fixtures (two billing entities in one scope)', () => {
-  const a = (): Analysis => P['A + B'].analysis;
+  const analysis = (): Analysis => PIPELINES['A + B'].analysis;
 
   it('reports the real billed overage and hides the pool size', () => {
     const rows = [...naiveRows(readFixture(FIXTURE_A)), ...naiveRows(readFixture(FIXTURE_B))];
-    const billed = sum(rows.map((r) => numOf(r, 'net_amount')));
-    const covered = sum(rows.map((r) => numOf(r, 'discount_amount')));
-    expect(a().pool.capacityExceeded).toBe(true);
-    expect(rec(a(), 'overage').title).toBe(`${usd0(billed)} was billed beyond included credits`);
-    expect(rec(a(), 'overage').severity).toBe('medium');
-    for (const id of ['pool-underuse', 'idle-seats', 'downgrade', 'healthy']) expect(ids(a()), id).not.toContain(id);
-    expect(a().headline.detail).not.toMatch(/Pool utilization/);
-    expect(rec(a(), 'data-notes').evidence[0]).toMatch(new RegExp(`^The pool covered \\${usd0(covered)}, more than the \\$97 that the seats in this file fund\\.`));
+    const billed = sum(rows.map((row) => numOf(row, 'net_amount')));
+    const covered = sum(rows.map((row) => numOf(row, 'discount_amount')));
+    expect(analysis().pool.capacityExceeded).toBe(true);
+    expect(findRecommendation(analysis(), 'overage').title).toBe(`${formatUsd(billed)} was billed beyond included credits`);
+    expect(findRecommendation(analysis(), 'overage').severity).toBe('medium');
+    for (const id of ['pool-underuse', 'idle-seats', 'downgrade', 'healthy']) expect(ids(analysis()), id).not.toContain(id);
+    expect(analysis().headline.detail).not.toMatch(/Pool utilization/);
+    expect(findRecommendation(analysis(), 'data-notes').evidence[0]).toMatch(new RegExp(`^The pool covered \\${formatUsd(covered)}, more than the \\$97 that the seats in this file fund\\.`));
   });
 
   it('still recommends what does not depend on the pool size', () => {
-    expect(ids(a())).toEqual(expect.arrayContaining(['runaway', 'model-rightsizing', 'long-context', 'anomalies', 'group-balance']));
+    expect(ids(analysis())).toEqual(expect.arrayContaining(['runaway', 'model-rightsizing', 'long-context', 'anomalies', 'group-balance']));
   });
 });
 
 describe('demo dataset: the designed story', () => {
-  const a = (): Analysis => P.demo.analysis;
+  const analysis = (): Analysis => PIPELINES.demo.analysis;
 
   it('contains every rule the demo is built to show', () => {
-    expect(ids(a())).toEqual(
+    expect(ids(analysis())).toEqual(
       expect.arrayContaining([
         'runaway',
         'overage',
@@ -483,12 +483,12 @@ describe('demo dataset: the designed story', () => {
         'data-notes',
       ]),
     );
-    for (const id of ['healthy', 'pool-underuse', 'unattributed', 'trend-up']) expect(ids(a()), id).not.toContain(id);
+    for (const id of ['healthy', 'pool-underuse', 'unattributed', 'trend-up']) expect(ids(analysis()), id).not.toContain(id);
   });
 
   it('assigns the expected severities', () => {
-    const sev = Object.fromEntries(a().recs.map((r) => [r.id, r.severity]));
-    expect(sev).toMatchObject({
+    const severityById = Object.fromEntries(analysis().recs.map((recommendation) => [recommendation.id, recommendation.severity]));
+    expect(severityById).toMatchObject({
       runaway: 'high',
       overage: 'high',
       'pool-exhaustion': 'high',
@@ -502,72 +502,72 @@ describe('demo dataset: the designed story', () => {
       'new-users': 'positive',
       champions: 'positive',
     });
-    expect(a().headline).toMatchObject({ status: 'action', title: '$123 billed overage and 4 high-priority actions' });
+    expect(analysis().headline).toMatchObject({ status: 'action', title: '$123 billed overage and 4 high-priority actions' });
   });
 
   it('counts the cost-center gap from the raw CSV', () => {
     const centers = new Map<string, Set<string>>();
-    for (const r of naiveRows(demoCsv)) {
-      if (!r.username) continue;
-      const set = centers.get(r.username) ?? new Set<string>();
-      set.add(r.cost_center_name);
-      centers.set(r.username, set);
+    for (const row of naiveRows(demoCsv)) {
+      if (!row.username) continue;
+      const set = centers.get(row.username) ?? new Set<string>();
+      set.add(row.cost_center_name);
+      centers.set(row.username, set);
     }
-    const without = [...centers.values()].filter((s) => [...s].every((c) => c === '')).length;
+    const without = [...centers.values()].filter((costCenters) => [...costCenters].every((costCenter) => costCenter === '')).length;
     expect(without).toBeGreaterThan(0);
-    expect(rec(a(), 'cost-center-coverage').affectedCount).toBe(without);
+    expect(findRecommendation(analysis(), 'cost-center-coverage').affectedCount).toBe(without);
   });
 
   it('derives the Auto share from the raw CSV', () => {
     const rows = naiveRows(demoCsv);
-    const gross = sum(rows.map((r) => numOf(r, 'gross_amount')));
-    const auto = sum(rows.filter(isAutoRow).map((r) => numOf(r, 'gross_amount')));
-    expect(rec(a(), 'auto-adoption').title).toBe(`Only ${Math.round((auto / gross) * 100)}% of usage goes through Auto model selection`);
+    const gross = sum(rows.map((row) => numOf(row, 'gross_amount')));
+    const auto = sum(rows.filter(isAutoRow).map((row) => numOf(row, 'gross_amount')));
+    expect(findRecommendation(analysis(), 'auto-adoption').title).toBe(`Only ${Math.round((auto / gross) * 100)}% of usage goes through Auto model selection`);
   });
 
   it('values the usage savings with the pool-covers-first rule', () => {
-    const months = monthInputs(a().pool);
-    const avgGross = sum(months.map((m) => m.gross)) / months.length;
-    const gross = a().agg.totals.gross;
-    const fraction = (id: string): number => Math.min(1, a().levers.steps.find((s) => s.id === id)!.savings / gross);
+    const months = monthInputs(analysis().pool);
+    const avgGross = sum(months.map((month) => month.gross)) / months.length;
+    const gross = analysis().agg.totals.gross;
+    const fraction = (id: string): number => Math.min(1, analysis().levers.steps.find((step) => step.id === id)!.savings / gross);
     for (const [recId, lever] of [
       ['runaway', 'capRunaway'],
       ['model-rightsizing', 'modelShift'],
       ['auto-adoption', 'autoAdoption'],
     ] as const) {
-      const r = rec(a(), recId);
-      expect(r.impactUsd, `${recId} impact`).toBeCloseTo(avgGross * fraction(lever), 6);
-      expect(r.cashUsd, `${recId} cash`).toBeCloseTo(cashSaving(months, fraction(lever), 0) / months.length, 6);
-      expect(r.cashLowerBound).toBe(false);
+      const recommendation = findRecommendation(analysis(), recId);
+      expect(recommendation.impactUsd, `${recId} impact`).toBeCloseTo(avgGross * fraction(lever), 6);
+      expect(recommendation.cashUsd, `${recId} cash`).toBeCloseTo(cashSaving(months, fraction(lever), 0) / months.length, 6);
+      expect(recommendation.cashLowerBound).toBe(false);
     }
   });
 
   it('values the seat actions with the slack of the pool', () => {
-    const months = monthInputs(a().pool);
-    const idle = rec(a(), 'idle-seats');
-    const seats = a().seats;
+    const months = monthInputs(analysis().pool);
+    const idle = findRecommendation(analysis(), 'idle-seats');
+    const seats = analysis().seats;
     expect(idle.impactUsd).toBeCloseTo(seats.idleValue + seats.unusedValue, 9);
     expect(idle.cashUsd).toBeCloseTo(cashSaving(months, 0, seats.idleValue + seats.unusedValue) / months.length, 6);
     expect(idle.affectedCount).toBe(seats.idle.length + seats.unused.length);
-    const down = rec(a(), 'downgrade');
+    const down = findRecommendation(analysis(), 'downgrade');
     expect(down.title).toBe('6 Enterprise users never needed more than the Business allotment');
     expect(down.impactUsd).toBeCloseTo(seats.downgrade.length * 20, 9);
     expect(down.cashUsd).toBeCloseTo(cashSaving(months, 0, seats.downgradeValue) / months.length, 6);
   });
 
   it('chooses the idle-seats title from how much cash the removal frees', () => {
-    const idle = rec(a(), 'idle-seats');
+    const idle = findRecommendation(analysis(), 'idle-seats');
     expect(idle.cashUsd).toBeLessThan(0.5);
     expect(idle.title).toBe('5 idle seats currently fund the pool for heavier users');
   });
 
   it('flags the budget gap only while no budget is configured', () => {
-    expect(rec(a(), 'budgets').jump?.page).toBe('settings');
-    expect(ids(P['demo with roster and budget'].analysis)).not.toContain('budgets');
+    expect(findRecommendation(analysis(), 'budgets').jump?.page).toBe('settings');
+    expect(ids(PIPELINES['demo with roster and budget'].analysis)).not.toContain('budgets');
   });
 
   it('treats a budget of zero like no budget, in the pool and in the recommendations', () => {
-    const store = P.demo.store;
+    const store = PIPELINES.demo.store;
     const zero = pipelineOf(store, { settings: { budgetMonthlyBilled: 0 } }).analysis;
     expect(zero.pool.budget).toBeNull();
     expect(ids(zero)).toContain('budgets');
@@ -578,71 +578,71 @@ describe('demo dataset: the designed story', () => {
 
   it('sends each count-based recommendation to a link that selects exactly those users', () => {
     const pick = (id: string): number => {
-      const r = rec(a(), id);
-      const res = P.demo.run({ ...emptyFilters(), ...r.jump!.filters });
-      expect(res.segmentFiltered, id).toBe(true);
-      return res.users.profiles.length;
+      const recommendation = findRecommendation(analysis(), id);
+      const filteredAnalysis = PIPELINES.demo.run({ ...emptyFilters(), ...recommendation.jump!.filters });
+      expect(filteredAnalysis.segmentFiltered, id).toBe(true);
+      return filteredAnalysis.users.profiles.length;
     };
-    expect(pick('runaway')).toBe(rec(a(), 'runaway').affectedCount);
-    expect(pick('lapsed')).toBe(rec(a(), 'lapsed').affectedCount);
-    expect(pick('new-users')).toBe(rec(a(), 'new-users').affectedCount);
-    expect(pick('champions')).toBe(rec(a(), 'champions').affectedCount);
-    expect(pick('spiky')).toBe(rec(a(), 'spiky').affectedCount);
-    expect(pick('cost-center-coverage')).toBe(rec(a(), 'cost-center-coverage').affectedCount);
+    expect(pick('runaway')).toBe(findRecommendation(analysis(), 'runaway').affectedCount);
+    expect(pick('lapsed')).toBe(findRecommendation(analysis(), 'lapsed').affectedCount);
+    expect(pick('new-users')).toBe(findRecommendation(analysis(), 'new-users').affectedCount);
+    expect(pick('champions')).toBe(findRecommendation(analysis(), 'champions').affectedCount);
+    expect(pick('spiky')).toBe(findRecommendation(analysis(), 'spiky').affectedCount);
+    expect(pick('cost-center-coverage')).toBe(findRecommendation(analysis(), 'cost-center-coverage').affectedCount);
   });
 
   it('lets the idle-seats link select exactly the idle seats', () => {
-    const r = rec(a(), 'idle-seats');
-    const res = P.demo.run({ ...emptyFilters(), ...r.jump!.filters });
-    expect(res.users.profiles.map((p) => p.id).sort()).toEqual(a().seats.idle.map((s) => s.id).sort());
+    const idleSeats = findRecommendation(analysis(), 'idle-seats');
+    const filteredAnalysis = PIPELINES.demo.run({ ...emptyFilters(), ...idleSeats.jump!.filters });
+    expect(filteredAnalysis.users.profiles.map((profile) => profile.id).sort()).toEqual(analysis().seats.idle.map((seat) => seat.id).sort());
   });
 
   it('lets the other links reproduce the numbers in the recommendation', () => {
-    const t = a().agg.totals;
-    const manual = P.demo.run({ ...emptyFilters(), ...rec(a(), 'auto-adoption').jump!.filters });
-    expect(manual.agg.totals.gross).toBeCloseTo(t.gross - t.autoGross, 6);
-    const powerful = P.demo.run({ ...emptyFilters(), ...rec(a(), 'model-rightsizing').jump!.filters });
-    expect(powerful.agg.totals.gross).toBeCloseTo(t.tierGross[CATEGORIES.indexOf('Powerful')], 6);
-    const day = P.demo.run({ ...emptyFilters(), ...rec(a(), 'anomalies').jump!.filters });
-    expect(day.agg.totals.gross).toBeCloseTo(a().anomalies[0].gross, 6);
+    const totals = analysis().agg.totals;
+    const manual = PIPELINES.demo.run({ ...emptyFilters(), ...findRecommendation(analysis(), 'auto-adoption').jump!.filters });
+    expect(manual.agg.totals.gross).toBeCloseTo(totals.gross - totals.autoGross, 6);
+    const powerful = PIPELINES.demo.run({ ...emptyFilters(), ...findRecommendation(analysis(), 'model-rightsizing').jump!.filters });
+    expect(powerful.agg.totals.gross).toBeCloseTo(totals.tierGross[CATEGORIES.indexOf('Powerful')], 6);
+    const day = PIPELINES.demo.run({ ...emptyFilters(), ...findRecommendation(analysis(), 'anomalies').jump!.filters });
+    expect(day.agg.totals.gross).toBeCloseTo(analysis().anomalies[0].gross, 6);
   });
 });
 
 describe('budget handling', () => {
   it('escalates the overage and the pool exhaustion when the projected bill breaks the budget', () => {
-    const a = P['A with $100 budget'].analysis;
-    expect(rec(a, 'overage').severity).toBe('critical');
-    expect(rec(a, 'pool-exhaustion').severity).toBe('critical');
-    expect(ids(a)).not.toContain('budgets');
-    const line = rec(a, 'pool-exhaustion').evidence.find((l) => l.startsWith('Budget'))!;
+    const analysis = PIPELINES['A with $100 budget'].analysis;
+    expect(findRecommendation(analysis, 'overage').severity).toBe('critical');
+    expect(findRecommendation(analysis, 'pool-exhaustion').severity).toBe('critical');
+    expect(ids(analysis)).not.toContain('budgets');
+    const line = findRecommendation(analysis, 'pool-exhaustion').evidence.find((evidenceLine) => evidenceLine.startsWith('Budget'))!;
     expect(line).toMatch(/^Budget \$100 for .+: 93% used so far, 158% projected, limit reached around Oct 22\.$/);
-    expect(a.headline.status).toBe('action');
-    expect(a.recs.filter((r) => r.severity === 'critical').map((r) => r.id)).toEqual(expect.arrayContaining(['overage', 'pool-exhaustion']));
-    expect(recValue(a.recs[0])).toBe(Math.max(...a.recs.map(recValue)));
+    expect(analysis.headline.status).toBe('action');
+    expect(analysis.recs.filter((recommendation) => recommendation.severity === 'critical').map((recommendation) => recommendation.id)).toEqual(expect.arrayContaining(['overage', 'pool-exhaustion']));
+    expect(recValue(analysis.recs[0])).toBe(Math.max(...analysis.recs.map(recValue)));
   });
 
   it('keeps the severities when the budget is large enough for the projected bill', () => {
-    const a = pipelineOf(P['fixture A'].store, { settings: { budgetMonthlyBilled: 200 } }).analysis;
-    expect(rec(a, 'overage').severity).toBe('high');
-    expect(rec(a, 'pool-exhaustion').severity).toBe('high');
-    const line = rec(a, 'pool-exhaustion').evidence.find((l) => l.startsWith('Budget'))!;
+    const analysis = pipelineOf(PIPELINES['fixture A'].store, { settings: { budgetMonthlyBilled: 200 } }).analysis;
+    expect(findRecommendation(analysis, 'overage').severity).toBe('high');
+    expect(findRecommendation(analysis, 'pool-exhaustion').severity).toBe('high');
+    const line = findRecommendation(analysis, 'pool-exhaustion').evidence.find((evidenceLine) => evidenceLine.startsWith('Budget'))!;
     expect(line).toMatch(/^Budget \$200 for .+: 47% used so far, 79% projected\.$/);
   });
 
   it('mentions a budget only when one is configured', () => {
-    const none = rec(P['fixture A'].analysis, 'pool-exhaustion').evidence;
-    expect(none.some((l) => l.startsWith('Budget'))).toBe(false);
+    const none = findRecommendation(PIPELINES['fixture A'].analysis, 'pool-exhaustion').evidence;
+    expect(none.some((evidenceLine) => evidenceLine.startsWith('Budget'))).toBe(false);
   });
 });
 
 describe('narrowed scopes drop organization-wide statements', () => {
-  const firstNamed = (p: Pipeline, dim: 'user' | 'costCenter'): string => p.store.dicts[dim].values.find((v) => v !== '')!;
-  const NARROWING: { name: string; filters: (p: Pipeline) => Partial<Filters> }[] = [
+  const firstNamed = (pipeline: Pipeline, dimension: 'user' | 'costCenter'): string => pipeline.store.dicts[dimension].values.find((value) => value !== '')!;
+  const NARROWING: { name: string; filters: (pipeline: Pipeline) => Partial<Filters> }[] = [
     { name: 'models', filters: () => ({ models: ['GPT-6 Astra'] }) },
     { name: 'orgs', filters: () => ({ orgs: ['northwind-data'] }) },
-    { name: 'users', filters: (p) => ({ users: [firstNamed(p, 'user')] }) },
+    { name: 'users', filters: (pipeline) => ({ users: [firstNamed(pipeline, 'user')] }) },
     { name: 'products', filters: () => ({ products: ['copilot'] }) },
-    { name: 'costCenters', filters: (p) => ({ costCenters: [firstNamed(p, 'costCenter')] }) },
+    { name: 'costCenters', filters: (pipeline) => ({ costCenters: [firstNamed(pipeline, 'costCenter')] }) },
     { name: 'plans', filters: () => ({ plans: ['Enterprise'] }) },
     { name: 'categories', filters: () => ({ categories: ['Powerful'] }) },
     { name: 'selection', filters: () => ({ selection: 'manual' }) },
@@ -657,42 +657,42 @@ describe('narrowed scopes drop organization-wide statements', () => {
   ];
 
   it.each(NARROWING)('$name: no pool, seat or healthy statements and cash is a lower bound', ({ filters }) => {
-    const p = pipelineOf(P.demo.store, { filters: filters(P.demo) });
-    const a = p.analysis;
-    expect(a.narrowed).toBe(true);
-    expect(a.agg.totals.rows).toBeGreaterThan(0);
-    for (const id of POOL_RECS) expect(ids(a), id).not.toContain(id);
-    for (const r of a.recs) expect(r.cashLowerBound, r.id).toBe(true);
-    const notes = rec(a, 'data-notes').evidence.join(' ');
+    const pipeline = pipelineOf(PIPELINES.demo.store, { filters: filters(PIPELINES.demo) });
+    const analysis = pipeline.analysis;
+    expect(analysis.narrowed).toBe(true);
+    expect(analysis.agg.totals.rows).toBeGreaterThan(0);
+    for (const id of POOL_RECS) expect(ids(analysis), id).not.toContain(id);
+    for (const recommendation of analysis.recs) expect(recommendation.cashLowerBound, recommendation.id).toBe(true);
+    const notes = findRecommendation(analysis, 'data-notes').evidence.join(' ');
     expect(notes).not.toMatch(/The pool covered|Included credits only count/);
-    expect(a.headline.detail).not.toMatch(/Pool utilization/);
-    for (const t of analysisTexts(a)) expect(t).not.toMatch(BAD_TEXT);
+    expect(analysis.headline.detail).not.toMatch(/Pool utilization/);
+    for (const text of analysisTexts(analysis)) expect(text).not.toMatch(BAD_TEXT);
   });
 
   it('a date-only filter keeps the organization-wide statements', () => {
-    const a = P['demo last 20 days'].analysis;
-    expect(a.narrowed).toBe(false);
-    expect(ids(a)).toContain('data-notes');
-    expect(a.headline.detail).toMatch(/^Pool utilization/);
+    const analysis = PIPELINES['demo last 20 days'].analysis;
+    expect(analysis.narrowed).toBe(false);
+    expect(ids(analysis)).toContain('data-notes');
+    expect(analysis.headline.detail).toMatch(/^Pool utilization/);
   });
 
   it('forcing narrowed on an unfiltered context removes the pool and seat rules', () => {
-    const base = buildRecommendations(ctxOf(P.demo));
-    const forced = buildRecommendations(ctxOf(P.demo, { narrowed: true }));
-    expect(base.map((r) => r.id)).toEqual(expect.arrayContaining(['pool-exhaustion', 'idle-seats', 'downgrade']));
-    for (const id of POOL_RECS) expect(forced.map((r) => r.id), id).not.toContain(id);
+    const base = buildRecommendations(ctxOf(PIPELINES.demo));
+    const forced = buildRecommendations(ctxOf(PIPELINES.demo, { narrowed: true }));
+    expect(base.map((recommendation) => recommendation.id)).toEqual(expect.arrayContaining(['pool-exhaustion', 'idle-seats', 'downgrade']));
+    for (const id of POOL_RECS) expect(forced.map((recommendation) => recommendation.id), id).not.toContain(id);
   });
 
   it('values a narrowed scope per month from what was already billed in that scope', () => {
-    const a = P['demo one model'].analysis;
-    const t = a.agg.totals;
-    const perMonth = 30.4375 / a.agg.range.length;
-    for (const r of a.recs) expect(r.cashUsd, r.id).toBeLessThanOrEqual(t.net * perMonth + 1e-6);
+    const analysis = PIPELINES['demo one model'].analysis;
+    const totals = analysis.agg.totals;
+    const perMonth = 30.4375 / analysis.agg.range.length;
+    for (const recommendation of analysis.recs) expect(recommendation.cashUsd, recommendation.id).toBeLessThanOrEqual(totals.net * perMonth + 1e-6);
   });
 });
 
 describe('empty scopes', () => {
-  const EMPTY: { name: string; filters: (p: Pipeline) => Partial<Filters> }[] = [
+  const EMPTY: { name: string; filters: (pipeline: Pipeline) => Partial<Filters> }[] = [
     { name: 'a user that does not exist', filters: () => ({ users: ['nobody-here'] }) },
     { name: 'contradicting filters', filters: () => ({ models: ['GPT-6 Astra'], products: ['code_quality'] }) },
     { name: 'a minimum row amount above every row', filters: () => ({ minRow: 1e9 }) },
@@ -700,16 +700,16 @@ describe('empty scopes', () => {
   ];
 
   it.each(EMPTY)('$name: no recommendations and a clear headline', ({ filters }) => {
-    const a = pipelineOf(P.demo.store, { filters: filters(P.demo) }).analysis;
-    expect(a.agg.totals.rows).toBe(0);
-    expect(a.recs).toEqual([]);
-    expect(a.headline).toEqual({ status: 'watch', title: 'No rows match the current filters', detail: 'Widen the date range or clear some filters.' });
-    for (const t of analysisTexts(a)) expect(t).not.toMatch(BAD_TEXT);
+    const analysis = pipelineOf(PIPELINES.demo.store, { filters: filters(PIPELINES.demo) }).analysis;
+    expect(analysis.agg.totals.rows).toBe(0);
+    expect(analysis.recs).toEqual([]);
+    expect(analysis.headline).toEqual({ status: 'watch', title: 'No rows match the current filters', detail: 'Widen the date range or clear some filters.' });
+    for (const text of analysisTexts(analysis)) expect(text).not.toMatch(BAD_TEXT);
   });
 
   it('buildRecommendations returns nothing for an empty aggregate', () => {
-    const a = pipelineOf(P.demo.store, { filters: { users: ['nobody-here'] } });
-    expect(buildRecommendations(ctxOf(a))).toEqual([]);
+    const pipeline = pipelineOf(PIPELINES.demo.store, { filters: { users: ['nobody-here'] } });
+    expect(buildRecommendations(ctxOf(pipeline))).toEqual([]);
   });
 });
 
@@ -721,21 +721,21 @@ describe('links that select users', () => {
   const COUNTED_BY_LINK = ['runaway', 'concentration', 'cache', 'cost-center-coverage', 'lapsed', 'new-users', 'champions', 'spiky', 'long-context'];
   const LISTS_THE_SAME_USERS = COUNTED_BY_LINK.filter((id) => id !== 'concentration');
   const USER_FILTER_KEYS = ['segments', 'tiers', 'engagement', 'profiles', 'traits', 'paretoClasses'];
-  const follow = (p: Pipeline, r: Recommendation): Analysis => p.run({ ...emptyFilters(), ...r.jump!.filters });
+  const follow = (pipeline: Pipeline, recommendation: Recommendation): Analysis => pipeline.run({ ...emptyFilters(), ...recommendation.jump!.filters });
 
-  const checkLinks = (name: string, p: Pipeline): number => {
+  const checkLinks = (name: string, pipeline: Pipeline): number => {
     let checked = 0;
-    for (const r of p.analysis.recs) {
-      if (!COUNTED_BY_LINK.includes(r.id) || !r.jump?.filters) continue;
-      const where = `${name}: ${r.id} "${r.jump.label}"`;
-      expect(Object.keys(r.jump.filters).some((k) => USER_FILTER_KEYS.includes(k)), where).toBe(true);
-      const res = follow(p, r);
-      expect(res.segmentFiltered, where).toBe(true);
-      expect(res.users.profiles.length, where).toBe(r.affectedCount);
-      if (LISTS_THE_SAME_USERS.includes(r.id)) {
-        const selected = new Set(res.users.profiles.map((u) => u.name));
-        for (const x of r.affected) expect(selected.has(x.name), `${where}: ${x.name}`).toBe(true);
-        if (r.affectedCount <= 12) expect(r.affected.length, where).toBe(r.affectedCount);
+    for (const recommendation of pipeline.analysis.recs) {
+      if (!COUNTED_BY_LINK.includes(recommendation.id) || !recommendation.jump?.filters) continue;
+      const where = `${name}: ${recommendation.id} "${recommendation.jump.label}"`;
+      expect(Object.keys(recommendation.jump.filters).some((filterKey) => USER_FILTER_KEYS.includes(filterKey)), where).toBe(true);
+      const filteredAnalysis = follow(pipeline, recommendation);
+      expect(filteredAnalysis.segmentFiltered, where).toBe(true);
+      expect(filteredAnalysis.users.profiles.length, where).toBe(recommendation.affectedCount);
+      if (LISTS_THE_SAME_USERS.includes(recommendation.id)) {
+        const selected = new Set(filteredAnalysis.users.profiles.map((profile) => profile.name));
+        for (const affectedUser of recommendation.affected) expect(selected.has(affectedUser.name), `${where}: ${affectedUser.name}`).toBe(true);
+        if (recommendation.affectedCount <= 12) expect(recommendation.affected.length, where).toBe(recommendation.affectedCount);
       }
       checked++;
     }
@@ -743,205 +743,205 @@ describe('links that select users', () => {
   };
 
   it.each(WHOLE_SCOPE)('%s: every link that filters users selects exactly the users the recommendation counted', (name) => {
-    expect(checkLinks(name, P[name])).toBeGreaterThan(0);
+    expect(checkLinks(name, PIPELINES[name])).toBeGreaterThan(0);
   });
 
   it('holds for synthetic data with several users per behaviour', async () => {
-    for (const n of [1, 2, 3]) expect(checkLinks(`agreement ${n}`, await analyzeCsv(agreementCsv(n)))).toBeGreaterThanOrEqual(6);
+    for (const usersPerBehavior of [1, 2, 3]) expect(checkLinks(`agreement ${usersPerBehavior}`, await analyzeCsv(agreementCsv(usersPerBehavior)))).toBeGreaterThanOrEqual(6);
   });
 
   describe('lapsed and new users are matched by flag, whatever their persona', () => {
     /** First/last day per user from the raw rows and the documented rules (lapsed after 7 quiet days, new within 14 days of the first row). */
     const lifecycle = (rows: NaiveRow[], lapsedDays = 7, newUserDays = 14): { fresh: string[]; lapsed: string[] } => {
-      const days = rows.map((r) => dayNum(r.date));
+      const days = rows.map((row) => dayNum(row.date));
       const minDay = Math.min(...days);
       const maxDay = Math.max(...days);
       const first = new Map<string, number>();
       const last = new Map<string, number>();
-      for (const r of rows) {
-        if (!r.username) continue;
-        const d = dayNum(r.date);
-        first.set(r.username, Math.min(first.get(r.username) ?? Infinity, d));
-        last.set(r.username, Math.max(last.get(r.username) ?? -Infinity, d));
+      for (const row of rows) {
+        if (!row.username) continue;
+        const day = dayNum(row.date);
+        first.set(row.username, Math.min(first.get(row.username) ?? Infinity, day));
+        last.set(row.username, Math.max(last.get(row.username) ?? -Infinity, day));
       }
       const fresh: string[] = [];
       const lapsed: string[] = [];
-      for (const [user, f] of first) {
-        if (maxDay - f + 1 <= newUserDays && f - minDay >= newUserDays) fresh.push(user);
+      for (const [user, firstDay] of first) {
+        if (maxDay - firstDay + 1 <= newUserDays && firstDay - minDay >= newUserDays) fresh.push(user);
         else if (maxDay - last.get(user)! >= lapsedDays) lapsed.push(user);
       }
       return { fresh: fresh.sort(), lapsed: lapsed.sort() };
     };
-    const names = (a: Analysis): string[] => a.users.profiles.map((u) => u.name).sort();
+    const names = (analysis: Analysis): string[] => analysis.users.profiles.map((profile) => profile.name).sort();
 
     it('the links filter on the lifecycle flags', () => {
-      expect(rec(P.demo.analysis, 'lapsed').jump?.filters).toEqual({ engagement: ['lapsed'] });
+      expect(findRecommendation(PIPELINES.demo.analysis, 'lapsed').jump?.filters).toEqual({ engagement: ['lapsed'] });
       for (const name of ['fixture A', 'demo'] as const) {
-        expect(rec(P[name].analysis, 'new-users').jump?.filters, name).toEqual({ engagement: ['new'] });
+        expect(findRecommendation(PIPELINES[name].analysis, 'new-users').jump?.filters, name).toEqual({ engagement: ['new'] });
       }
     });
 
     it('pool-used fixture: only sam-lee is new, nobody has lapsed, and the link finds the new user', () => {
-      const p = P['fixture A'];
+      const pipeline = PIPELINES['fixture A'];
       const oracle = lifecycle(naiveRows(readFixture(FIXTURE_A)));
       expect(oracle).toEqual({ fresh: ['sam-lee'], lapsed: [] });
-      expect(ids(p.analysis)).not.toContain('lapsed');
-      const fresh = rec(p.analysis, 'new-users');
-      expect(fresh.affected.map((x) => x.name)).toEqual(['sam-lee']);
-      expect(names(follow(p, fresh))).toEqual(['sam-lee']);
+      expect(ids(pipeline.analysis)).not.toContain('lapsed');
+      const fresh = findRecommendation(pipeline.analysis, 'new-users');
+      expect(fresh.affected.map((affectedUser) => affectedUser.name)).toEqual(['sam-lee']);
+      expect(names(follow(pipeline, fresh))).toEqual(['sam-lee']);
     });
 
     it('a user who has lapsed and is also past three times their allotment is counted and found', async () => {
       const rows: RowSpec[] = SEP_WEEKDAYS.map((date) => terra({ date, user: 'veteran', gross: 1, costCenter: 'eng' }));
-      for (const d of [1, 2, 3]) rows.push(terra({ date: sep(d), user: 'gone-runaway', gross: 30, costCenter: 'eng' }));
-      const p = await analyzeCsv(makeCsv(rows, { pool: true }));
-      const gone = p.analysis.users.profiles.find((u) => u.name === 'gone-runaway')!;
+      for (const dayOfMonth of [1, 2, 3]) rows.push(terra({ date: septemberDate(dayOfMonth), user: 'gone-runaway', gross: 30, costCenter: 'eng' }));
+      const pipeline = await analyzeCsv(makeCsv(rows, { pool: true }));
+      const gone = pipeline.analysis.users.profiles.find((profile) => profile.name === 'gone-runaway')!;
       expect([gone.lapsed, gone.persona]).toEqual([true, 'runaway']);
-      const lapsed = rec(p.analysis, 'lapsed');
-      expect(lapsed.affected.map((x) => x.name)).toEqual(['gone-runaway']);
+      const lapsed = findRecommendation(pipeline.analysis, 'lapsed');
+      expect(lapsed.affected.map((affectedUser) => affectedUser.name)).toEqual(['gone-runaway']);
       expect(lapsed.jump?.filters).toEqual({ engagement: ['lapsed'] });
-      expect(names(follow(p, lapsed))).toEqual(['gone-runaway']);
-      expect(rec(p.analysis, 'runaway').affected.map((x) => x.name)).toEqual(['gone-runaway']);
+      expect(names(follow(pipeline, lapsed))).toEqual(['gone-runaway']);
+      expect(findRecommendation(pipeline.analysis, 'runaway').affected.map((affectedUser) => affectedUser.name)).toEqual(['gone-runaway']);
     });
 
     it('the demo: both links select the users that the rules find in the raw rows', () => {
-      const p = P.demo;
+      const pipeline = PIPELINES.demo;
       const oracle = lifecycle(naiveRows(demoCsv));
       expect(oracle.lapsed.length).toBeGreaterThan(0);
       expect(oracle.fresh.length).toBeGreaterThan(0);
-      const lapsed = rec(p.analysis, 'lapsed');
-      const fresh = rec(p.analysis, 'new-users');
+      const lapsed = findRecommendation(pipeline.analysis, 'lapsed');
+      const fresh = findRecommendation(pipeline.analysis, 'new-users');
       expect(lapsed.affectedCount).toBe(oracle.lapsed.length);
       expect(fresh.affectedCount).toBe(oracle.fresh.length);
-      expect(names(follow(p, lapsed))).toEqual(oracle.lapsed);
-      expect(names(follow(p, fresh))).toEqual(oracle.fresh);
+      expect(names(follow(pipeline, lapsed))).toEqual(oracle.lapsed);
+      expect(names(follow(pipeline, fresh))).toEqual(oracle.fresh);
     });
 
     it('a user who is new and also past three times their allotment is counted and found', async () => {
       const rows: RowSpec[] = SEP_WEEKDAYS.map((date) => terra({ date, user: 'veteran', gross: 1, costCenter: 'eng' }));
-      for (const d of [24, 25, 28]) rows.push(terra({ date: sep(d), user: 'fast-newbie', gross: 30, costCenter: 'eng' }));
-      const p = await analyzeCsv(makeCsv(rows, { pool: true }));
-      const fast = p.analysis.users.profiles.find((u) => u.name === 'fast-newbie')!;
+      for (const dayOfMonth of [24, 25, 28]) rows.push(terra({ date: septemberDate(dayOfMonth), user: 'fast-newbie', gross: 30, costCenter: 'eng' }));
+      const pipeline = await analyzeCsv(makeCsv(rows, { pool: true }));
+      const fast = pipeline.analysis.users.profiles.find((profile) => profile.name === 'fast-newbie')!;
       expect([fast.isNew, fast.persona]).toEqual([true, 'runaway']);
-      const fresh = rec(p.analysis, 'new-users');
-      expect(fresh.affected.map((x) => x.name)).toEqual(['fast-newbie']);
+      const fresh = findRecommendation(pipeline.analysis, 'new-users');
+      expect(fresh.affected.map((affectedUser) => affectedUser.name)).toEqual(['fast-newbie']);
       expect(fresh.jump?.filters).toEqual({ engagement: ['new'] });
-      expect(names(follow(p, fresh))).toEqual(['fast-newbie']);
-      expect(rec(p.analysis, 'runaway').affected.map((x) => x.name)).toEqual(['fast-newbie']);
+      expect(names(follow(pipeline, fresh))).toEqual(['fast-newbie']);
+      expect(findRecommendation(pipeline.analysis, 'runaway').affected.map((affectedUser) => affectedUser.name)).toEqual(['fast-newbie']);
     });
   });
 
   describe('long-context', () => {
-    const lcNames = (a: Analysis): string[] => a.users.profiles.map((u) => u.name).sort();
+    const lcNames = (analysis: Analysis): string[] => analysis.users.profiles.map((profile) => profile.name).sort();
 
     it.each(['fixture B', 'A + B'] as const)('%s: the one user with long-context rows holds the trait, and the link selects exactly them', (name) => {
-      const p = P[name];
-      const r = rec(p.analysis, 'long-context');
-      const user = p.analysis.users.profiles.find((u) => u.name === 'pat-ops')!;
-      expect(user.longShare).toBeGreaterThanOrEqual(p.settings.longContextShare);
+      const pipeline = PIPELINES[name];
+      const longContext = findRecommendation(pipeline.analysis, 'long-context');
+      const user = pipeline.analysis.users.profiles.find((profile) => profile.name === 'pat-ops')!;
+      expect(user.longShare).toBeGreaterThanOrEqual(pipeline.settings.longContextShare);
       expect(user.traits).toContain('longContext');
-      expect(r.affectedCount).toBe(1);
-      expect(r.affected.map((x) => x.name)).toEqual(['pat-ops']);
-      expect(lcNames(follow(p, r))).toEqual(['pat-ops']);
-      expect(r.evidence).toContain('Most affected users: pat-ops.');
+      expect(longContext.affectedCount).toBe(1);
+      expect(longContext.affected.map((affectedUser) => affectedUser.name)).toEqual(['pat-ops']);
+      expect(lcNames(follow(pipeline, longContext))).toEqual(['pat-ops']);
+      expect(longContext.evidence).toContain('Most affected users: pat-ops.');
     });
 
     it('when nobody reaches the trait threshold, the link has no filters while the evidence still names the most affected user', async () => {
-      const cc = { costCenter: 'eng' };
+      const costCenterFields = { costCenter: 'eng' };
       const rows: RowSpec[] = [
-        ...spread('light', 30, SEP_WEEKDAYS.slice(-15), cc),
-        longRow(SEP_WEEKDAYS[2], 'light', cc),
-        ...spread('none', 20, SEP_WEEKDAYS.slice(-10), cc),
+        ...spread('light', 30, SEP_WEEKDAYS.slice(-15), costCenterFields),
+        longRow(SEP_WEEKDAYS[2], 'light', costCenterFields),
+        ...spread('none', 20, SEP_WEEKDAYS.slice(-10), costCenterFields),
       ];
-      const p = await analyzeCsv(makeCsv(rows, { pool: true }));
-      const r = rec(p.analysis, 'long-context');
-      expect(p.analysis.users.profiles.some((u) => u.traits.includes('longContext'))).toBe(false);
-      const user = p.analysis.users.profiles.find((u) => u.name === 'light')!;
+      const pipeline = await analyzeCsv(makeCsv(rows, { pool: true }));
+      const longContext = findRecommendation(pipeline.analysis, 'long-context');
+      expect(pipeline.analysis.users.profiles.some((profile) => profile.traits.includes('longContext'))).toBe(false);
+      const user = pipeline.analysis.users.profiles.find((profile) => profile.name === 'light')!;
       expect(user.longShare).toBeGreaterThan(0);
-      expect(user.longShare).toBeLessThan(p.settings.longContextShare);
-      expect(r.affectedCount).toBe(0);
-      expect(r.affected).toEqual([]);
-      expect(r.jump).toEqual({ page: 'efficiency', label: 'Open Efficiency' });
-      expect(r.evidence).toContain('Most affected users: light.');
+      expect(user.longShare).toBeLessThan(pipeline.settings.longContextShare);
+      expect(longContext.affectedCount).toBe(0);
+      expect(longContext.affected).toEqual([]);
+      expect(longContext.jump).toEqual({ page: 'efficiency', label: 'Open Efficiency' });
+      expect(longContext.evidence).toContain('Most affected users: light.');
     });
 
     it('with a trait holder the link selects exactly the holders, while the evidence also lists users below the trait threshold', async () => {
-      const cc = { costCenter: 'eng' };
+      const costCenterFields = { costCenter: 'eng' };
       const rows: RowSpec[] = [
-        ...spread('heavy', 15, SEP_WEEKDAYS.slice(-15), cc),
-        longRow(SEP_WEEKDAYS[0], 'heavy', cc),
-        longRow(SEP_WEEKDAYS[1], 'heavy', cc),
-        ...spread('light', 30, SEP_WEEKDAYS.slice(-15), cc),
-        longRow(SEP_WEEKDAYS[2], 'light', cc),
-        ...spread('none', 20, SEP_WEEKDAYS.slice(-10), cc),
+        ...spread('heavy', 15, SEP_WEEKDAYS.slice(-15), costCenterFields),
+        longRow(SEP_WEEKDAYS[0], 'heavy', costCenterFields),
+        longRow(SEP_WEEKDAYS[1], 'heavy', costCenterFields),
+        ...spread('light', 30, SEP_WEEKDAYS.slice(-15), costCenterFields),
+        longRow(SEP_WEEKDAYS[2], 'light', costCenterFields),
+        ...spread('none', 20, SEP_WEEKDAYS.slice(-10), costCenterFields),
       ];
-      const p = await analyzeCsv(makeCsv(rows, { pool: true }));
-      const by = new Map(p.analysis.users.profiles.map((u) => [u.name, u]));
+      const pipeline = await analyzeCsv(makeCsv(rows, { pool: true }));
+      const by = new Map(pipeline.analysis.users.profiles.map((profile) => [profile.name, profile]));
       expect(by.get('heavy')!.longShare).toBeCloseTo(6 / 27, 6);
       expect(by.get('light')!.longShare).toBeCloseTo(3 / 36, 6);
       expect(by.get('none')!.longShare).toBe(0);
-      const r = rec(p.analysis, 'long-context');
-      expect(r.title).toBe('Long-context surcharges cost at least $9');
-      expect(r.evidence).toContain('Most affected users: heavy, light.');
-      expect(r.affectedCount).toBe(1);
-      expect(r.affected.map((x) => x.name)).toEqual(['heavy']);
-      expect(r.jump).toEqual({ page: 'efficiency', label: 'Show long-context users', filters: { traits: ['longContext'] } });
-      expect(lcNames(follow(p, r))).toEqual(['heavy']);
+      const longContext = findRecommendation(pipeline.analysis, 'long-context');
+      expect(longContext.title).toBe('Long-context surcharges cost at least $9');
+      expect(longContext.evidence).toContain('Most affected users: heavy, light.');
+      expect(longContext.affectedCount).toBe(1);
+      expect(longContext.affected.map((affectedUser) => affectedUser.name)).toEqual(['heavy']);
+      expect(longContext.jump).toEqual({ page: 'efficiency', label: 'Show long-context users', filters: { traits: ['longContext'] } });
+      expect(lcNames(follow(pipeline, longContext))).toEqual(['heavy']);
     });
   });
 });
 
 describe('buildHeadline', () => {
-  const craft = (severity: Severity): Recommendation => ({ ...P.demo.analysis.recs[0], severity });
+  const craft = (severity: Severity): Recommendation => ({ ...PIPELINES.demo.analysis.recs[0], severity });
 
   it('turns critical or high recommendations into an action headline with the billed overage', () => {
-    const ctx = ctxOf(P.demo);
-    expect(buildHeadline(ctx, [craft('critical')])).toMatchObject({ status: 'action', title: '$123 billed overage and 1 high-priority action' });
-    expect(buildHeadline(ctx, [craft('high'), craft('critical'), craft('medium')])).toMatchObject({
+    const context = ctxOf(PIPELINES.demo);
+    expect(buildHeadline(context, [craft('critical')])).toMatchObject({ status: 'action', title: '$123 billed overage and 1 high-priority action' });
+    expect(buildHeadline(context, [craft('high'), craft('critical'), craft('medium')])).toMatchObject({
       status: 'action',
       title: '$123 billed overage and 2 high-priority actions',
     });
   });
 
   it('leaves out the overage when nothing was billed', () => {
-    expect(buildHeadline(ctxOf(P['fixture B']), [craft('high')]).title).toBe('1 high-priority action');
+    expect(buildHeadline(ctxOf(PIPELINES['fixture B']), [craft('high')]).title).toBe('1 high-priority action');
   });
 
   it('is a watch headline for medium items only and healthy otherwise', () => {
-    const ctx = ctxOf(P.demo);
-    expect(buildHeadline(ctx, [craft('medium')])).toMatchObject({ status: 'watch', title: 'No urgent issues, 1 item worth a look' });
-    expect(buildHeadline(ctx, [craft('medium'), craft('medium'), craft('low')])).toMatchObject({ status: 'watch', title: 'No urgent issues, 2 items worth a look' });
-    expect(buildHeadline(ctx, [craft('low'), craft('info'), craft('positive')])).toMatchObject({ status: 'healthy', title: 'Usage looks healthy' });
-    expect(buildHeadline(ctx, [])).toMatchObject({ status: 'healthy', title: 'Usage looks healthy' });
+    const context = ctxOf(PIPELINES.demo);
+    expect(buildHeadline(context, [craft('medium')])).toMatchObject({ status: 'watch', title: 'No urgent issues, 1 item worth a look' });
+    expect(buildHeadline(context, [craft('medium'), craft('medium'), craft('low')])).toMatchObject({ status: 'watch', title: 'No urgent issues, 2 items worth a look' });
+    expect(buildHeadline(context, [craft('low'), craft('info'), craft('positive')])).toMatchObject({ status: 'healthy', title: 'Usage looks healthy' });
+    expect(buildHeadline(context, [])).toMatchObject({ status: 'healthy', title: 'Usage looks healthy' });
   });
 
   it('shows the pool utilization only for an organization-wide scope with a known pool', () => {
-    expect(buildHeadline(ctxOf(P.demo), []).detail).toMatch(/^Pool utilization \d+% · Auto 21% of usage · 60 active users$/);
-    expect(buildHeadline(ctxOf(P.demo, { narrowed: true }), []).detail).toBe('Auto 21% of usage · 60 active users');
-    expect(buildHeadline(ctxOf(P['fixture B']), []).detail).toBe('Auto 0% of usage · 1 active user');
+    expect(buildHeadline(ctxOf(PIPELINES.demo), []).detail).toMatch(/^Pool utilization \d+% · Auto 21% of usage · 60 active users$/);
+    expect(buildHeadline(ctxOf(PIPELINES.demo, { narrowed: true }), []).detail).toBe('Auto 21% of usage · 60 active users');
+    expect(buildHeadline(ctxOf(PIPELINES['fixture B']), []).detail).toBe('Auto 0% of usage · 1 active user');
   });
 
   it('is described, part by part and in the same order, by the status banner doc', () => {
     const second = metricDoc('headline-status')?.steps?.at(-1) ?? '';
-    const at = [/pool utilization/i, /share of usage that went through Auto/i, /number of active users/i].map((re) => second.search(re));
-    expect(at.every((i) => i >= 0), second).toBe(true);
+    const at = [/pool utilization/i, /share of usage that went through Auto/i, /number of active users/i].map((pattern) => second.search(pattern));
+    expect(at.every((position) => position >= 0), second).toBe(true);
     expect([...at].sort((a, b) => a - b)).toEqual(at);
   });
 });
 
 // How each number is calculated ----------------------------------------------------------------------------------------
 
-const RULES_SOURCE = readFileSync(fileURLToPath(new URL('../src/lib/analytics/recommendations.ts', import.meta.url)), 'utf8');
-const RULE_IDS = [...RULES_SOURCE.matchAll(/^\s+id: '([a-z]+(?:-[a-z]+)*)',$/gm)].map((m) => m[1]);
+const RULES_SOURCE = readFileSync(join(import.meta.dirname, '../src/lib/analytics/recommendations.ts'), 'utf8');
+const RULE_IDS = [...RULES_SOURCE.matchAll(/^\s+id: '([a-z]+(?:-[a-z]+)*)',$/gm)].map((match) => match[1]);
 
-const escapeHtml = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;');
+const escapeHtml = (text: string): string => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;');
 const calcLabel = (...ids: string[]): string => `How this is calculated: ${ids.map((id) => escapeHtml(metricDoc(id)?.title ?? `missing ${id}`)).join(', ')}`;
-const labelsIn = (html: string): string[] => [...html.matchAll(/aria-label="(How this is calculated: [^"]*)"/g)].map((m) => m[1]);
-const renderIn = (p: Pipeline, el: ReactElement): string =>
+const labelsIn = (html: string): string[] => [...html.matchAll(/aria-label="(How this is calculated: [^"]*)"/g)].map((match) => match[1]);
+const renderIn = (pipeline: Pipeline, element: ReactElement): string =>
   renderToStaticMarkup(
     createElement(AnalysisProvider, {
-      dataset: { store: p.store, prep: p.prep, label: 'synthetic.csv', loadedAt: 0 },
-      children: el,
+      dataset: { store: pipeline.store, prep: pipeline.prep, label: 'synthetic.csv', loadedAt: 0 },
+      children: element,
     }),
   );
 
@@ -951,8 +951,8 @@ describe('calculation docs', () => {
 
   beforeAll(async () => {
     // Covered usage above what the seats of the file fund: the pool size is unknown, but the billed split is there.
-    poolUnknown = await analyzeCsv(makeCsv([terra({ date: sep(10), user: 'a', gross: 30, discount: 30 }), terra({ date: sep(20), user: 'a', gross: 5, discount: 5 })]));
-    noBilling = await analyzeCsv(makeCsv([terra({ date: sep(10), user: 'a', gross: 30 }), terra({ date: sep(20), user: 'a', gross: 5 })], { columns: ['date', 'username', 'gross_amount', 'model'] }));
+    poolUnknown = await analyzeCsv(makeCsv([terra({ date: septemberDate(10), user: 'a', gross: 30, discount: 30 }), terra({ date: septemberDate(20), user: 'a', gross: 5, discount: 5 })]));
+    noBilling = await analyzeCsv(makeCsv([terra({ date: septemberDate(10), user: 'a', gross: 30 }), terra({ date: septemberDate(20), user: 'a', gross: 5 })], { columns: ['date', 'username', 'gross_amount', 'model'] }));
   });
 
   it('finds every rule of the engine in its source', () => {
@@ -963,16 +963,16 @@ describe('calculation docs', () => {
   it('has one doc for every rule, named after it', () => {
     for (const id of RULE_IDS) {
       expect(recDocId(id), id).toBe(`rec-${id}`);
-      const doc = metricDoc(recDocId(id));
-      expect(doc, `no doc for the rule "${id}"`).toBeDefined();
-      expect(doc?.area, id).toBe('Recommendations');
+      const ruleDoc = metricDoc(recDocId(id));
+      expect(ruleDoc, `no doc for the rule "${id}"`).toBeDefined();
+      expect(ruleDoc?.area, id).toBe('Recommendations');
     }
   });
 
   it.each(CASES)('every recommendation of %s carries the doc of its rule', (name) => {
-    for (const r of P[name].analysis.recs) {
-      expect(r.calc, r.id).toBe(recDocId(r.id));
-      expect(metricDoc(r.calc ?? ''), r.id).toBeDefined();
+    for (const recommendation of PIPELINES[name].analysis.recs) {
+      expect(recommendation.calc, recommendation.id).toBe(recDocId(recommendation.id));
+      expect(metricDoc(recommendation.calc ?? ''), recommendation.id).toBeDefined();
     }
   });
 
@@ -983,38 +983,38 @@ describe('calculation docs', () => {
   });
 
   it('opens the doc of its rule from every card, and the confidence doc from an open card', () => {
-    for (const r of P.demo.analysis.recs) {
-      const closed = labelsIn(renderToStaticMarkup(createElement(RecommendationCard, { rec: r })));
-      expect(closed, r.id).toEqual([calcLabel(recDocId(r.id))]);
+    for (const recommendation of PIPELINES.demo.analysis.recs) {
+      const closed = labelsIn(renderToStaticMarkup(createElement(RecommendationCard, { rec: recommendation })));
+      expect(closed, recommendation.id).toEqual([calcLabel(recDocId(recommendation.id))]);
     }
-    const first = P.demo.analysis.recs[0];
+    const first = PIPELINES.demo.analysis.recs[0];
     const open = labelsIn(renderToStaticMarkup(createElement(RecommendationCard, { rec: first, defaultOpen: true })));
     expect(open).toEqual([calcLabel(recDocId(first.id)), calcLabel('rec-confidence')]);
   });
 
   it('explains the figures of the seat economics and the three seat lists', () => {
-    const labels = labelsIn(renderIn(P.demo, createElement(SeatsTab)));
+    const labels = labelsIn(renderIn(PIPELINES.demo, createElement(SeatsTab)));
     for (const id of ['rec-seats-in-report', 'rec-seat-value', 'rec-pool-share-used', 'rec-pool-unused', 'rec-seat-lists-value']) {
       expect(labels, id).toContain(calcLabel(id));
     }
-    for (const id of Object.values(SEAT_DOC)) expect(labels.some((l) => l.includes(escapeHtml(metricDoc(id)!.title))), id).toBe(true);
+    for (const id of Object.values(SEAT_DOC)) expect(labels.some((label) => label.includes(escapeHtml(metricDoc(id)!.title))), id).toBe(true);
   });
 
   it.each([
-    ['a known pool', () => P.demo, ['rec-sim-reduction', 'rec-sim-cash-month', 'rec-sim-cash-year', 'rec-sim-cost', 'rec-sim-unused', 'rec-sim-seat-value']],
+    ['a known pool', () => PIPELINES.demo, ['rec-sim-reduction', 'rec-sim-cash-month', 'rec-sim-cash-year', 'rec-sim-cost', 'rec-sim-unused', 'rec-sim-seat-value']],
     ['an unknown pool size', () => poolUnknown, ['rec-sim-reduction', 'rec-sim-cash-month', 'rec-sim-cash-year', 'rec-sim-billed', 'rec-sim-usage-after']],
     ['a file without the billed split', () => noBilling, ['rec-sim-reduction', 'rec-sim-usage-after']],
   ])('explains every result of the simulator for %s', (_name, pipe, expected) => {
-    const p = pipe();
-    const html = renderIn(p, createElement(SimulatorTab, { levers: DEFAULT_LEVERS, onLevers: () => undefined, seatFlags: DEFAULT_SEAT_FLAGS, onSeatFlags: () => undefined }));
+    const pipeline = pipe();
+    const html = renderIn(pipeline, createElement(SimulatorTab, { levers: DEFAULT_LEVERS, onLevers: () => undefined, seatFlags: DEFAULT_SEAT_FLAGS, onSeatFlags: () => undefined }));
     const labels = labelsIn(html);
     for (const id of expected) expect(labels, id).toContain(calcLabel(id));
     expect(html).not.toMatch(BAD_TEXT);
   });
 
   it('puts the three result sets under the right conditions', () => {
-    expect(cashHiddenReason(P.demo.analysis)).toBeNull();
-    expect(poolUnknownReason(P.demo.analysis)).toBeNull();
+    expect(cashHiddenReason(PIPELINES.demo.analysis)).toBeNull();
+    expect(poolUnknownReason(PIPELINES.demo.analysis)).toBeNull();
     expect(cashHiddenReason(poolUnknown.analysis)).toBeNull();
     expect(poolUnknownReason(poolUnknown.analysis)).not.toBeNull();
     expect(cashHiddenReason(noBilling.analysis)).not.toBeNull();
@@ -1022,7 +1022,7 @@ describe('calculation docs', () => {
 
   it('explains the presets, each lever, each seat switch, the waterfall and the month table', () => {
     const html = renderIn(
-      P.demo,
+      PIPELINES.demo,
       createElement(SimulatorTab, { levers: DEFAULT_LEVERS, onLevers: () => undefined, seatFlags: DEFAULT_SEAT_FLAGS, onSeatFlags: () => undefined }),
     );
     const labels = labelsIn(html);
@@ -1032,7 +1032,7 @@ describe('calculation docs', () => {
   });
 
   it('explains the saving of every playbook item', () => {
-    const html = renderIn(P.demo, createElement(PlaybookTab));
+    const html = renderIn(PIPELINES.demo, createElement(PlaybookTab));
     expect(labelsIn(html)).toContain(calcLabel('rec-playbook-saving'));
     expect(html).not.toMatch(BAD_TEXT);
   });
@@ -1045,7 +1045,7 @@ describe('personal tips: the largest saving comes first, equal savings go by sev
   const ZERO_BY = { modelShift: 0, autoAdoption: 0, cacheDiscipline: 0, contextHygiene: 0, longContext: 0, capRunaway: 0 };
   /** A user with nothing to say; each test switches on the traits it needs. */
   const neutral = (over: Partial<UserProfile> = {}, by: Partial<UserProfile['potentialBy']> = {}): UserProfile => ({
-    ...P.demo.analysis.population.profiles[0],
+    ...PIPELINES.demo.analysis.population.profiles[0],
     gross: 10,
     utilization: 0.7,
     tier: 'core',
@@ -1060,49 +1060,49 @@ describe('personal tips: the largest saving comes first, equal savings go by sev
     ...over,
     potentialBy: { ...ZERO_BY, ...by },
   });
-  const tipIds = (p: UserProfile, limit = 100): string[] => userTips(p, P.demo.settings, limit).map((x) => x.id);
+  const tipIds = (profile: UserProfile, limit = 100): string[] => userTips(profile, PIPELINES.demo.settings, limit).map((tip) => tip.id);
 
   it('shows a $0.49 a month tip before a $0.10 a month tip, although the smaller one has the higher severity', () => {
-    const p = neutral({ traits: ['lowCache'] }, { cacheDiscipline: 0.1, contextHygiene: 0.49 });
-    const tips = userTips(p, P.demo.settings);
-    expect(tips.map((x) => [x.id, x.severity, x.savingsUsd])).toEqual([
+    const profile = neutral({ traits: ['lowCache'] }, { cacheDiscipline: 0.1, contextHygiene: 0.49 });
+    const tips = userTips(profile, PIPELINES.demo.settings);
+    expect(tips.map((tip) => [tip.id, tip.severity, tip.savingsUsd])).toEqual([
       ['context', 'low', 0.49],
       ['cache', 'medium', 0.1],
     ]);
   });
 
   it('puts tips with the same saving in severity order, and keeps the written order for equal severities', () => {
-    const p = neutral({ tier: 'runaway', isNew: true, traits: ['spiky', 'multiModel', 'noCostCenter'] });
-    const tips = userTips(p, P.demo.settings, 100);
-    expect(tips.every((x) => x.savingsUsd === 0)).toBe(true);
-    expect(tips.map((x) => x.id)).toEqual(['runaway', 'spiky', 'multi-model', 'cost-center', 'new']);
-    expect(tips.map((x) => x.severity)).toEqual(['high', 'low', 'low', 'low', 'positive']);
+    const profile = neutral({ tier: 'runaway', isNew: true, traits: ['spiky', 'multiModel', 'noCostCenter'] });
+    const tips = userTips(profile, PIPELINES.demo.settings, 100);
+    expect(tips.every((tip) => tip.savingsUsd === 0)).toBe(true);
+    expect(tips.map((tip) => tip.id)).toEqual(['runaway', 'spiky', 'multi-model', 'cost-center', 'new']);
+    expect(tips.map((tip) => tip.severity)).toEqual(['high', 'low', 'low', 'low', 'positive']);
   });
 
   it('values a tip by its saving only: a high severity tip that saves nothing follows the ones that save something', () => {
-    const p = neutral({ tier: 'runaway', traits: ['lowAuto', 'lowCache'], autoShare: 0, cacheHit: 0.1 }, { autoAdoption: 0.2, cacheDiscipline: 0.6 });
-    expect(tipIds(p)).toEqual(['cache', 'auto', 'runaway']);
+    const profile = neutral({ tier: 'runaway', traits: ['lowAuto', 'lowCache'], autoShare: 0, cacheHit: 0.1 }, { autoAdoption: 0.2, cacheDiscipline: 0.6 });
+    expect(tipIds(profile)).toEqual(['cache', 'auto', 'runaway']);
   });
 
   it('keeps the biggest saving when the list is cut', () => {
-    const p = neutral(
+    const profile = neutral(
       { tier: 'runaway', powerfulShare: 0.9, profile: 'frontier', traits: ['lowAuto', 'lowCache', 'longContext'], autoShare: 0, cacheHit: 0.1, longShare: 0.3 },
       { modelShift: 2, autoAdoption: 1, cacheDiscipline: 0.5, contextHygiene: 0.4, longContext: 0.3, capRunaway: 3 },
     );
-    expect(tipIds(p)).toEqual(['runaway', 'model', 'auto', 'cache', 'context', 'long-context']);
-    expect(tipIds(p, 1)).toEqual(['runaway']);
-    expect(tipIds(p, 3)).toEqual(['runaway', 'model', 'auto']);
+    expect(tipIds(profile)).toEqual(['runaway', 'model', 'auto', 'cache', 'context', 'long-context']);
+    expect(tipIds(profile, 1)).toEqual(['runaway']);
+    expect(tipIds(profile, 3)).toEqual(['runaway', 'model', 'auto']);
   });
 
   it('holds for every user of the demo: saving never goes up from one tip to the next, and ties follow severity', () => {
-    for (const p of P.demo.analysis.population.profiles) {
-      const all = userTips(p, P.demo.settings, 100);
-      expect(userTips(p, P.demo.settings)).toEqual(all.slice(0, 6));
+    for (const profile of PIPELINES.demo.analysis.population.profiles) {
+      const all = userTips(profile, PIPELINES.demo.settings, 100);
+      expect(userTips(profile, PIPELINES.demo.settings)).toEqual(all.slice(0, 6));
       for (let i = 1; i < all.length; i++) {
-        const a = all[i - 1];
-        const b = all[i];
-        const ok = a.savingsUsd > b.savingsUsd || (a.savingsUsd === b.savingsUsd && TIP_RANK[a.severity] <= TIP_RANK[b.severity]);
-        expect(ok, `${p.name}: ${a.id} ($${a.savingsUsd}) before ${b.id} ($${b.savingsUsd})`).toBe(true);
+        const prev = all[i - 1];
+        const next = all[i];
+        const ok = prev.savingsUsd > next.savingsUsd || (prev.savingsUsd === next.savingsUsd && TIP_RANK[prev.severity] <= TIP_RANK[next.severity]);
+        expect(ok, `${profile.name}: ${prev.id} ($${prev.savingsUsd}) before ${next.id} ($${next.savingsUsd})`).toBe(true);
       }
     }
   });

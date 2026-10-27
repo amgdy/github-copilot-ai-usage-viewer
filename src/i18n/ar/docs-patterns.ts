@@ -1,7 +1,7 @@
 import type { Dict } from '../core';
 
 /** Arabic for the Patterns page metric docs in `lib/metrics/docs/patterns.ts`. */
-const ar: Dict = {
+const arabic: Dict = {
   // Days with usage
   'How many days of the selected period had any usage. It tells you how regularly GitHub Copilot is used, not how much.':
     'عدد أيام الفترة المحددة التي فيها أي استخدام. يبيّن مدى انتظام استخدام GitHub Copilot، لا حجم الاستخدام.',
@@ -429,4 +429,4 @@ const ar: Dict = {
     'كان في الشهر الأول 50 مستخدمًا لهم استخدام، وفي الشهر الثاني 55، منهم 45 كانوا أيضًا في الشهر الأول. يعرض صف الفترة كاملة 50 + 55 − 45 = 60 مستخدمًا.',
 };
 
-export default ar;
+export default arabic;

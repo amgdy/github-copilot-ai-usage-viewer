@@ -1,9 +1,9 @@
 /** Text and number helpers for the settings inputs. */
 
 /** Formats a number for an input without float noise (0.30000000000000004 becomes "0.3"). */
-export function numText(n: number | null | undefined, digits = 4): string {
-  if (n === null || n === undefined || !Number.isFinite(n)) return '';
-  return String(Number(n.toFixed(digits)));
+export function numText(value: number | null | undefined, digits = 4): string {
+  if (value === null || value === undefined || !Number.isFinite(value)) return '';
+  return String(Number(value.toFixed(digits)));
 }
 
 /** Stored fraction to displayed percent (0.4 to 40). */
@@ -20,15 +20,15 @@ const GROUPED = /^[+-]?\d{1,3}(,\d{3})+(\.\d*)?$/;
  * Returns null for anything else (hex, exponents, Infinity, text, a decimal comma).
  */
 export function parseNumber(text: string): number | null {
-  let t = text.trim().replace(/^\$\s*/, '').replace(/\s*%$/, '').trim();
-  if (t === '') return null;
-  if (GROUPED.test(t)) t = t.replace(/,/g, '');
-  if (!PLAIN.test(t)) return null;
-  const n = Number(t);
-  return Number.isFinite(n) ? n : null;
+  let cleaned = text.trim().replace(/^\$\s*/, '').replace(/\s*%$/, '').trim();
+  if (cleaned === '') return null;
+  if (GROUPED.test(cleaned)) cleaned = cleaned.replace(/,/g, '');
+  if (!PLAIN.test(cleaned)) return null;
+  const parsed = Number(cleaned);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 /** Whether a stored value is a finite number inside a closed range. */
-export function inRange(v: unknown, min: number, max: number): v is number {
-  return typeof v === 'number' && Number.isFinite(v) && v >= min && v <= max;
+export function inRange(value: unknown, min: number, max: number): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max;
 }

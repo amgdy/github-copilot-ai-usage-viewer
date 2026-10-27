@@ -46,7 +46,7 @@ export const NAV: NavItem[] = [
 export const NAV_GROUPS: NavItem['group'][] = ['Insights', 'Act', 'Drill down', 'Data'];
 
 /** Group names in the current language. */
-export const groupLabel = (g: NavItem['group']): string =>
-  ({ Insights: t('Insights'), Act: t('Act'), 'Drill down': t('Drill down'), Data: t('Data') })[g];
+export const groupLabel = (group: NavItem['group']): string =>
+  ({ Insights: t('Insights'), Act: t('Act'), 'Drill down': t('Drill down'), Data: t('Data') })[group];
 
-export const navItem = (id: PageId): NavItem => NAV.find((n) => n.id === id) ?? NAV[0];
+export const navItem = (id: PageId): NavItem => NAV.find((item) => item.id === id) ?? NAV[0];

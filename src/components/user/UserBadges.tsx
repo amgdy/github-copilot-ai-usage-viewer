@@ -6,7 +6,7 @@ import { TaxBadge, taxLookup } from '../ui';
 import { hasQuota, shortItem } from './shared';
 
 /** Persona, tier, engagement, profile, Pareto class and every trait. Hover a badge for its meaning. */
-export function UserBadges({ p }: { p: UserProfile }) {
+export function UserBadges({ p: user }: { p: UserProfile }) {
   const { taxonomy, analysis } = useAnalysis();
   const lookup = useMemo(
     () => ({
@@ -19,17 +19,17 @@ export function UserBadges({ p }: { p: UserProfile }) {
     }),
     [taxonomy],
   );
-  const persona = lookup.personas[p.persona];
+  const persona = lookup.personas[user.persona];
 
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap gap-1.5">
         <TaxBadge item={persona} />
-        <TaxBadge item={shortItem(lookup.tiers[p.tier])} />
-        <TaxBadge item={shortItem(lookup.engagement[p.engagement])} />
-        {analysis.coverage.models ? <TaxBadge item={lookup.profiles[p.profile]} /> : null}
-        <TaxBadge item={lookup.pareto[p.pareto]} />
-        {p.traits.map((id) => (
+        <TaxBadge item={shortItem(lookup.tiers[user.tier])} />
+        <TaxBadge item={shortItem(lookup.engagement[user.engagement])} />
+        {analysis.coverage.models ? <TaxBadge item={lookup.profiles[user.profile]} /> : null}
+        <TaxBadge item={lookup.pareto[user.pareto]} />
+        {user.traits.map((id) => (
           <TaxBadge key={id} item={lookup.traits[id]} />
         ))}
       </div>
@@ -39,7 +39,7 @@ export function UserBadges({ p }: { p: UserProfile }) {
           <p>
             <T text="{label} {action}" values={{ label: <span className="font-medium text-fg">{t('Suggested next step:')}</span>, action: persona.action }} />
           </p>
-          {hasQuota(p) ? null : (
+          {hasQuota(user) ? null : (
             <p className="text-fg-subtle">{t('The file has no license size for this user, so the persona and usage tier assume one.')}</p>
           )}
         </div>

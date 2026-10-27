@@ -14,10 +14,10 @@ export function T({ text, values = {} }: { text: string; values?: Record<string,
   const parts = t(text).split(/(\{\w+\})/);
   return (
     <>
-      {parts.map((p, i) => {
-        const m = /^\{(\w+)\}$/.exec(p);
-        if (m && Object.hasOwn(values, m[1])) return <Fragment key={i}>{values[m[1]]}</Fragment>;
-        return p ? <Fragment key={i}>{p}</Fragment> : null;
+      {parts.map((part, index) => {
+        const match = /^\{(\w+)\}$/.exec(part);
+        if (match && Object.hasOwn(values, match[1])) return <Fragment key={index}>{values[match[1]]}</Fragment>;
+        return part ? <Fragment key={index}>{part}</Fragment> : null;
       })}
     </>
   );

@@ -1,10 +1,10 @@
 import type { Dict, PluralEntry } from '../core';
 
 /** Arabic counted noun: one, two, 3 to 10, 11 to 99, and 0 or 100 and up. */
-const p = (one: string, two: string, few: string, many: string, other: string): PluralEntry => ({ zero: other, one, two, few, many, other });
+const plural = (one: string, two: string, few: string, many: string, other: string): PluralEntry => ({ zero: other, one, two, few, many, other });
 
 /** The Licenses page (src/pages/LicensesPage.tsx and src/pages/licenses). */
-const ar: Dict = {
+const arabic: Dict = {
   // Page, empty state and notices
   'Import your license list to see your seats': 'استورد قائمة التراخيص لترى تراخيصك',
   'The usage report shows who used GitHub Copilot, but not who has a seat. The license list adds what the report cannot show:':
@@ -20,14 +20,14 @@ const ar: Dict = {
   'The license list has no dates, so days without activity cannot be counted.': 'لا تحتوي قائمة التراخيص على تواريخ، لذلك لا يمكن حساب أيام عدم النشاط.',
   'The license list is old': 'قائمة التراخيص قديمة',
   'Some seats have no recent activity date': 'بعض التراخيص ليس لها تاريخ نشاط حديث',
-  '{n} seats have no recent activity date. They may be new or their activity may be older than 90 days. They are not counted as seats to free.': p(
+  '{n} seats have no recent activity date. They may be new or their activity may be older than 90 days. They are not counted as seats to free.': plural(
     'لا يوجد تاريخ نشاط حديث لترخيص واحد. قد يكون جديدًا أو قد يكون نشاطه أقدم من 90 يومًا. لا يُحسب ضمن التراخيص المطلوب تحريرها.',
     'لا يوجد تاريخ نشاط حديث لترخيصين. قد يكونان جديدين أو قد يكون نشاطهما أقدم من 90 يومًا. لا يُحسبان ضمن التراخيص المطلوب تحريرها.',
     'لا يوجد تاريخ نشاط حديث لـ{n} تراخيص. قد تكون جديدة أو قد يكون نشاطها أقدم من 90 يومًا. لا تُحسب ضمن التراخيص المطلوب تحريرها.',
     'لا يوجد تاريخ نشاط حديث لـ{n} ترخيصًا. قد تكون جديدة أو قد يكون نشاطها أقدم من 90 يومًا. لا تُحسب ضمن التراخيص المطلوب تحريرها.',
     'لا يوجد تاريخ نشاط حديث لـ{n} ترخيص. قد تكون جديدة أو قد يكون نشاطها أقدم من 90 يومًا. لا تُحسب ضمن التراخيص المطلوب تحريرها.',
   ),
-  'The usage report runs {n} days past the date of the license list. Seats may have changed since then, so import a new list.': p(
+  'The usage report runs {n} days past the date of the license list. Seats may have changed since then, so import a new list.': plural(
     'يمتد تقرير الاستخدام يومًا واحدًا بعد تاريخ قائمة التراخيص. ربما تغيّرت التراخيص منذ ذلك الحين، لذا استورد قائمة جديدة.',
     'يمتد تقرير الاستخدام يومين بعد تاريخ قائمة التراخيص. ربما تغيّرت التراخيص منذ ذلك الحين، لذا استورد قائمة جديدة.',
     'يمتد تقرير الاستخدام {n} أيام بعد تاريخ قائمة التراخيص. ربما تغيّرت التراخيص منذ ذلك الحين، لذا استورد قائمة جديدة.',
@@ -93,7 +93,7 @@ const ar: Dict = {
   'Nothing can be imported from this file': 'لا يمكن استيراد أي شيء من هذا الملف',
   'Check these notes': 'راجع هذه الملاحظات',
   'Imported {name}': 'تم استيراد {name}',
-  'The license list now has {n} seats.': p(
+  'The license list now has {n} seats.': plural(
     'تحتوي قائمة التراخيص الآن على ترخيص واحد.',
     'تحتوي قائمة التراخيص الآن على ترخيصين.',
     'تحتوي قائمة التراخيص الآن على {n} تراخيص.',
@@ -127,8 +127,8 @@ const ar: Dict = {
   'Use only the seats in this file': 'استخدام التراخيص الموجودة في هذا الملف فقط',
   'Add to the list': 'الإضافة إلى القائمة',
   'Keep the seats on the list and add or update the seats in this file': 'الإبقاء على التراخيص الموجودة في القائمة وإضافة تراخيص هذا الملف أو تحديثها',
-  'Import {n} seats': p('استيراد ترخيص واحد', 'استيراد ترخيصين', 'استيراد {n} تراخيص', 'استيراد {n} ترخيصًا', 'استيراد {n} ترخيص'),
-  'The {n} seats on the list now are replaced by the seats in this file.': p(
+  'Import {n} seats': plural('استيراد ترخيص واحد', 'استيراد ترخيصين', 'استيراد {n} تراخيص', 'استيراد {n} ترخيصًا', 'استيراد {n} ترخيص'),
+  'The {n} seats on the list now are replaced by the seats in this file.': plural(
     'يُستبدل الترخيص الموجود في القائمة الآن بتراخيص هذا الملف.',
     'يُستبدل الترخيصان الموجودان في القائمة الآن بتراخيص هذا الملف.',
     'تُستبدل التراخيص الـ{n} الموجودة في القائمة الآن بتراخيص هذا الملف.',
@@ -220,4 +220,4 @@ const ar: Dict = {
   'The plan read from the monthly included credits of the user in the report.': 'الخطة المستنتجة من الأرصدة المشمولة الشهرية للمستخدم في التقرير.',
 };
 
-export default ar;
+export default arabic;

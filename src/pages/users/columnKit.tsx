@@ -18,8 +18,8 @@ export const NO_MODELS = msg('This file has no model names');
 export const NO_TOKENS = msg('This file has no token columns');
 
 export const dash = <span className="text-fg-subtle">–</span>;
-export const usd = (v: number): string => fmtUSD(v, 2);
-export const sum = (rows: UserProfile[], f: (p: UserProfile) => number): number => rows.reduce((s, p) => s + f(p), 0);
+export const usd = (amount: number): string => fmtUSD(amount, 2);
+export const sum = (rows: UserProfile[], pick: (user: UserProfile) => number): number => rows.reduce((total, user) => total + pick(user), 0);
 
 /** A dash that says why the file cannot fill the cell. Pass the English reason; it is translated here. */
 export const withReason = (reason: string): ReactNode => (

@@ -29,27 +29,27 @@ function BandPreview({ bands, busy, note }: { bands: BandView[]; busy?: boolean;
     <div className={cx('transition-opacity', busy && 'opacity-60')} aria-busy={busy}>
       <div className="flex h-3 overflow-hidden rounded-xs bg-surface-3" role="img" aria-label={t('Share of users in each band')}>
         {total > 0
-          ? bands.map((b) =>
-              b.users ? (
-                <div key={b.id} className="h-full" style={{ width: `${(b.users / total) * 100}%`, background: b.color }} title={t('{name}: {users}', { name: b.label, users: pluralize(b.users, 'user') })} />
+          ? bands.map((band) =>
+              band.users ? (
+                <div key={band.id} className="h-full" style={{ width: `${(band.users / total) * 100}%`, background: band.color }} title={t('{name}: {users}', { name: band.label, users: pluralize(band.users, 'user') })} />
               ) : null,
             )
           : null}
       </div>
       <ul className="mt-2.5 flex flex-wrap gap-2">
-        {bands.map((b) => (
-          <li key={b.id} className="min-w-[7rem] flex-1 rounded-md border border-border-muted bg-surface-2 px-2.5 py-1.5">
+        {bands.map((band) => (
+          <li key={band.id} className="min-w-[7rem] flex-1 rounded-md border border-border-muted bg-surface-2 px-2.5 py-1.5">
             <div className="flex items-center gap-1.5 text-xs font-medium">
-              <span className="size-2.5 shrink-0 rounded-sm" style={{ background: b.color }} aria-hidden />
-              <span className="truncate">{b.label}</span>
+              <span className="size-2.5 shrink-0 rounded-sm" style={{ background: band.color }} aria-hidden />
+              <span className="truncate">{band.label}</span>
             </div>
-            <div className="num text-[11px] text-fg-subtle">{b.range}</div>
-            <div className="num mt-0.5 text-sm font-semibold">{b.users === null ? '–' : pluralize(b.users, 'user')}</div>
-            {b.users !== null && total > 0 ? (
+            <div className="num text-[11px] text-fg-subtle">{band.range}</div>
+            <div className="num mt-0.5 text-sm font-semibold">{band.users === null ? '–' : pluralize(band.users, 'user')}</div>
+            {band.users !== null && total > 0 ? (
               <div className="num text-[11px] text-fg-subtle">
-                {b.usage !== undefined
-                  ? t('{users} of users, {usage} of usage', { users: fmtPct(b.users / total, 0), usage: fmtPct(b.usage, 0) })
-                  : t('{users} of users', { users: fmtPct(b.users / total, 0) })}
+                {band.usage !== undefined
+                  ? t('{users} of users, {usage} of usage', { users: fmtPct(band.users / total, 0), usage: fmtPct(band.usage, 0) })
+                  : t('{users} of users', { users: fmtPct(band.users / total, 0) })}
               </div>
             ) : null}
           </li>
@@ -64,9 +64,9 @@ function LiveBands({ kind, bands }: { kind: BandKind; bands: Band[] }) {
   const { analysis, pending } = useAnalysis();
   const groups: Groups = analysis.population.groups[kind];
   const totalUsage = analysis.population.totals.gross;
-  const view = bands.map((b) => {
-    const g = groups[b.id];
-    return { ...b, users: g?.users ?? 0, usage: totalUsage > 0 ? (g?.gross ?? 0) / totalUsage : undefined };
+  const view = bands.map((band) => {
+    const groupStat = groups[band.id];
+    return { ...band, users: groupStat?.users ?? 0, usage: totalUsage > 0 ? (groupStat?.gross ?? 0) / totalUsage : undefined };
   });
   const note = analysis.narrowed
     ? t('Filters are on, so the counts cover only the users that match them.')
@@ -76,11 +76,11 @@ function LiveBands({ kind, bands }: { kind: BandKind; bands: Band[] }) {
 
 /** The bands with a live user count per band. Shows a hint instead when no report is loaded. */
 export function Bands({ kind, bands }: { kind: BandKind; bands: Band[] }) {
-  const hasData = useApp((s) => s.dataset !== null);
+  const hasData = useApp((state) => state.dataset !== null);
   if (!hasData) {
     return (
       <div className="space-y-2">
-        <BandPreview bands={bands.map((b) => ({ ...b, users: null }))} />
+        <BandPreview bands={bands.map((band) => ({ ...band, users: null }))} />
         <Callout tone="neutral">{t('Load a report to see how many users fall in each band.')}</Callout>
       </div>
     );
@@ -91,17 +91,17 @@ export function Bands({ kind, bands }: { kind: BandKind; bands: Band[] }) {
 function LiveCountInner({ group, id, what }: { group: GroupName; id: string; what?: string }) {
   const { analysis, pending } = useAnalysis();
   const groups: Groups = analysis.population.groups[group];
-  const g = groups[id];
-  if (!g) return null;
+  const groupStat = groups[id];
+  if (!groupStat) return null;
   return (
     <span className={cx('chip num transition-opacity', pending && 'opacity-60')} title={what ?? t('Users in the selected period that match this label')}>
-      {tp(g.users, '{n} user now', '{n} users now', { n: fmtInt(g.users) })}
+      {tp(groupStat.users, '{n} user now', '{n} users now', { n: fmtInt(groupStat.users) })}
     </span>
   );
 }
 
 /** A small "12 users now" chip for one group. Renders nothing when no report is loaded. `what` is the translated tooltip. */
 export function LiveCount({ group, id, what }: { group: GroupName; id: string; what?: string }) {
-  const hasData = useApp((s) => s.dataset !== null);
+  const hasData = useApp((state) => state.dataset !== null);
   return hasData ? <LiveCountInner group={group} id={id} what={what} /> : null;
 }

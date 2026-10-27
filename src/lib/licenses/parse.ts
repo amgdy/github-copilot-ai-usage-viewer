@@ -70,41 +70,41 @@ function commonProblems(tally: Tally): string[] {
 }
 
 function fromJson(body: string): LicenseParse {
-  const j = parseSeatsJson(body);
+  const json = parseSeatsJson(body);
   const problems: string[] = [];
-  if (j.errors.length > 0) {
+  if (json.errors.length > 0) {
     problems.push(
       t(
         'GitHub returned an error ("{error}") instead of a seat list. Check the organization or enterprise name. Check that the token has the manage_billing:copilot, read:org or read:enterprise scope.',
-        { error: j.errors[0] },
+        { error: json.errors[0] },
       ),
     );
   }
-  if (!j.seatShaped && j.records.length === 0) {
-    if (j.errors.length === 0) {
+  if (!json.seatShaped && json.records.length === 0) {
+    if (json.errors.length === 0) {
       problems.push(
         t(
           'No GitHub Copilot seats were found in this JSON file. Use the output of the GitHub seats API. It has a "seats" list, and each seat has an assignee with a login.',
         ),
       );
     }
-    if (j.truncated) problems.push(t('The file ends in the middle of an entry. It may have been cut short.'));
+    if (json.truncated) problems.push(t('The file ends in the middle of an entry. It may have been cut short.'));
     return unknown(problems);
   }
-  if (j.truncated) problems.push(t('The file ends in the middle of an entry. It may have been cut short.'));
-  if (j.garbage > 0) {
+  if (json.truncated) problems.push(t('The file ends in the middle of an entry. It may have been cut short.'));
+  if (json.garbage > 0) {
     problems.push(
       tp(
-        j.garbage,
+        json.garbage,
         '{n} piece of the file could not be read as JSON. It was left out.',
         '{n} pieces of the file could not be read as JSON. They were left out.',
-        { n: fmtInt(j.garbage) },
+        { n: fmtInt(json.garbage) },
       ),
     );
   }
-  problems.push(...commonProblems({ records: j.records.length, total: j.total, skipped: j.skipped, stats: j.stats, capped: j.capped }));
-  const seats = mergeSeats(j.records);
-  return { kind: 'seats-json', seats, records: j.records.length, total: j.total, skipped: j.skipped, problems, exportedAt: latestStamp(seats) };
+  problems.push(...commonProblems({ records: json.records.length, total: json.total, skipped: json.skipped, stats: json.stats, capped: json.capped }));
+  const seats = mergeSeats(json.records);
+  return { kind: 'seats-json', seats, records: json.records.length, total: json.total, skipped: json.skipped, problems, exportedAt: latestStamp(seats) };
 }
 
 function fromText(body: string): LicenseParse {
@@ -159,8 +159,8 @@ function parseInner(raw: string, fileName: string): LicenseParse {
   if (head.startsWith('{') || head.startsWith('[')) return fromJson(body);
   // A .json file with text in front of the first bracket (a warning line from a script) is still scanned for seats.
   if (JSON_NAME.test(fileName)) {
-    const j = fromJson(body);
-    if (j.kind !== 'unknown') return j;
+    const parsed = fromJson(body);
+    if (parsed.kind !== 'unknown') return parsed;
   }
   return fromText(body);
 }

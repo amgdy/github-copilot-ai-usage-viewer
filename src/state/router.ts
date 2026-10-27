@@ -33,9 +33,9 @@ function parseArg(hash: string): string {
   return parts.length > 1 ? decodeURIComponent(parts.slice(1).join('/')) : '';
 }
 
-function subscribe(cb: () => void): () => void {
-  window.addEventListener('hashchange', cb);
-  return () => window.removeEventListener('hashchange', cb);
+function subscribe(listener: () => void): () => void {
+  window.addEventListener('hashchange', listener);
+  return () => window.removeEventListener('hashchange', listener);
 }
 
 /** Current page, derived from the URL hash (`#/users`). */
@@ -57,9 +57,9 @@ export function navigate(page: PageId): void {
  * Drill-down helper: replace the active filters with `patch` (or merge when `merge` is true) and optionally jump to a page.
  * Chart clicks and "show me these users" buttons use this.
  */
-export function drill(patch: Partial<Filters>, opts: { page?: PageId; merge?: boolean } = {}): void {
+export function drill(patch: Partial<Filters>, options: { page?: PageId; merge?: boolean } = {}): void {
   const { replaceFilters, setFilters } = useApp.getState();
-  if (opts.merge) setFilters(patch);
+  if (options.merge) setFilters(patch);
   else replaceFilters(patch);
-  if (opts.page) navigate(opts.page);
+  if (options.page) navigate(options.page);
 }

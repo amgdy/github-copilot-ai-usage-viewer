@@ -10,7 +10,7 @@ import { USERS_VIEWS, VIEW_SORT, type UserColumns, type UsersView } from './colu
 
 export function UsersTable({ columns }: { columns: UserColumns }) {
   const { analysis, taxonomy } = useAnalysis();
-  const selected = useApp((s) => s.selectedUser);
+  const selected = useApp((state) => state.selectedUser);
   const [chosen, setView] = useState<UsersView>('general');
   // The License view disappears when the license list is removed.
   const view: UsersView = chosen === 'license' && !columns.hasLicense ? 'general' : chosen;
@@ -23,26 +23,26 @@ export function UsersTable({ columns }: { columns: UserColumns }) {
 
   const viewOptions = useMemo(
     () =>
-      USERS_VIEWS.filter((v) => v.value !== 'license' || columns.hasLicense).map((v) => ({
-        value: v.value,
-        label: t(v.label),
-        title: t(v.title),
+      USERS_VIEWS.filter((option) => option.value !== 'license' || columns.hasLicense).map((option) => ({
+        value: option.value,
+        label: t(option.label),
+        title: t(option.title),
       })),
     [columns.hasLicense],
   );
 
   const searchText = useCallback(
-    (p: UserProfile) => {
-      const status = seatStatusOf(p.license);
+    (user: UserProfile) => {
+      const status = seatStatusOf(user.license);
       return [
-        p.name,
-        p.org,
-        p.costCenter,
-        p.plan,
-        personas[p.persona].label,
-        tiers[p.tier].label,
-        coverage.models ? autoUse[p.autoUse].label : '',
-        p.topModel,
+        user.name,
+        user.org,
+        user.costCenter,
+        user.plan,
+        personas[user.persona].label,
+        tiers[user.tier].label,
+        coverage.models ? autoUse[user.autoUse].label : '',
+        user.topModel,
         status === null ? '' : seatStatusLabel(status),
       ]
         .filter(Boolean)
@@ -53,11 +53,11 @@ export function UsersTable({ columns }: { columns: UserColumns }) {
 
   // Share of the usage in view that the cost by token type covers.
   const splitShare = useMemo(() => {
-    const gross = rows.reduce((s, p) => s + p.gross, 0);
-    return gross > 0 ? rows.reduce((s, p) => s + p.tokenCoverage * p.gross, 0) / gross : 0;
+    const gross = rows.reduce((total, user) => total + user.gross, 0);
+    return gross > 0 ? rows.reduce((covered, user) => covered + user.tokenCoverage * user.gross, 0) / gross : 0;
   }, [rows]);
 
-  const noSeat = useMemo(() => rows.filter((p) => p.license && !p.license.seat).length, [rows]);
+  const noSeat = useMemo(() => rows.filter((user) => user.license && !user.license.seat).length, [rows]);
 
   return (
     <Card
@@ -103,14 +103,14 @@ export function UsersTable({ columns }: { columns: UserColumns }) {
         key={view}
         rows={rows}
         columns={columns.byView[view]}
-        rowKey={(p) => p.id}
+        rowKey={(user) => user.id}
         defaultSort={VIEW_SORT[view]}
         searchable={searchText}
         searchPlaceholder={t('Search users, teams, models')}
         exportName={view === 'general' ? 'github-copilot-users' : `github-copilot-users-${view}`}
         dense
         selectedKey={selected}
-        onRowClick={(p) => useApp.getState().selectUser(p.id)}
+        onRowClick={(user) => useApp.getState().selectUser(user.id)}
         emptyText={t('No users match.')}
         toolbar={<Segmented label={t('Table view')} value={view} onChange={setView} options={viewOptions} size="sm" />}
       />

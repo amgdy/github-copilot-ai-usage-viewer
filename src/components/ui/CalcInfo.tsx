@@ -17,7 +17,7 @@ export type CalcRef = string | readonly string[];
 export function docsOf(ref: CalcRef | undefined): MetricDoc[] {
   if (!ref) return [];
   const ids = typeof ref === 'string' ? [ref] : ref;
-  return ids.map(metricDoc).filter((d): d is MetricDoc => d !== undefined);
+  return ids.map(metricDoc).filter((doc): doc is MetricDoc => doc !== undefined);
 }
 
 interface Placement {
@@ -36,24 +36,24 @@ export function CalcInfo({ id, className }: { id: CalcRef; className?: string })
   const [place, setPlace] = useState<Placement | null>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDivElement>(null);
-  const label = docs.map((d) => t(d.title)).join(', ');
+  const label = docs.map((doc) => t(doc.title)).join(', ');
   const width = typeof window === 'undefined' ? PANEL_WIDTH : Math.min(PANEL_WIDTH, document.documentElement.clientWidth - 2 * EDGE);
 
   const measure = useCallback(() => {
-    const btn = trigger.current;
-    const p = panel.current;
-    if (!btn || !p) return;
-    const r = btn.getBoundingClientRect();
-    const vw = document.documentElement.clientWidth;
-    const vh = window.innerHeight;
-    const w = Math.min(PANEL_WIDTH, vw - 2 * EDGE);
-    const left = Math.min(Math.max(r.left + r.width / 2 - w / 2, EDGE), vw - w - EDGE);
-    const natural = p.scrollHeight + 2;
-    const below = vh - r.bottom - 6 - EDGE;
-    const above = r.top - 6 - EDGE;
+    const button = trigger.current;
+    const panelElement = panel.current;
+    if (!button || !panelElement) return;
+    const bounds = button.getBoundingClientRect();
+    const viewportWidth = document.documentElement.clientWidth;
+    const viewportHeight = window.innerHeight;
+    const panelWidth = Math.min(PANEL_WIDTH, viewportWidth - 2 * EDGE);
+    const left = Math.min(Math.max(bounds.left + bounds.width / 2 - panelWidth / 2, EDGE), viewportWidth - panelWidth - EDGE);
+    const natural = panelElement.scrollHeight + 2;
+    const below = viewportHeight - bounds.bottom - 6 - EDGE;
+    const above = bounds.top - 6 - EDGE;
     const underneath = natural <= below || below >= above;
     const maxHeight = Math.max(160, Math.min(natural, underneath ? below : above));
-    setPlace({ left, top: underneath ? r.bottom + 6 : Math.max(EDGE, r.top - 6 - maxHeight), maxHeight });
+    setPlace({ left, top: underneath ? bounds.bottom + 6 : Math.max(EDGE, bounds.top - 6 - maxHeight), maxHeight });
   }, []);
 
   useLayoutEffect(() => {
@@ -69,19 +69,19 @@ export function CalcInfo({ id, className }: { id: CalcRef; className?: string })
   useEffect(() => {
     if (!open) return;
     const close = () => setOpen(false);
-    const down = (e: MouseEvent) => {
-      const el = e.target as Node;
-      if (!panel.current?.contains(el) && !trigger.current?.contains(el)) close();
+    const down = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (!panel.current?.contains(target) && !trigger.current?.contains(target)) close();
     };
     // Capture phase, so Escape closes this panel before it closes a drawer behind it.
-    const key = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
-      e.stopPropagation();
+    const key = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.stopPropagation();
       close();
       trigger.current?.focus();
     };
-    const scroll = (e: Event) => {
-      if (!panel.current?.contains(e.target as Node)) close();
+    const scroll = (event: Event) => {
+      if (!panel.current?.contains(event.target as Node)) close();
     };
     document.addEventListener('mousedown', down);
     document.addEventListener('keydown', key, true);
@@ -102,7 +102,7 @@ export function CalcInfo({ id, className }: { id: CalcRef; className?: string })
       <button
         ref={trigger}
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => setOpen((wasOpen) => !wasOpen)}
         aria-label={heading}
         aria-haspopup="dialog"
         aria-expanded={open}
@@ -118,13 +118,13 @@ export function CalcInfo({ id, className }: { id: CalcRef; className?: string })
               role="dialog"
               aria-label={heading}
               tabIndex={-1}
-              onClick={(e) => e.stopPropagation()}
+              onClick={(event) => event.stopPropagation()}
               style={{ width, left: place?.left ?? 0, top: place?.top ?? 0, maxHeight: place?.maxHeight, visibility: place ? 'visible' : 'hidden' }}
               className="anim-fade fixed z-[60] overflow-y-auto overscroll-contain rounded-lg border border-border bg-surface p-3 text-start font-normal normal-case tracking-normal shadow-pop outline-none"
             >
               <div className="divide-y divide-border-muted">
-                {docs.map((d) => (
-                  <CalcDetails key={d.id} doc={d} className="py-2.5 first:pt-0 last:pb-0" />
+                {docs.map((doc) => (
+                  <CalcDetails key={doc.id} doc={doc} className="py-2.5 first:pt-0 last:pb-0" />
                 ))}
               </div>
               <a className="mt-2 inline-block text-xs text-accent hover:underline" href={methodologyHref(docs[0].id)}>
@@ -140,15 +140,15 @@ export function CalcInfo({ id, className }: { id: CalcRef; className?: string })
 
 /** One line per item: the name and the formula behind it. Shown only while "Show calculations" is on. */
 export function CalcLegend({ items, className }: { items: { label: string; calc: CalcRef }[]; className?: string }) {
-  const show = useApp((s) => s.showCalc);
+  const show = useApp((state) => state.showCalc);
   if (!show) return null;
-  const rows = items.map((it) => ({ label: it.label, docs: docsOf(it.calc) })).filter((r) => r.docs.length);
+  const rows = items.map((item) => ({ label: item.label, docs: docsOf(item.calc) })).filter((row) => row.docs.length);
   if (!rows.length) return null;
   return (
     <div className={cx('space-y-1 rounded-lg border border-border-muted bg-surface-2 px-3 py-2 text-[11px] leading-snug text-fg-subtle', className)}>
-      {rows.map((r) => (
-        <p key={r.label} className="wrap-anywhere">
-          <span className="font-medium text-fg-muted">{r.label}:</span> <span className="font-mono">{r.docs.map((d) => t(d.formula)).join(' ; ')}</span>
+      {rows.map((row) => (
+        <p key={row.label} className="wrap-anywhere">
+          <span className="font-medium text-fg-muted">{row.label}:</span> <span className="font-mono">{row.docs.map((doc) => t(doc.formula)).join(' ; ')}</span>
         </p>
       ))}
     </div>
@@ -157,15 +157,15 @@ export function CalcLegend({ items, className }: { items: { label: string; calc:
 
 /** The formulas of a metric as one muted line each. Shown only while "Show calculations" is on. */
 export function CalcLine({ id, className }: { id: CalcRef | undefined; className?: string }) {
-  const show = useApp((s) => s.showCalc);
+  const show = useApp((state) => state.showCalc);
   const docs = show ? docsOf(id) : [];
   if (!docs.length) return null;
   return (
     <div className={cx('space-y-0.5 text-[11px] leading-snug text-fg-subtle', className)}>
-      {docs.map((d) => (
-        <p key={d.id} className="flex gap-1 wrap-anywhere">
+      {docs.map((doc) => (
+        <p key={doc.id} className="flex gap-1 wrap-anywhere">
           <Calculator size={11} className="mt-px shrink-0" aria-hidden />
-          <span className="min-w-0 font-mono">{t(d.formula)}</span>
+          <span className="min-w-0 font-mono">{t(doc.formula)}</span>
         </p>
       ))}
     </div>

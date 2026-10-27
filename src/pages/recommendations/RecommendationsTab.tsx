@@ -14,28 +14,28 @@ import { applyFilters, clearFilters, facetCounts, groupBySeverity, sortRecs, typ
 /** Summary, filters and the list of recommendation cards, grouped by severity when sorted by priority. */
 export function RecommendationsTab({ filters, onChange }: { filters: RecFilters; onChange: (next: RecFilters) => void }) {
   const { analysis } = useAnalysis();
-  const recs = analysis.recs;
+  const recommendations = analysis.recs;
   const printing = usePrinting();
   const [expand, setExpand] = useState({ open: false, epoch: 0 });
 
-  const counts = useMemo(() => facetCounts(recs, filters), [recs, filters]);
-  const visible = useMemo(() => sortRecs(applyFilters(recs, filters), filters.sort), [recs, filters]);
+  const counts = useMemo(() => facetCounts(recommendations, filters), [recommendations, filters]);
+  const visible = useMemo(() => sortRecs(applyFilters(recommendations, filters), filters.sort), [recommendations, filters]);
   const groups = useMemo(() => (filters.sort === 'priority' ? groupBySeverity(visible) : []), [visible, filters.sort]);
 
   // The card keeps its own open state, so a new key is how "Expand all" and "Collapse all" reach it.
   const cards = (list: Recommendation[]) => (
     <div className="space-y-2">
-      {list.map((rec) => (
-        <RecommendationCard key={`${rec.id}:${expand.epoch}:${printing}`} rec={rec} defaultOpen={expand.open || printing} />
+      {list.map((recommendation) => (
+        <RecommendationCard key={`${recommendation.id}:${expand.epoch}:${printing}`} rec={recommendation} defaultOpen={expand.open || printing} />
       ))}
     </div>
   );
 
   return (
     <div className="space-y-4">
-      <SummaryStrip recs={recs} />
+      <SummaryStrip recs={recommendations} />
 
-      {recs.length === 0 ? (
+      {recommendations.length === 0 ? (
         <Card>
           <EmptyState
             icon={<CheckCircle2 size={24} />}
@@ -54,9 +54,9 @@ export function RecommendationsTab({ filters, onChange }: { filters: RecFilters;
             onChange={onChange}
             counts={counts}
             shown={visible.length}
-            total={recs.length}
-            onExpandAll={() => setExpand((e) => ({ open: true, epoch: e.epoch + 1 }))}
-            onCollapseAll={() => setExpand((e) => ({ open: false, epoch: e.epoch + 1 }))}
+            total={recommendations.length}
+            onExpandAll={() => setExpand((previous) => ({ open: true, epoch: previous.epoch + 1 }))}
+            onCollapseAll={() => setExpand((previous) => ({ open: false, epoch: previous.epoch + 1 }))}
           />
 
           {visible.length === 0 ? (
@@ -74,13 +74,13 @@ export function RecommendationsTab({ filters, onChange }: { filters: RecFilters;
             </Card>
           ) : groups.length > 1 ? (
             <div className="space-y-5">
-              {groups.map((g) => (
-                <section key={g.severity} aria-labelledby={`rec-group-${g.severity}`}>
-                  <h2 id={`rec-group-${g.severity}`} className="mb-2 flex items-center gap-2 text-sm font-semibold">
-                    <SeverityBadge severity={g.severity} />
-                    <span className="font-normal text-fg-muted">{pluralize(g.recs.length, 'recommendation')}</span>
+              {groups.map((group) => (
+                <section key={group.severity} aria-labelledby={`rec-group-${group.severity}`}>
+                  <h2 id={`rec-group-${group.severity}`} className="mb-2 flex items-center gap-2 text-sm font-semibold">
+                    <SeverityBadge severity={group.severity} />
+                    <span className="font-normal text-fg-muted">{pluralize(group.recs.length, 'recommendation')}</span>
                   </h2>
-                  {cards(g.recs)}
+                  {cards(group.recs)}
                 </section>
               ))}
             </div>

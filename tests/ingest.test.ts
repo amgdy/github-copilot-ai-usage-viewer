@@ -7,9 +7,9 @@ import { FIXTURE_A, FIXTURE_B, loadFixtureStore, readFixture } from './fixtures'
 
 function tokenize(text: string, chunk = 7): string[][] {
   const rows: string[][] = [];
-  const t = new CsvTokenizer(',', (r) => rows.push(r));
-  for (let i = 0; i < text.length; i += chunk) t.push(text.slice(i, i + chunk));
-  t.end();
+  const tokenizer = new CsvTokenizer(',', (row) => rows.push(row));
+  for (let i = 0; i < text.length; i += chunk) tokenizer.push(text.slice(i, i + chunk));
+  tokenizer.end();
   return rows;
 }
 
@@ -50,12 +50,12 @@ describe('ingest the pool-used fixture', () => {
     const ref = naiveRows(readFixture(FIXTURE_A));
     expect(store.n).toBe(ref.length);
     expect(store.n).toBe(19);
-    expect(sum([...store.gross])).toBeCloseTo(sum(ref.map((r) => +r.gross_amount)), 9);
-    expect(sum([...store.discount])).toBeCloseTo(sum(ref.map((r) => +r.discount_amount)), 9);
-    expect(sum([...store.net])).toBeCloseTo(sum(ref.map((r) => +r.net_amount)), 9);
-    expect(sum([...store.qty])).toBeCloseTo(sum(ref.map((r) => +r.quantity)), 6);
-    expect(sum([...store.input])).toBe(sum(ref.map((r) => +r.input)));
-    expect(sum([...store.cacheWrite])).toBe(sum(ref.map((r) => +r.cache_write)));
+    expect(sum([...store.gross])).toBeCloseTo(sum(ref.map((row) => +row.gross_amount)), 9);
+    expect(sum([...store.discount])).toBeCloseTo(sum(ref.map((row) => +row.discount_amount)), 9);
+    expect(sum([...store.net])).toBeCloseTo(sum(ref.map((row) => +row.net_amount)), 9);
+    expect(sum([...store.qty])).toBeCloseTo(sum(ref.map((row) => +row.quantity)), 6);
+    expect(sum([...store.input])).toBe(sum(ref.map((row) => +row.input)));
+    expect(sum([...store.cacheWrite])).toBe(sum(ref.map((row) => +row.cache_write)));
     expect(store.hasTokens).toBe(true);
   });
 
@@ -64,21 +64,21 @@ describe('ingest the pool-used fixture', () => {
     expect(store.dicts.user.values).toContain('alex-dev');
     expect(store.dicts.user.values).toContain('sam-lee');
     expect(store.dicts.user.values[0]).toBe('');
-    expect(store.dicts.model.values.some((m) => m.startsWith('Auto'))).toBe(false);
+    expect(store.dicts.model.values.some((model) => model.startsWith('Auto'))).toBe(false);
     expect(store.dicts.model.values).toContain('Claude Opus 5.5');
-    const autoRows = [...store.auto].filter((x) => x === 1).length;
-    const refAuto = naiveRows(readFixture(FIXTURE_A)).filter((r) => /^auto/i.test(r.model)).length;
+    const autoRows = [...store.auto].filter((autoFlag) => autoFlag === 1).length;
+    const refAuto = naiveRows(readFixture(FIXTURE_A)).filter((row) => /^auto/i.test(row.model)).length;
     expect(autoRows).toBe(refAuto);
     expect(autoRows).toBeGreaterThan(0);
   });
 
   it('has no data-quality problems', async () => {
     const store = await loadFixtureStore([FIXTURE_A]);
-    const f = store.files[0];
-    expect(f.badDateRows).toBe(0);
-    expect(f.badNumberCells).toBe(0);
-    expect(f.balanceMismatchRows).toBe(0);
-    expect(f.missingColumns).toEqual([]);
+    const file = store.files[0];
+    expect(file.badDateRows).toBe(0);
+    expect(file.badNumberCells).toBe(0);
+    expect(file.balanceMismatchRows).toBe(0);
+    expect(file.missingColumns).toEqual([]);
     expect(isoDate(store.minDay)).toBe('2026-10-02');
   });
 });
@@ -90,9 +90,9 @@ describe('ingest the partial-export fixture', () => {
     expect(readFixture(FIXTURE_B)).toMatch(/"\d(\.\d+)?e-\d+"/);
     expect(store.n).toBe(ref.length);
     expect(store.n).toBe(45);
-    expect(sum([...store.gross])).toBeCloseTo(sum(ref.map((r) => +r.gross_amount)), 9);
-    const blank = [...store.user].filter((u) => u === 0).length;
-    expect(blank).toBe(ref.filter((r) => r.username === '').length);
+    expect(sum([...store.gross])).toBeCloseTo(sum(ref.map((row) => +row.gross_amount)), 9);
+    const blank = [...store.user].filter((userId) => userId === 0).length;
+    expect(blank).toBe(ref.filter((row) => row.username === '').length);
     expect(blank).toBeGreaterThan(0);
     expect(store.files[0].badNumberCells).toBe(0);
   });
@@ -107,11 +107,11 @@ describe('multi-file ingest', () => {
   });
 
   it('drops rows duplicated across files, but not within a file', async () => {
-    const a = readFixture(FIXTURE_A);
+    const csvText = readFixture(FIXTURE_A);
     const store = await buildStore(
       [
-        { name: 'one.csv', data: a },
-        { name: 'two.csv', data: a },
+        { name: 'one.csv', data: csvText },
+        { name: 'two.csv', data: csvText },
       ],
       { dedupe: true },
     );
@@ -120,8 +120,8 @@ describe('multi-file ingest', () => {
 
     const keep = await buildStore(
       [
-        { name: 'one.csv', data: a },
-        { name: 'two.csv', data: a },
+        { name: 'one.csv', data: csvText },
+        { name: 'two.csv', data: csvText },
       ],
       { dedupe: false },
     );

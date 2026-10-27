@@ -21,13 +21,13 @@ export async function takeUploads(files: File[]): Promise<UploadOutcome> {
   useApp.getState().setError(null);
   useUploadNotice.getState().show(null);
   const outcome = await routeUploads(files, {
-    readHead: (f) => f.slice(0, SNIFF_BYTES).text(),
-    readText: (f) => f.text(),
+    readHead: (file) => file.slice(0, SNIFF_BYTES).text(),
+    readText: (file) => file.text(),
     loadUsage: loadFiles,
     hasDataset: () => useApp.getState().dataset !== null,
     roster: () => {
-      const s = useApp.getState().settings;
-      return { roster: s.roster, rosterAsOf: s.rosterAsOf };
+      const settings = useApp.getState().settings;
+      return { roster: settings.roster, rosterAsOf: settings.rosterAsOf };
     },
     saveRoster: (state) => {
       useApp.getState().updateSettings({ roster: state.roster, rosterAsOf: state.rosterAsOf });
@@ -42,11 +42,11 @@ export async function takeUploads(files: File[]): Promise<UploadOutcome> {
 /** Picks usage reports or a license list. Usage reports replace the loaded data; a license list is added to the license list. */
 export function LoadButton() {
   const input = useRef<HTMLInputElement>(null);
-  const busy = useApp((s) => s.loading !== null);
+  const busy = useApp((state) => state.loading !== null);
 
-  const onPick = (e: ChangeEvent<HTMLInputElement>) => {
-    const picked = Array.from(e.target.files ?? []);
-    e.target.value = '';
+  const onPick = (event: ChangeEvent<HTMLInputElement>) => {
+    const picked = Array.from(event.target.files ?? []);
+    event.target.value = '';
     if (picked.length) void takeUploads(picked);
   };
 
@@ -70,8 +70,8 @@ export function LoadButton() {
 
 /** Progress and errors of a load started from this page. The shell only shows them while no data is loaded. */
 export function LoadStatus() {
-  const loading = useApp((s) => s.loading);
-  const error = useApp((s) => s.error);
+  const loading = useApp((state) => state.loading);
+  const error = useApp((state) => state.error);
 
   if (loading) {
     return (
@@ -119,16 +119,16 @@ const KIND_LABEL: Record<LicenseKind, string> = {
 
 export const licenseKindLabel = (kind: LicenseKind): string => t(KIND_LABEL[kind]);
 
-function fileLine(f: LicenseFileResult): string {
-  if (f.tooBig) return t('{name} is larger than 25 MB, so it was not read. A license list is much smaller. Check that this is the right file.', { name: f.name });
-  if (f.unreadable) return t('{name} could not be read.', { name: f.name });
-  if (f.seats === 0) return t('{name}: no seats found.', { name: f.name });
-  return t('{name}: {kind}, {seats}.', { name: f.name, kind: licenseKindLabel(f.kind), seats: pluralize(f.seats, 'seat') });
+function fileLine(file: LicenseFileResult): string {
+  if (file.tooBig) return t('{name} is larger than 25 MB, so it was not read. A license list is much smaller. Check that this is the right file.', { name: file.name });
+  if (file.unreadable) return t('{name} could not be read.', { name: file.name });
+  if (file.seats === 0) return t('{name}: no seats found.', { name: file.name });
+  return t('{name}: {kind}, {seats}.', { name: file.name, kind: licenseKindLabel(file.kind), seats: pluralize(file.seats, 'seat') });
 }
 
 /** The result of the last batch of files: what each license file gave, how the list changed, and how it was kept. */
 export function UploadNoticeCallout() {
-  const notice = useUploadNotice((s) => s.notice);
+  const notice = useUploadNotice((state) => state.notice);
   return notice ? <NoticeBody notice={notice} /> : null;
 }
 
@@ -157,11 +157,11 @@ function NoticeBody({ notice }: { notice: UploadNotice }) {
         }
       >
         <ul className="space-y-0.5">
-          {notice.files.map((f) => (
-            <li key={f.name}>
-              {fileLine(f)}
-              {f.skipped > 0 ? ` ${tp(f.skipped, '{n} entry without a usable username was left out.', '{n} entries without a usable username were left out.', { n: fmtInt(f.skipped) })}` : ''}
-              {f.problems.length > 0 ? ` ${f.problems.join(' ')}` : ''}
+          {notice.files.map((file) => (
+            <li key={file.name}>
+              {fileLine(file)}
+              {file.skipped > 0 ? ` ${tp(file.skipped, '{n} entry without a usable username was left out.', '{n} entries without a usable username were left out.', { n: fmtInt(file.skipped) })}` : ''}
+              {file.problems.length > 0 ? ` ${file.problems.join(' ')}` : ''}
             </li>
           ))}
           {changed ? (

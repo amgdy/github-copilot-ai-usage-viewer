@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { CalcInfo, Callout, Card, Section } from '../../components/ui';
 import { EChart, useChartColors, type EChartsOption } from '../../components/charts/EChart';
-import { esc, usd } from '../../components/charts/helpers';
+import { escapeHtml, usd } from '../../components/charts/helpers';
 import type { ChartColors } from '../../components/charts/theme';
 import { t } from '../../i18n';
 import { fmtCompact, fmtPct } from '../../lib/utils/format';
@@ -11,21 +11,21 @@ import { CacheHistogram, CacheTrend, LowCacheUsers } from './CacheCards';
 import { costSplitTokens, money, tokenRows, type TokenKind, type TokenRow } from './metrics';
 
 /** Four hues far apart (cobalt, moss, ochre, petrol), so cache read and output never look alike. */
-const kindColors = (c: ChartColors): Record<TokenKind, string> => ({ input: c.palette[2], cacheRead: c.palette[3], cacheWrite: c.palette[4], output: c.accent });
+const kindColors = (chartColors: ChartColors): Record<TokenKind, string> => ({ input: chartColors.palette[2], cacheRead: chartColors.palette[3], cacheWrite: chartColors.palette[4], output: chartColors.accent });
 
-function mixOption(c: ChartColors, rows: TokenRow[], withCost: boolean): EChartsOption {
-  const colors = kindColors(c);
+function mixOption(chartColors: ChartColors, rows: TokenRow[], withCost: boolean): EChartsOption {
+  const colors = kindColors(chartColors);
   return {
     grid: { left: 8, right: 16, top: 30, bottom: 4, containLabel: true },
-    legend: { top: 0, data: rows.map((r) => r.label) },
+    legend: { top: 0, data: rows.map((row) => row.label) },
     tooltip: {
       trigger: 'item',
-      formatter: (p: unknown) => {
-        const r = rows[(p as { seriesIndex: number }).seriesIndex];
-        if (!r) return '';
-        const tokens = esc(t('Tokens: {tokens} ({share})', { tokens: fmtCompact(r.tokens), share: fmtPct(r.tokenShare, 1) }));
-        const cost = withCost ? `<br/>${esc(t('Estimated cost: {cost} ({share})', { cost: usd(r.cost), share: fmtPct(r.costShare, 1) }))}` : '';
-        return `<b>${esc(r.label)}</b><br/>${tokens}${cost}`;
+      formatter: (params: unknown) => {
+        const row = rows[(params as { seriesIndex: number }).seriesIndex];
+        if (!row) return '';
+        const tokens = escapeHtml(t('Tokens: {tokens} ({share})', { tokens: fmtCompact(row.tokens), share: fmtPct(row.tokenShare, 1) }));
+        const cost = withCost ? `<br/>${escapeHtml(t('Estimated cost: {cost} ({share})', { cost: usd(row.cost), share: fmtPct(row.costShare, 1) }))}` : '';
+        return `<b>${escapeHtml(row.label)}</b><br/>${tokens}${cost}`;
       },
     },
     xAxis: { type: 'value', show: false, min: 0, max: 1 },
@@ -35,24 +35,24 @@ function mixOption(c: ChartColors, rows: TokenRow[], withCost: boolean): ECharts
       data: withCost ? [t('Tokens'), t('Estimated cost')] : [t('Tokens')],
       axisLine: { show: false },
       axisTick: { show: false },
-      axisLabel: { color: c.text, fontSize: 12 },
+      axisLabel: { color: chartColors.text, fontSize: 12 },
     },
-    series: rows.map((r) => ({
-      name: r.label,
+    series: rows.map((row) => ({
+      name: row.label,
       type: 'bar' as const,
       stack: 'mix',
       barWidth: 30,
-      color: colors[r.key],
-      itemStyle: { borderColor: c.surface, borderWidth: 1 },
+      color: colors[row.key],
+      itemStyle: { borderColor: chartColors.surface, borderWidth: 1 },
       emphasis: { focus: 'series' as const },
-      label: { show: true, color: c.surface, fontSize: 12, fontWeight: 600, formatter: (p: { value?: unknown }) => (Number(p.value) >= 0.08 ? fmtPct(Number(p.value), 0) : '') },
-      data: withCost ? [r.tokenShare, r.costShare] : [r.tokenShare],
+      label: { show: true, color: chartColors.surface, fontSize: 12, fontWeight: 600, formatter: (params: { value?: unknown }) => (Number(params.value) >= 0.08 ? fmtPct(Number(params.value), 0) : '') },
+      data: withCost ? [row.tokenShare, row.costShare] : [row.tokenShare],
     })),
   };
 }
 
 function mixInsight(rows: TokenRow[]): string {
-  const by = (k: TokenKind): TokenRow => rows.find((r) => r.key === k) ?? rows[0];
+  const by = (kind: TokenKind): TokenRow => rows.find((row) => row.key === kind) ?? rows[0];
   const read = by('cacheRead');
   const out = by('output');
   const cacheText =
@@ -65,12 +65,12 @@ function mixInsight(rows: TokenRow[]): string {
 function TokenMix() {
   const { analysis } = useAnalysis();
   const colors = useChartColors();
-  const { agg } = analysis;
-  const totals = agg.totals;
-  const rows = useMemo(() => tokenRows(totals, costSplitTokens(agg)), [agg, totals]);
-  const sum = (f: (r: TokenRow) => number): number => rows.reduce((a, r) => a + f(r), 0);
-  const tokenTotal = sum((r) => r.tokens);
-  const costTotal = sum((r) => r.cost);
+  const { agg: aggregates } = analysis;
+  const totals = aggregates.totals;
+  const rows = useMemo(() => tokenRows(totals, costSplitTokens(aggregates)), [aggregates, totals]);
+  const sum = (pick: (row: TokenRow) => number): number => rows.reduce((total, row) => total + pick(row), 0);
+  const tokenTotal = sum((row) => row.tokens);
+  const costTotal = sum((row) => row.cost);
   const withCost = costTotal > 0;
   const option = useMemo(() => mixOption(colors, rows, withCost), [colors, rows, withCost]);
   const palette = kindColors(colors);
@@ -127,19 +127,19 @@ function TokenMix() {
             </tr>
           </thead>
           <tbody className="divide-y divide-border-muted text-end">
-            {rows.map((r) => (
-              <tr key={r.key}>
+            {rows.map((row) => (
+              <tr key={row.key}>
                 <th scope="row" className="py-1.5 pe-2 text-start font-normal">
                   <span className="inline-flex items-center gap-1.5">
-                    <span className="size-2 shrink-0 rounded-xs" style={{ background: palette[r.key] }} />
-                    {r.label}
+                    <span className="size-2 shrink-0 rounded-xs" style={{ background: palette[row.key] }} />
+                    {row.label}
                   </span>
                 </th>
-                <td className="num px-2 py-1.5">{fmtCompact(r.tokens)}</td>
-                <td className="num px-2 py-1.5 text-fg-muted">{fmtPct(r.tokenShare, 1)}</td>
-                <td className="num px-2 py-1.5">{withCost ? money(r.cost) : '–'}</td>
-                <td className="num px-2 py-1.5 text-fg-muted">{withCost ? fmtPct(r.costShare, 1) : '–'}</td>
-                <td className="num py-1.5 ps-2">{withCost && Number.isFinite(r.perMillion) ? money(r.perMillion) : '–'}</td>
+                <td className="num px-2 py-1.5">{fmtCompact(row.tokens)}</td>
+                <td className="num px-2 py-1.5 text-fg-muted">{fmtPct(row.tokenShare, 1)}</td>
+                <td className="num px-2 py-1.5">{withCost ? money(row.cost) : '–'}</td>
+                <td className="num px-2 py-1.5 text-fg-muted">{withCost ? fmtPct(row.costShare, 1) : '–'}</td>
+                <td className="num py-1.5 ps-2">{withCost && Number.isFinite(row.perMillion) ? money(row.perMillion) : '–'}</td>
               </tr>
             ))}
           </tbody>

@@ -7,21 +7,21 @@ import { useApp } from '../../state/store';
 
 /** The active filters as removable chips, shown under the top bar. */
 export function FilterChips() {
-  const filters = useApp((s) => s.filters);
-  const setFilters = useApp((s) => s.setFilters);
-  const reset = useApp((s) => s.resetFilters);
-  const openDrawer = useApp((s) => s.setFilterDrawerOpen);
+  const filters = useApp((state) => state.filters);
+  const setFilters = useApp((state) => state.setFilters);
+  const reset = useApp((state) => state.resetFilters);
+  const openDrawer = useApp((state) => state.setFilterDrawerOpen);
   const { store, taxonomy } = useAnalysis();
   const chips = useMemo(() => describeFilters(filters, store, taxonomy), [filters, store, taxonomy]);
   if (!chips.length) return null;
   return (
     <div className="no-print flex flex-wrap items-center gap-1.5 border-b border-border bg-bg px-4 py-2" role="list" aria-label={t('Active filters')}>
       <span className="me-0.5 text-xs font-medium text-fg-muted">{t('Filtered by')}</span>
-      {chips.map((c) => (
-        <span key={c.id} role="listitem" className="chip" title={chipText(c)}>
-          <span className="text-fg-muted">{c.group}:</span>
-          <span className="truncate font-medium">{c.value}</span>
-          <button type="button" aria-label={t('Remove filter {name}', { name: chipText(c) })} onClick={() => setFilters(c.clear)} className="-me-0.5 rounded-xs p-0.5 text-fg-subtle hover:bg-surface-3 hover:text-fg">
+      {chips.map((chip) => (
+        <span key={chip.id} role="listitem" className="chip" title={chipText(chip)}>
+          <span className="text-fg-muted">{chip.group}:</span>
+          <span className="truncate font-medium">{chip.value}</span>
+          <button type="button" aria-label={t('Remove filter {name}', { name: chipText(chip) })} onClick={() => setFilters(chip.clear)} className="-me-0.5 rounded-xs p-0.5 text-fg-subtle hover:bg-surface-3 hover:text-fg">
             <X size={12} />
           </button>
         </span>

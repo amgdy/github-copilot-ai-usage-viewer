@@ -5,10 +5,10 @@ const ARABIC = import.meta.glob<{ default: Dict }>('./ar/*.ts');
 
 const STORAGE_KEY = 'ghcu.locale';
 
-export async function loadDictionary(l: Locale): Promise<Dict> {
-  if (l === 'en') return {};
-  const mods = await Promise.all(Object.values(ARABIC).map((load) => load()));
-  return Object.assign({}, ...mods.map((m) => m.default)) as Dict;
+export async function loadDictionary(locale: Locale): Promise<Dict> {
+  if (locale === 'en') return {};
+  const arabicModules = await Promise.all(Object.values(ARABIC).map((load) => load()));
+  return Object.assign({}, ...arabicModules.map((arabicModule) => arabicModule.default)) as Dict;
 }
 
 export function storedLocale(): Locale {
@@ -19,21 +19,21 @@ export function storedLocale(): Locale {
   }
 }
 
-function applyDocument(l: Locale): void {
+function applyDocument(locale: Locale): void {
   if (typeof document === 'undefined') return;
-  const el = document.documentElement;
-  el.lang = l;
-  el.dir = LOCALES.find((x) => x.id === l)?.dir ?? 'ltr';
+  const root = document.documentElement;
+  root.lang = locale;
+  root.dir = LOCALES.find((language) => language.id === locale)?.dir ?? 'ltr';
   document.title = t('GitHub Copilot AI Usage Viewer');
 }
 
 /** Loads the dictionaries for a language, switches to it, and remembers the choice in this browser. */
-export async function setLocale(l: Locale): Promise<void> {
-  const entries = await loadDictionary(l);
-  applyLocale(l, entries);
-  applyDocument(l);
+export async function setLocale(locale: Locale): Promise<void> {
+  const entries = await loadDictionary(locale);
+  applyLocale(locale, entries);
+  applyDocument(locale);
   try {
-    localStorage.setItem(STORAGE_KEY, l);
+    localStorage.setItem(STORAGE_KEY, locale);
   } catch {
     /* storage can be blocked; the choice then lasts for this visit only */
   }
@@ -45,8 +45,8 @@ export async function initLocale(): Promise<void> {
     trackMisses(true);
     (window as unknown as Record<string, unknown>).__ghcuI18n = { missedKeys, getLocale };
   }
-  const l = storedLocale();
-  if (l !== 'en') await setLocale(l).catch((error: unknown) => {
+  const savedLocale = storedLocale();
+  if (savedLocale !== 'en') await setLocale(savedLocale).catch((error: unknown) => {
     console.error('Could not load the saved language. Using English.', error);
     applyLocale('en', {});
     applyDocument('en');

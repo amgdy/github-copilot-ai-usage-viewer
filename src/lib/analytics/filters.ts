@@ -96,41 +96,41 @@ export const DIM_FILTER_KEY: Record<DimKey, ListFilterKey> = {
 
 export const POST_LIST_KEYS = ['segments', 'tiers', 'engagement', 'profiles', 'traits', 'paretoClasses', 'autoUse'] as const;
 
-export function hasPostFilters(f: Filters): boolean {
-  return POST_LIST_KEYS.some((k) => f[k].length > 0) || f.minUserSpend !== null || f.maxUserSpend !== null;
+export function hasPostFilters(filters: Filters): boolean {
+  return POST_LIST_KEYS.some((key) => filters[key].length > 0) || filters.minUserSpend !== null || filters.maxUserSpend !== null;
 }
 
-export function activeBaseFilterCount(f: Filters): number {
-  let n = 0;
-  if (f.dateFrom !== null || f.dateTo !== null) n++;
-  for (const k of ['users', 'products', 'skus', 'models', 'vendors', 'categories', 'orgs', 'costCenters', 'repos', 'apps', 'files', 'plans', 'weekdays'] as const) {
-    if (f[k].length) n++;
+export function activeBaseFilterCount(filters: Filters): number {
+  let count = 0;
+  if (filters.dateFrom !== null || filters.dateTo !== null) count++;
+  for (const key of ['users', 'products', 'skus', 'models', 'vendors', 'categories', 'orgs', 'costCenters', 'repos', 'apps', 'files', 'plans', 'weekdays'] as const) {
+    if (filters[key].length) count++;
   }
-  if (f.selection !== 'all') n++;
-  if (f.billing !== 'all') n++;
-  if (f.attribution !== 'all') n++;
-  if (f.minRow !== null || f.maxRow !== null) n++;
-  if (f.search.trim()) n++;
-  return n;
+  if (filters.selection !== 'all') count++;
+  if (filters.billing !== 'all') count++;
+  if (filters.attribution !== 'all') count++;
+  if (filters.minRow !== null || filters.maxRow !== null) count++;
+  if (filters.search.trim()) count++;
+  return count;
 }
 
-export function activeFilterCount(f: Filters): number {
+export function activeFilterCount(filters: Filters): number {
   return (
-    activeBaseFilterCount(f) +
-    POST_LIST_KEYS.reduce((n, k) => n + (f[k].length ? 1 : 0), 0) +
-    (f.minUserSpend !== null || f.maxUserSpend !== null ? 1 : 0)
+    activeBaseFilterCount(filters) +
+    POST_LIST_KEYS.reduce((count, key) => count + (filters[key].length ? 1 : 0), 0) +
+    (filters.minUserSpend !== null || filters.maxUserSpend !== null ? 1 : 0)
   );
 }
 
-function allowSet(store: DataStore, dim: DimKey, values: string[]): Uint8Array | null {
+function allowSet(store: DataStore, dimension: DimKey, values: string[]): Uint8Array | null {
   if (!values.length) return null;
-  const d = store.dicts[dim];
-  const a = new Uint8Array(d.values.length);
-  for (const v of values) {
-    const id = d.index.get(v);
-    if (id !== undefined) a[id] = 1;
+  const dictionary = store.dicts[dimension];
+  const allowed = new Uint8Array(dictionary.values.length);
+  for (const value of values) {
+    const id = dictionary.index.get(value);
+    if (id !== undefined) allowed[id] = 1;
   }
-  return a;
+  return allowed;
 }
 
 export type SkipKey = keyof Filters | null;
@@ -141,58 +141,58 @@ export type SkipKey = keyof Filters | null;
  */
 export function buildMask(
   store: DataStore,
-  prep: Prepared,
+  prepared: Prepared,
   models: ModelTable,
-  f: Filters,
+  filters: Filters,
   skip: SkipKey = null,
 ): Uint8Array | null {
-  const use = <K extends keyof Filters>(k: K): boolean => skip !== k;
-  const from = use('dateFrom') && f.dateFrom !== null ? f.dateFrom : null;
-  const to = use('dateTo') && f.dateTo !== null ? f.dateTo : null;
-  const userA = use('users') ? allowSet(store, 'user', f.users) : null;
-  const productA = use('products') ? allowSet(store, 'product', f.products) : null;
-  const skuA = use('skus') ? allowSet(store, 'sku', f.skus) : null;
-  const orgA = use('orgs') ? allowSet(store, 'org', f.orgs) : null;
-  const ccA = use('costCenters') ? allowSet(store, 'costCenter', f.costCenters) : null;
-  const repoA = use('repos') ? allowSet(store, 'repo', f.repos) : null;
-  const appA = use('apps') ? allowSet(store, 'app', f.apps) : null;
-  const fileA = use('files') ? allowSet(store, 'file', f.files) : null;
+  const use = <K extends keyof Filters>(key: K): boolean => skip !== key;
+  const from = use('dateFrom') && filters.dateFrom !== null ? filters.dateFrom : null;
+  const to = use('dateTo') && filters.dateTo !== null ? filters.dateTo : null;
+  const userA = use('users') ? allowSet(store, 'user', filters.users) : null;
+  const productA = use('products') ? allowSet(store, 'product', filters.products) : null;
+  const skuAllowed = use('skus') ? allowSet(store, 'sku', filters.skus) : null;
+  const orgAllowed = use('orgs') ? allowSet(store, 'org', filters.orgs) : null;
+  const costCenterAllowed = use('costCenters') ? allowSet(store, 'costCenter', filters.costCenters) : null;
+  const repoA = use('repos') ? allowSet(store, 'repo', filters.repos) : null;
+  const appAllowed = use('apps') ? allowSet(store, 'app', filters.apps) : null;
+  const fileA = use('files') ? allowSet(store, 'file', filters.files) : null;
 
-  let modelA = use('models') ? allowSet(store, 'model', f.models) : null;
-  const vendorSel = use('vendors') ? f.vendors : [];
-  const catSel = use('categories') ? f.categories : [];
+  let modelA = use('models') ? allowSet(store, 'model', filters.models) : null;
+  const vendorSel = use('vendors') ? filters.vendors : [];
+  const catSel = use('categories') ? filters.categories : [];
   if (vendorSel.length || catSel.length) {
-    const vset = new Set(vendorSel.map((v) => VENDORS.indexOf(v as (typeof VENDORS)[number])));
-    const cset = new Set(catSel.map((c) => CATEGORIES.indexOf(c as (typeof CATEGORIES)[number])));
+    const vendorIndexes = new Set(vendorSel.map((vendor) => VENDORS.indexOf(vendor as (typeof VENDORS)[number])));
+    const categoryIndexes = new Set(catSel.map((category) => CATEGORIES.indexOf(category as (typeof CATEGORIES)[number])));
     const next = new Uint8Array(models.meta.length);
-    for (let m = 0; m < next.length; m++) {
-      const ok = (!vendorSel.length || vset.has(models.vendor[m])) && (!catSel.length || cset.has(models.cat[m]));
-      next[m] = ok && (!modelA || modelA[m]) ? 1 : 0;
+    for (let modelId = 0; modelId < next.length; modelId++) {
+      const ok = (!vendorSel.length || vendorIndexes.has(models.vendor[modelId])) && (!catSel.length || categoryIndexes.has(models.cat[modelId]));
+      next[modelId] = ok && (!modelA || modelA[modelId]) ? 1 : 0;
     }
     modelA = next;
   }
 
   let planA: Uint8Array | null = null;
-  if (use('plans') && f.plans.length) {
-    planA = new Uint8Array(prep.planLabels.length);
-    prep.planLabels.forEach((l, i) => {
-      if (f.plans.includes(l)) planA![i] = 1;
+  if (use('plans') && filters.plans.length) {
+    planA = new Uint8Array(prepared.planLabels.length);
+    prepared.planLabels.forEach((label, index) => {
+      if (filters.plans.includes(label)) planA![index] = 1;
     });
   }
-  let dowA: Uint8Array | null = null;
-  if (use('weekdays') && f.weekdays.length) {
-    dowA = new Uint8Array(7);
-    for (const d of f.weekdays) dowA[d] = 1;
+  let weekdayAllowed: Uint8Array | null = null;
+  if (use('weekdays') && filters.weekdays.length) {
+    weekdayAllowed = new Uint8Array(7);
+    for (const weekday of filters.weekdays) weekdayAllowed[weekday] = 1;
   }
-  const selection = use('selection') ? f.selection : 'all';
-  const billing = use('billing') ? f.billing : 'all';
-  const attribution = use('attribution') ? f.attribution : 'all';
-  const minRow = use('minRow') ? f.minRow : null;
-  const maxRow = use('maxRow') ? f.maxRow : null;
+  const selection = use('selection') ? filters.selection : 'all';
+  const billing = use('billing') ? filters.billing : 'all';
+  const attribution = use('attribution') ? filters.attribution : 'all';
+  const minRow = use('minRow') ? filters.minRow : null;
+  const maxRow = use('maxRow') ? filters.maxRow : null;
 
   // Free-text search: every whitespace-separated token must match one of the row's text dimensions.
   const tokens = use('search')
-    ? f.search
+    ? filters.search
         .toLowerCase()
         .split(/\s+/)
         .filter(Boolean)
@@ -200,12 +200,12 @@ export function buildMask(
   const searchDims: DimKey[] = ['user', 'model', 'org', 'costCenter', 'repo', 'product'];
   const searchMatch: Partial<Record<DimKey, Uint8Array[]>> = {};
   if (tokens.length) {
-    for (const dk of searchDims) {
-      searchMatch[dk] = tokens.map((t) => {
-        const vals = store.dicts[dk].values;
-        const a = new Uint8Array(vals.length);
-        for (let i = 0; i < vals.length; i++) if (vals[i].toLowerCase().includes(t)) a[i] = 1;
-        return a;
+    for (const dimension of searchDims) {
+      searchMatch[dimension] = tokens.map((token) => {
+        const dimensionValues = store.dicts[dimension].values;
+        const matches = new Uint8Array(dimensionValues.length);
+        for (let i = 0; i < dimensionValues.length; i++) if (dimensionValues[i].toLowerCase().includes(token)) matches[i] = 1;
+        return matches;
       });
     }
   }
@@ -215,15 +215,15 @@ export function buildMask(
     to !== null ||
     userA ||
     productA ||
-    skuA ||
-    orgA ||
-    ccA ||
+    skuAllowed ||
+    orgAllowed ||
+    costCenterAllowed ||
     repoA ||
-    appA ||
+    appAllowed ||
     fileA ||
     modelA ||
     planA ||
-    dowA ||
+    weekdayAllowed ||
     selection !== 'all' ||
     billing !== 'all' ||
     attribution !== 'all' ||
@@ -232,42 +232,42 @@ export function buildMask(
     tokens.length > 0;
   if (!needsMask) return null;
 
-  const n = store.n;
-  const mask = new Uint8Array(n);
+  const rowCount = store.n;
+  const mask = new Uint8Array(rowCount);
   const { day, user, product, sku, model, org, app, repo, costCenter, file, auto, gross, net } = store;
-  const lo = from ?? Number.NEGATIVE_INFINITY;
-  const hi = to ?? Number.POSITIVE_INFINITY;
+  const firstDay = from ?? Number.NEGATIVE_INFINITY;
+  const lastDay = to ?? Number.POSITIVE_INFINITY;
   const minDay = store.minDay;
-  for (let i = 0; i < n; i++) {
-    const d = day[i];
-    if (d < lo || d > hi) continue;
+  for (let i = 0; i < rowCount; i++) {
+    const rowDay = day[i];
+    if (rowDay < firstDay || rowDay > lastDay) continue;
     if (userA && !userA[user[i]]) continue;
     if (modelA && !modelA[model[i]]) continue;
     if (productA && !productA[product[i]]) continue;
-    if (skuA && !skuA[sku[i]]) continue;
-    if (orgA && !orgA[org[i]]) continue;
-    if (ccA && !ccA[costCenter[i]]) continue;
+    if (skuAllowed && !skuAllowed[sku[i]]) continue;
+    if (orgAllowed && !orgAllowed[org[i]]) continue;
+    if (costCenterAllowed && !costCenterAllowed[costCenter[i]]) continue;
     if (repoA && !repoA[repo[i]]) continue;
-    if (appA && !appA[app[i]]) continue;
+    if (appAllowed && !appAllowed[app[i]]) continue;
     if (fileA && !fileA[file[i]]) continue;
-    if (planA && !planA[prep.planOfRow[i]]) continue;
-    if (dowA && !dowA[prep.dowOfDay[d - minDay]]) continue;
+    if (planA && !planA[prepared.planOfRow[i]]) continue;
+    if (weekdayAllowed && !weekdayAllowed[prepared.dowOfDay[rowDay - minDay]]) continue;
     if (selection !== 'all' && (selection === 'auto') !== (auto[i] === 1)) continue;
     if (billing !== 'all' && (billing === 'billed') !== (net[i] > 1e-9)) continue;
     if (attribution !== 'all' && (attribution === 'attributed') !== (user[i] !== BLANK_ID)) continue;
-    const g = gross[i];
-    if (minRow !== null && g < minRow) continue;
-    if (maxRow !== null && g > maxRow) continue;
+    const rowGross = gross[i];
+    if (minRow !== null && rowGross < minRow) continue;
+    if (maxRow !== null && rowGross > maxRow) continue;
     if (tokens.length) {
       let ok = true;
-      for (let t = 0; t < tokens.length && ok; t++) {
+      for (let tokenIndex = 0; tokenIndex < tokens.length && ok; tokenIndex++) {
         ok =
-          searchMatch.user![t][user[i]] === 1 ||
-          searchMatch.model![t][model[i]] === 1 ||
-          searchMatch.org![t][org[i]] === 1 ||
-          searchMatch.costCenter![t][costCenter[i]] === 1 ||
-          searchMatch.repo![t][repo[i]] === 1 ||
-          searchMatch.product![t][product[i]] === 1;
+          searchMatch.user![tokenIndex][user[i]] === 1 ||
+          searchMatch.model![tokenIndex][model[i]] === 1 ||
+          searchMatch.org![tokenIndex][org[i]] === 1 ||
+          searchMatch.costCenter![tokenIndex][costCenter[i]] === 1 ||
+          searchMatch.repo![tokenIndex][repo[i]] === 1 ||
+          searchMatch.product![tokenIndex][product[i]] === 1;
       }
       if (!ok) continue;
     }
@@ -276,19 +276,19 @@ export function buildMask(
   return mask;
 }
 
-export function maskCount(mask: Uint8Array | null, n: number): number {
-  if (!mask) return n;
-  let c = 0;
-  for (let i = 0; i < mask.length; i++) c += mask[i];
-  return c;
+export function maskCount(mask: Uint8Array | null, rowCount: number): number {
+  if (!mask) return rowCount;
+  let count = 0;
+  for (let i = 0; i < mask.length; i++) count += mask[i];
+  return count;
 }
 
-export function andMasks(a: Uint8Array | null, userAllowed: Uint8Array | null, user: Int32Array): Uint8Array | null {
-  if (!userAllowed) return a;
-  const n = user.length;
-  const out = new Uint8Array(n);
-  for (let i = 0; i < n; i++) {
-    if ((a === null || a[i]) && userAllowed[user[i]]) out[i] = 1;
+export function andMasks(rowMask: Uint8Array | null, userAllowed: Uint8Array | null, user: Int32Array): Uint8Array | null {
+  if (!userAllowed) return rowMask;
+  const rowCount = user.length;
+  const out = new Uint8Array(rowCount);
+  for (let i = 0; i < rowCount; i++) {
+    if ((rowMask === null || rowMask[i]) && userAllowed[user[i]]) out[i] = 1;
   }
   return out;
 }

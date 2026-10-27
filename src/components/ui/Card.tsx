@@ -48,7 +48,7 @@ export function Card({ title, subtitle, actions, footer, children, className, bo
 export interface ChartCardProps extends Omit<CardProps, 'children' | 'padded'> {
   option: EChartsOption;
   height?: number | string;
-  onClick?: (p: ChartClick) => void;
+  onClick?: (event: ChartClick) => void;
   /** File name (without extension). The default uses the stable calculation id. */
   exportName?: string;
   /** Alt text for the chart. */
@@ -57,7 +57,7 @@ export interface ChartCardProps extends Omit<CardProps, 'children' | 'padded'> {
   empty?: string | false;
 }
 
-const slug = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '');
+const slug = (text: string) => text.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '');
 
 /** A card with a single ECharts chart. */
 export function ChartCard({ option, height = 280, onClick, exportName, label, empty, ...card }: ChartCardProps) {

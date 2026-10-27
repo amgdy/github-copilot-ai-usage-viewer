@@ -1,6 +1,5 @@
-import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
-import { join, relative, sep } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { existsSync, globSync, readFileSync, writeFileSync } from 'node:fs';
+import { join, sep } from 'node:path';
 import { parseAst } from 'vite';
 import { describe, expect, it } from 'vitest';
 import { placeholdersOf, type Dict, type Entry } from '../src/i18n/core';
@@ -20,7 +19,7 @@ import { LINKS } from '../src/lib/links';
  * Add `I18N_DUMP=/tmp/missing.json` to get the full list of texts that still need Arabic.
  */
 
-const SRC = fileURLToPath(new URL('../src', import.meta.url));
+const SOURCE_DIR = join(import.meta.dirname, '..', 'src');
 
 const ENFORCED = [
   'pages/',
@@ -58,7 +57,7 @@ const ENFORCED = [
 
 const ENFORCE_EXTRA = (process.env.I18N_ENFORCE ?? '')
   .split(',')
-  .map((s) => s.trim())
+  .map((path) => path.trim())
   .filter(Boolean);
 
 /**
@@ -68,19 +67,19 @@ const ENFORCE_EXTRA = (process.env.I18N_ENFORCE ?? '')
 const DOCS_ENFORCED: string[] = ['*'];
 const DOCS_ENFORCE_EXTRA = (process.env.I18N_DOCS_ENFORCE ?? '')
   .split(',')
-  .map((s) => s.trim())
+  .map((area) => area.trim())
   .filter(Boolean);
 
-const enforced = (file: string) => [...ENFORCED, ...ENFORCE_EXTRA].some((p) => file === p || (p.endsWith('/') && file.startsWith(p)));
+const enforced = (file: string) => [...ENFORCED, ...ENFORCE_EXTRA].some((path) => file === path || (path.endsWith('/') && file.startsWith(path)));
 
 // ---- Dictionaries ------------------------------------------------------------------------------
 
 const DICT_FILES = import.meta.glob<{ default: Dict }>('../src/i18n/ar/*.ts', { eager: true });
-const AR: Dict = Object.assign({}, ...Object.values(DICT_FILES).map((m) => m.default));
-const hasArabic = (key: string) => Object.hasOwn(AR, key);
+const ARABIC: Dict = Object.assign({}, ...Object.values(DICT_FILES).map((dictionaryModule) => dictionaryModule.default));
+const hasArabic = (key: string) => Object.hasOwn(ARABIC, key);
 
 const expectNone = (problems: string[]) => expect(problems, problems.join('\n')).toEqual([]);
-const same = (a: string[], b: string[]) => a.length === b.length && a.every((x, i) => x === b[i]);
+const same = (a: string[], b: string[]) => a.length === b.length && a.every((value, index) => value === b[index]);
 
 /**
  * `I18N_DUMP=/tmp/missing.json` adds the full English text of every key that still needs Arabic to that
@@ -93,16 +92,16 @@ function dumpMissing(texts: string[]) {
   writeFileSync(path, JSON.stringify([...new Set([...before, ...texts])], null, 2));
 }
 
-function placeholderProblem(key: string, e: Entry): string | null {
+function placeholderProblem(key: string, translation: Entry): string | null {
   const want = placeholdersOf(key);
-  if (typeof e === 'string') return same(placeholdersOf(e), want) ? null : `{${want}} in English, {${placeholdersOf(e)}} in Arabic`;
-  for (const [form, text] of Object.entries(e)) {
+  if (typeof translation === 'string') return same(placeholdersOf(translation), want) ? null : `{${want}} in English, {${placeholdersOf(translation)}} in Arabic`;
+  for (const [form, text] of Object.entries(translation)) {
     if (typeof text !== 'string') continue;
-    const extra = placeholdersOf(text).filter((p) => !want.includes(p));
+    const extra = placeholdersOf(text).filter((placeholder) => !want.includes(placeholder));
     if (extra.length) return `form "${form}" has unknown {${extra}}`;
     // The singular and dual forms may spell the number out, so only {n} may be left out of them.
-    const needed = form === 'one' || form === 'two' ? want.filter((p) => p !== 'n') : want;
-    const missing = needed.filter((p) => !placeholdersOf(text).includes(p));
+    const needed = form === 'one' || form === 'two' ? want.filter((placeholder) => placeholder !== 'n') : want;
+    const missing = needed.filter((placeholder) => !placeholdersOf(text).includes(placeholder));
     if (missing.length) return `form "${form}" lacks {${missing}}`;
   }
   return null;
@@ -115,25 +114,25 @@ describe('i18n: Arabic dictionaries', () => {
 
   it('defines each English key in one file only', () => {
     const where = new Map<string, string[]>();
-    for (const [path, mod] of Object.entries(DICT_FILES)) {
-      for (const key of Object.keys(mod.default)) where.set(key, [...(where.get(key) ?? []), path.split('/').pop()!]);
+    for (const [path, dictionaryModule] of Object.entries(DICT_FILES)) {
+      for (const key of Object.keys(dictionaryModule.default)) where.getOrInsertComputed(key, () => []).push(path.split('/').pop()!);
     }
     expectNone([...where].filter(([, files]) => files.length > 1).map(([key, files]) => `"${key}" is in ${files.join(' and ')}`));
   });
 
   it('keeps the {placeholders} of every key', () => {
     const bad: string[] = [];
-    for (const [key, e] of Object.entries(AR)) {
-      const p = placeholderProblem(key, e);
-      if (p) bad.push(`"${key.slice(0, 80)}": ${p}`);
+    for (const [key, translation] of Object.entries(ARABIC)) {
+      const problem = placeholderProblem(key, translation);
+      if (problem) bad.push(`"${key.slice(0, 80)}": ${problem}`);
     }
     expectNone(bad);
   });
 
   it('has no empty translations', () => {
-    const bad = Object.entries(AR)
-      .filter(([, e]) => (typeof e === 'string' ? !e.trim() : Object.values(e).some((x) => typeof x === 'string' && !x.trim())))
-      .map(([k]) => `"${k.slice(0, 80)}" is empty`);
+    const bad = Object.entries(ARABIC)
+      .filter(([, translation]) => (typeof translation === 'string' ? !translation.trim() : Object.values(translation).some((text) => typeof text === 'string' && !text.trim())))
+      .map(([key]) => `"${key.slice(0, 80)}" is empty`);
     expectNone(bad);
   });
 
@@ -151,11 +150,11 @@ interface AstNode {
   [key: string]: unknown;
 }
 
-const isNode = (v: unknown): v is AstNode => typeof v === 'object' && v !== null && typeof (v as AstNode).type === 'string';
+const isNode = (value: unknown): value is AstNode => typeof value === 'object' && value !== null && typeof (value as AstNode).type === 'string';
 
-function childrenOf(n: AstNode): AstNode[] {
+function childrenOf(node: AstNode): AstNode[] {
   const out: AstNode[] = [];
-  for (const [key, value] of Object.entries(n)) {
+  for (const [key, value] of Object.entries(node)) {
     if (key === 'type') continue;
     if (Array.isArray(value)) {
       for (const item of value) if (isNode(item)) out.push(item);
@@ -164,18 +163,18 @@ function childrenOf(n: AstNode): AstNode[] {
   return out;
 }
 
-const literal = (n: unknown): string | null => {
-  if (!isNode(n)) return null;
-  if (n.type === 'Literal' && typeof n.value === 'string') return n.value;
-  if (n.type === 'TemplateLiteral' && (n.expressions as unknown[]).length === 0) return (n.quasis as { value: { cooked: string } }[])[0].value.cooked;
+const literal = (node: unknown): string | null => {
+  if (!isNode(node)) return null;
+  if (node.type === 'Literal' && typeof node.value === 'string') return node.value;
+  if (node.type === 'TemplateLiteral' && (node.expressions as unknown[]).length === 0) return (node.quasis as { value: { cooked: string } }[])[0].value.cooked;
   return null;
 };
 
 /** The fixed text pieces of a string or template literal, for spotting raw English. */
-const textPieces = (n: unknown): string[] => {
-  if (!isNode(n)) return [];
-  if (n.type === 'Literal' && typeof n.value === 'string') return [n.value];
-  if (n.type === 'TemplateLiteral') return (n.quasis as { value: { cooked: string } }[]).map((q) => q.value.cooked);
+const textPieces = (node: unknown): string[] => {
+  if (!isNode(node)) return [];
+  if (node.type === 'Literal' && typeof node.value === 'string') return [node.value];
+  if (node.type === 'TemplateLiteral') return (node.quasis as { value: { cooked: string } }[]).map((quasi) => quasi.value.cooked);
   return [];
 };
 
@@ -192,14 +191,8 @@ interface Found {
   text: string;
 }
 
-const walkDir = (dir: string, out: string[] = []): string[] => {
-  for (const name of readdirSync(dir)) {
-    const p = join(dir, name);
-    if (statSync(p).isDirectory()) walkDir(p, out);
-    else if (/\.tsx?$/.test(name) && !name.endsWith('.d.ts')) out.push(p);
-  }
-  return out;
-};
+/** Every TypeScript source file under src, as paths relative to src. */
+const sourceFiles = (): string[] => globSync('**/*.{ts,tsx}', { cwd: SOURCE_DIR }).filter((file) => !file.endsWith('.d.ts')).sort();
 
 function scan() {
   const keys: Found[] = [];
@@ -207,8 +200,9 @@ function scan() {
   const physical: Found[] = [];
   const parseErrors: string[] = [];
 
-  for (const path of walkDir(SRC)) {
-    const file = relative(SRC, path).split(sep).join('/');
+  for (const entry of sourceFiles()) {
+    const path = join(SOURCE_DIR, entry);
+    const file = entry.split(sep).join('/');
     if (file.startsWith('i18n/ar/') || file.startsWith('lib/metrics/docs/')) continue;
     const text = readFileSync(path, 'utf8');
     let program: AstNode;
@@ -218,58 +212,58 @@ function scan() {
       parseErrors.push(`${file}: ${String(error).slice(0, 120)}`);
       continue;
     }
-    const lineOf = (n: AstNode) => text.slice(0, n.start).split('\n').length;
-    const key = (n: AstNode, k: string | null) => k !== null && keys.push({ file, line: lineOf(n), text: k });
-    const rawText = (n: AstNode, s: string) => raw.push({ file, line: lineOf(n), text: s.trim().slice(0, 80) });
+    const lineOf = (node: AstNode) => text.slice(0, node.start).split('\n').length;
+    const key = (node: AstNode, keyText: string | null) => keyText !== null && keys.push({ file, line: lineOf(node), text: keyText });
+    const rawText = (node: AstNode, snippet: string) => raw.push({ file, line: lineOf(node), text: snippet.trim().slice(0, 80) });
 
-    const classStrings = (n: AstNode) => {
-      for (const s of textPieces(n)) for (const m of s.matchAll(PHYSICAL)) physical.push({ file, line: lineOf(n), text: m[0] });
-      for (const c of childrenOf(n)) classStrings(c);
+    const classStrings = (node: AstNode) => {
+      for (const piece of textPieces(node)) for (const match of piece.matchAll(PHYSICAL)) physical.push({ file, line: lineOf(node), text: match[0] });
+      for (const child of childrenOf(node)) classStrings(child);
     };
 
-    const visit = (n: AstNode, inCode: boolean) => {
-      if (n.type === 'CallExpression' && isNode(n.callee) && n.callee.type === 'Identifier') {
-        const name = n.callee.name as string;
-        const args = n.arguments as AstNode[];
-        if (name === 't' || name === 'msg') key(n, literal(args[0]));
-        else if (name === 'tp') key(n, literal(args[2]));
+    const visit = (node: AstNode, inCode: boolean) => {
+      if (node.type === 'CallExpression' && isNode(node.callee) && node.callee.type === 'Identifier') {
+        const name = node.callee.name as string;
+        const args = node.arguments as AstNode[];
+        if (name === 't' || name === 'msg') key(node, literal(args[0]));
+        else if (name === 'tp') key(node, literal(args[2]));
         else if (name === 'pluralize') {
           const one = literal(args[1]);
           const many = args[2] ? literal(args[2]) : one === null ? null : `${one}s`;
-          if (many !== null) key(n, `{n} ${many}`);
-        } else if (name === 'cx') classStrings(n);
+          if (many !== null) key(node, `{n} ${many}`);
+        } else if (name === 'cx') classStrings(node);
       }
-      if (n.type === 'JSXElement') {
-        const opening = n.openingElement as AstNode;
+      if (node.type === 'JSXElement') {
+        const opening = node.openingElement as AstNode;
         const nameNode = opening.name as AstNode;
         const tag = nameNode.type === 'JSXIdentifier' ? (nameNode.name as string) : '';
         if (tag === 'T') {
-          const textAttr = (opening.attributes as AstNode[]).find((a) => a.type === 'JSXAttribute' && (a.name as AstNode).name === 'text');
-          const v = textAttr?.value as AstNode | undefined;
-          key(n, literal(v?.type === 'JSXExpressionContainer' ? v.expression : v));
+          const textAttr = (opening.attributes as AstNode[]).find((attribute) => attribute.type === 'JSXAttribute' && (attribute.name as AstNode).name === 'text');
+          const textValue = textAttr?.value as AstNode | undefined;
+          key(node, literal(textValue?.type === 'JSXExpressionContainer' ? textValue.expression : textValue));
         }
         const code = inCode || CODE_TAGS.has(tag);
-        for (const c of n.children as AstNode[]) {
-          if (!code && c.type === 'JSXText' && WORDS.test(c.value as string)) rawText(c, c.value as string);
-          if (!code && c.type === 'JSXExpressionContainer' && textPieces(c.expression).some((s) => WORDS.test(s))) rawText(c, textPieces(c.expression).join('…'));
+        for (const child of node.children as AstNode[]) {
+          if (!code && child.type === 'JSXText' && WORDS.test(child.value as string)) rawText(child, child.value as string);
+          if (!code && child.type === 'JSXExpressionContainer' && textPieces(child.expression).some((piece) => WORDS.test(piece))) rawText(child, textPieces(child.expression).join('…'));
         }
         visit(opening, code);
-        for (const c of n.children as AstNode[]) visit(c, code);
+        for (const child of node.children as AstNode[]) visit(child, code);
         return;
       }
-      if (n.type === 'JSXAttribute') {
-        const name = (n.name as AstNode).name as string;
-        const v = n.value as AstNode | null;
-        const inner = v?.type === 'JSXExpressionContainer' ? (v.expression as AstNode) : v;
-        if (/className$/i.test(name) && v) classStrings(v);
-        else if (TEXT_PROPS.has(name) && inner && textPieces(inner).some((s) => WORDS.test(s))) rawText(n, `${name}="${textPieces(inner).join('…')}"`);
+      if (node.type === 'JSXAttribute') {
+        const name = (node.name as AstNode).name as string;
+        const attributeValue = node.value as AstNode | null;
+        const inner = attributeValue?.type === 'JSXExpressionContainer' ? (attributeValue.expression as AstNode) : attributeValue;
+        if (/className$/i.test(name) && attributeValue) classStrings(attributeValue);
+        else if (TEXT_PROPS.has(name) && inner && textPieces(inner).some((piece) => WORDS.test(piece))) rawText(node, `${name}="${textPieces(inner).join('…')}"`);
       }
-      if (n.type === 'Property' && !n.computed && isNode(n.key)) {
-        const k = (n.key.name ?? n.key.value) as string | undefined;
-        if (k && /className$/i.test(k)) classStrings(n.value as AstNode);
-        else if (k && TEXT_KEYS.has(k) && textPieces(n.value).some((s) => WORDS.test(s))) rawText(n, `${k}: ${textPieces(n.value).join('…')}`);
+      if (node.type === 'Property' && !node.computed && isNode(node.key)) {
+        const propertyName = (node.key.name ?? node.key.value) as string | undefined;
+        if (propertyName && /className$/i.test(propertyName)) classStrings(node.value as AstNode);
+        else if (propertyName && TEXT_KEYS.has(propertyName) && textPieces(node.value).some((piece) => WORDS.test(piece))) rawText(node, `${propertyName}: ${textPieces(node.value).join('…')}`);
       }
-      for (const c of childrenOf(n)) visit(c, inCode);
+      for (const child of childrenOf(node)) visit(child, inCode);
     };
     visit(program, false);
   }
@@ -277,7 +271,7 @@ function scan() {
 }
 
 const SCAN = scan();
-const fmt = (f: Found, what: string) => `${f.file}:${f.line}: ${what}`;
+const formatFinding = (finding: Found, what: string) => `${finding.file}:${finding.line}: ${what}`;
 
 describe('i18n: source', () => {
   it('parses every source file', () => {
@@ -289,42 +283,42 @@ describe('i18n: source', () => {
   });
 
   it('has Arabic for every text passed to t, tp, msg, pluralize and <T> (enforced paths)', () => {
-    const missing = SCAN.keys.filter((k) => enforced(k.file) && !hasArabic(k.text));
-    dumpMissing(missing.map((k) => k.text));
-    expectNone(missing.map((k) => fmt(k, `no Arabic for "${k.text.slice(0, 100)}"`)));
+    const missing = SCAN.keys.filter((key) => enforced(key.file) && !hasArabic(key.text));
+    dumpMissing(missing.map((key) => key.text));
+    expectNone(missing.map((key) => formatFinding(key, `no Arabic for "${key.text.slice(0, 100)}"`)));
   });
 
   it('shows no raw English in JSX (enforced paths)', () => {
-    expectNone(SCAN.raw.filter((r) => enforced(r.file)).map((r) => fmt(r, `wrap in t() or msg(): ${r.text}`)));
+    expectNone(SCAN.raw.filter((rawText) => enforced(rawText.file)).map((rawText) => formatFinding(rawText, `wrap in t() or msg(): ${rawText.text}`)));
   });
 
   it('uses start/end classes instead of left/right (enforced paths)', () => {
-    expectNone(SCAN.physical.filter((p) => enforced(p.file)).map((p) => fmt(p, `use a start/end class instead of "${p.text}"`)));
+    expectNone(SCAN.physical.filter((physicalClass) => enforced(physicalClass.file)).map((physicalClass) => formatFinding(physicalClass, `use a start/end class instead of "${physicalClass.text}"`)));
   });
 });
 
 // ---- Metric explanations -----------------------------------------------------------------------
 
-const docTexts = (d: MetricDoc): string[] => [d.title, d.meaning, d.formula, ...(d.steps ?? []), ...(d.notes ?? []), ...(d.example ? [d.example] : [])];
+const docTexts = (doc: MetricDoc): string[] => [doc.title, doc.meaning, doc.formula, ...(doc.steps ?? []), ...(doc.notes ?? []), ...(doc.example ? [doc.example] : [])];
 
 /** Doc id → 'docs/<file>.ts', so a docs file can be checked on its own (areas span several files). */
 const DOC_FILES = import.meta.glob<Record<string, unknown>>('../src/lib/metrics/docs/*.ts', { eager: true });
 const FILE_OF = new Map<string, string>();
-for (const [path, mod] of Object.entries(DOC_FILES)) {
+for (const [path, docsModule] of Object.entries(DOC_FILES)) {
   const name = `docs/${path.split('/').pop()}`;
-  for (const v of Object.values(mod)) if (Array.isArray(v)) for (const d of v as MetricDoc[]) if (d?.id) FILE_OF.set(d.id, name);
+  for (const exported of Object.values(docsModule)) if (Array.isArray(exported)) for (const doc of exported as MetricDoc[]) if (doc?.id) FILE_OF.set(doc.id, name);
 }
 
 describe('i18n: metric explanations', () => {
   it('have Arabic for every text in the translated areas or docs files', () => {
     const wanted = new Set([...DOCS_ENFORCED, ...DOCS_ENFORCE_EXTRA]);
-    const inScope = (d: MetricDoc) => wanted.has('*') || wanted.has(d.area) || wanted.has(FILE_OF.get(d.id) ?? '');
+    const inScope = (doc: MetricDoc) => wanted.has('*') || wanted.has(doc.area) || wanted.has(FILE_OF.get(doc.id) ?? '');
     const bad: string[] = [];
-    for (const d of METRICS) {
-      if (!inScope(d)) continue;
-      for (const s of docTexts(d)) if (!hasArabic(s)) bad.push(`${d.id}: no Arabic for "${s.slice(0, 80)}"`);
+    for (const doc of METRICS) {
+      if (!inScope(doc)) continue;
+      for (const text of docTexts(doc)) if (!hasArabic(text)) bad.push(`${doc.id}: no Arabic for "${text.slice(0, 80)}"`);
     }
-    dumpMissing(METRICS.filter(inScope).flatMap((d) => docTexts(d).filter((s) => !hasArabic(s))));
+    dumpMissing(METRICS.filter(inScope).flatMap((doc) => docTexts(doc).filter((text) => !hasArabic(text))));
     expectNone(bad);
   });
 });

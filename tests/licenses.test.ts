@@ -33,26 +33,26 @@ interface SeatSpec {
 }
 
 /** One seat in the shape of GET /orgs/{org}/copilot/billing/seats. Synthetic data only. */
-function restSeat(s: SeatSpec): Record<string, unknown> {
+function restSeat(spec: SeatSpec): Record<string, unknown> {
   const seat: Record<string, unknown> = {
-    created_at: s.created ?? '2025-01-15T09:00:00Z',
-    pending_cancellation_date: s.pending ?? null,
-    last_activity_at: s.activity === undefined ? '2026-03-20T09:00:00Z' : s.activity,
-    last_activity_editor: s.editor === undefined ? 'vscode/1.97.1/copilot-chat/0.24.1' : s.editor,
-    last_authenticated_at: s.authenticated === undefined ? '2026-03-21T09:00:00Z' : s.authenticated,
-    plan_type: s.plan ?? 'business',
-    assignee: { login: s.login, id: 1000, type: 'User', name: s.name ?? null, email: s.email ?? null },
+    created_at: spec.created ?? '2025-01-15T09:00:00Z',
+    pending_cancellation_date: spec.pending ?? null,
+    last_activity_at: spec.activity === undefined ? '2026-03-20T09:00:00Z' : spec.activity,
+    last_activity_editor: spec.editor === undefined ? 'vscode/1.97.1/copilot-chat/0.24.1' : spec.editor,
+    last_authenticated_at: spec.authenticated === undefined ? '2026-03-21T09:00:00Z' : spec.authenticated,
+    plan_type: spec.plan ?? 'business',
+    assignee: { login: spec.login, id: 1000, type: 'User', name: spec.name ?? null, email: spec.email ?? null },
   };
-  if (s.org !== undefined) seat.organization = { login: s.org, id: 5 };
-  if (s.team !== undefined) seat.assigning_team = { slug: s.team, name: s.team, id: 7 };
+  if (spec.org !== undefined) seat.organization = { login: spec.org, id: 5 };
+  if (spec.team !== undefined) seat.assigning_team = { slug: spec.team, name: spec.team, id: 7 };
   return seat;
 }
 
 const page = (seats: unknown[], total: number = seats.length) => ({ total_seats: total, seats });
 
-const A = restSeat({ login: 'user001', name: 'Ada One', email: 'user001@example.com', org: 'acme', team: 'core', authenticated: '2026-03-21T10:00:00Z' });
-const B = restSeat({ login: 'user002', plan: 'enterprise', activity: null, authenticated: null, editor: null, created: '2025-02-01T00:00:00Z' });
-const C = restSeat({ login: 'User003', plan: 'unknown', pending: '2026-04-30' });
+const REST_SEAT_A = restSeat({ login: 'user001', name: 'Ada One', email: 'user001@example.com', org: 'acme', team: 'core', authenticated: '2026-03-21T10:00:00Z' });
+const REST_SEAT_B = restSeat({ login: 'user002', plan: 'enterprise', activity: null, authenticated: null, editor: null, created: '2025-02-01T00:00:00Z' });
+const REST_SEAT_C = restSeat({ login: 'User003', plan: 'unknown', pending: '2026-04-30' });
 
 const SEAT_A: LicenseSeat = {
   login: 'user001',
@@ -80,7 +80,7 @@ const SEAT_C: LicenseSeat = {
   source: 'api',
 };
 
-const logins = (r: LicenseParse): string[] => r.seats.map((s) => s.login);
+const logins = (parsed: LicenseParse): string[] => parsed.seats.map((seat) => seat.login);
 
 describe('logins', () => {
   it('accepts GitHub logins: letters, digits, hyphens, underscores inside, and a [bot] suffix', () => {
@@ -119,8 +119,8 @@ describe('readDay', () => {
   });
 
   it('reads a timestamp as its UTC day', () => {
-    for (const t of ['2025-03-05T10:30:00Z', '2025-03-05T10:30:00.123Z', '2025-03-05 10:30:00 UTC', '2025-03-05 10:30:00', '2025-03-05T10:30', '2025-03-05T00:00:00Z', '2025-03-05T23:59:59Z']) {
-      expect(readDay(t), t).toBe('2025-03-05');
+    for (const timestamp of ['2025-03-05T10:30:00Z', '2025-03-05T10:30:00.123Z', '2025-03-05 10:30:00 UTC', '2025-03-05 10:30:00', '2025-03-05T10:30', '2025-03-05T00:00:00Z', '2025-03-05T23:59:59Z']) {
+      expect(readDay(timestamp), timestamp).toBe('2025-03-05');
     }
   });
 
@@ -231,110 +231,110 @@ describe('readPlan', () => {
 
 describe('parseLicenseFile: REST seats JSON', () => {
   it('reads the object GitHub returns', () => {
-    const r = parseLicenseFile(JSON.stringify(page([A, B, C])), 'seats.json');
-    expect(r.kind).toBe('seats-json');
-    expect(r.seats).toEqual([SEAT_A, SEAT_B, SEAT_C]);
-    expect(r.total).toBe(3);
-    expect(r.records).toBe(3);
-    expect(r.skipped).toBe(0);
-    expect(r.problems).toEqual([]);
-    expect(r.exportedAt).toBe('2026-03-21');
+    const parsed = parseLicenseFile(JSON.stringify(page([REST_SEAT_A, REST_SEAT_B, REST_SEAT_C])), 'seats.json');
+    expect(parsed.kind).toBe('seats-json');
+    expect(parsed.seats).toEqual([SEAT_A, SEAT_B, SEAT_C]);
+    expect(parsed.total).toBe(3);
+    expect(parsed.records).toBe(3);
+    expect(parsed.skipped).toBe(0);
+    expect(parsed.problems).toEqual([]);
+    expect(parsed.exportedAt).toBe('2026-03-21');
   });
 
   it('reads it without a file name, pretty printed, and with a BOM', () => {
-    const text = JSON.stringify(page([A, B, C]), null, 2);
+    const text = JSON.stringify(page([REST_SEAT_A, REST_SEAT_B, REST_SEAT_C]), null, 2);
     for (const input of [text, `\uFEFF${text}`, `  \n${text}\n\n`]) {
-      const r = parseLicenseFile(input);
-      expect(r.kind).toBe('seats-json');
-      expect(r.seats).toEqual([SEAT_A, SEAT_B, SEAT_C]);
+      const parsed = parseLicenseFile(input);
+      expect(parsed.kind).toBe('seats-json');
+      expect(parsed.seats).toEqual([SEAT_A, SEAT_B, SEAT_C]);
     }
   });
 
   it('reads a bare array of seats', () => {
-    const r = parseLicenseFile(JSON.stringify([A, B, C]));
-    expect(r.kind).toBe('seats-json');
-    expect(r.seats).toEqual([SEAT_A, SEAT_B, SEAT_C]);
-    expect(r.total).toBeUndefined();
-    expect(r.problems).toEqual([]);
+    const parsed = parseLicenseFile(JSON.stringify([REST_SEAT_A, REST_SEAT_B, REST_SEAT_C]));
+    expect(parsed.kind).toBe('seats-json');
+    expect(parsed.seats).toEqual([SEAT_A, SEAT_B, SEAT_C]);
+    expect(parsed.total).toBeUndefined();
+    expect(parsed.problems).toEqual([]);
   });
 
   it('reads an array of pages (gh api --paginate --slurp)', () => {
     for (const space of [undefined, 2]) {
-      const r = parseLicenseFile(JSON.stringify([page([A, B], 3), page([C], 3)], null, space), 'seats.json');
-      expect(r.kind).toBe('seats-json');
-      expect(r.seats).toEqual([SEAT_A, SEAT_B, SEAT_C]);
-      expect(r.total).toBe(3);
-      expect(r.problems).toEqual([]);
+      const parsed = parseLicenseFile(JSON.stringify([page([REST_SEAT_A, REST_SEAT_B], 3), page([REST_SEAT_C], 3)], null, space), 'seats.json');
+      expect(parsed.kind).toBe('seats-json');
+      expect(parsed.seats).toEqual([SEAT_A, SEAT_B, SEAT_C]);
+      expect(parsed.total).toBe(3);
+      expect(parsed.problems).toEqual([]);
     }
   });
 
   it('reads pages written back to back (gh api --paginate), with or without a line break between them', () => {
-    const first = JSON.stringify(page([A, B], 3));
-    const second = JSON.stringify(page([C], 3));
+    const first = JSON.stringify(page([REST_SEAT_A, REST_SEAT_B], 3));
+    const second = JSON.stringify(page([REST_SEAT_C], 3));
     for (const joined of [`${first}\n${second}\n`, `${first}${second}`, `${first}\r\n\r\n${second}`, ` ${first} ${second} `]) {
-      const r = parseLicenseFile(joined, 'seats.json');
-      expect(r.kind).toBe('seats-json');
-      expect(r.seats).toEqual([SEAT_A, SEAT_B, SEAT_C]);
-      expect(r.total).toBe(3);
-      expect(r.problems).toEqual([]);
+      const parsed = parseLicenseFile(joined, 'seats.json');
+      expect(parsed.kind).toBe('seats-json');
+      expect(parsed.seats).toEqual([SEAT_A, SEAT_B, SEAT_C]);
+      expect(parsed.total).toBe(3);
+      expect(parsed.problems).toEqual([]);
     }
   });
 
   it('does not lose pages when strings hold brackets, braces, quotes and backslashes', () => {
     const odd = 'Odd {Name} ] [ "quoted" \\ end } {';
     const second = restSeat({ login: 'user004', name: odd, team: 'a]b[c' });
-    const r = parseLicenseFile(JSON.stringify(page([A], 2)) + JSON.stringify(page([second], 2)));
-    expect(r.kind).toBe('seats-json');
-    expect(logins(r)).toEqual(['user001', 'user004']);
-    expect(r.seats[1].name).toBe(odd);
-    expect(r.seats[1].teams).toEqual(['a]b[c']);
-    expect(r.problems).toEqual([]);
+    const parsed = parseLicenseFile(JSON.stringify(page([REST_SEAT_A], 2)) + JSON.stringify(page([second], 2)));
+    expect(parsed.kind).toBe('seats-json');
+    expect(logins(parsed)).toEqual(['user001', 'user004']);
+    expect(parsed.seats[1].name).toBe(odd);
+    expect(parsed.seats[1].teams).toEqual(['a]b[c']);
+    expect(parsed.problems).toEqual([]);
   });
 
   it('reads one seat per line (NDJSON)', () => {
-    const r = parseLicenseFile([A, B, C].map((s) => JSON.stringify(s)).join('\n'), 'seats.ndjson');
-    expect(r.kind).toBe('seats-json');
-    expect(r.seats).toEqual([SEAT_A, SEAT_B, SEAT_C]);
-    expect(r.total).toBeUndefined();
-    expect(r.problems).toEqual([]);
+    const parsed = parseLicenseFile([REST_SEAT_A, REST_SEAT_B, REST_SEAT_C].map((record) => JSON.stringify(record)).join('\n'), 'seats.ndjson');
+    expect(parsed.kind).toBe('seats-json');
+    expect(parsed.seats).toEqual([SEAT_A, SEAT_B, SEAT_C]);
+    expect(parsed.total).toBeUndefined();
+    expect(parsed.problems).toEqual([]);
   });
 
   it('reads a seat object on its own', () => {
-    const r = parseLicenseFile(JSON.stringify(A));
-    expect(r.kind).toBe('seats-json');
-    expect(r.seats).toEqual([SEAT_A]);
+    const parsed = parseLicenseFile(JSON.stringify(REST_SEAT_A));
+    expect(parsed.kind).toBe('seats-json');
+    expect(parsed.seats).toEqual([SEAT_A]);
   });
 
   it('keeps the seats before a page that was cut short and says so', () => {
-    const first = JSON.stringify(page([A, B], 3));
-    const second = JSON.stringify(page([C], 3));
-    const r = parseLicenseFile((first + second).slice(0, first.length + 70), 'seats.json');
-    expect(r.kind).toBe('seats-json');
-    expect(logins(r)).toEqual(['user001', 'user002']);
-    expect(r.problems).toContain('The file ends in the middle of an entry. It may have been cut short.');
-    expect(r.problems.some((p) => p.startsWith('The file has 2 of 3 seats.'))).toBe(true);
+    const first = JSON.stringify(page([REST_SEAT_A, REST_SEAT_B], 3));
+    const second = JSON.stringify(page([REST_SEAT_C], 3));
+    const parsed = parseLicenseFile((first + second).slice(0, first.length + 70), 'seats.json');
+    expect(parsed.kind).toBe('seats-json');
+    expect(logins(parsed)).toEqual(['user001', 'user002']);
+    expect(parsed.problems).toContain('The file ends in the middle of an entry. It may have been cut short.');
+    expect(parsed.problems.some((problem) => problem.startsWith('The file has 2 of 3 seats.'))).toBe(true);
   });
 
   it('says when the file holds only some of the seats', () => {
-    const r = parseLicenseFile(JSON.stringify(page([A, B, C], 4)));
-    expect(r.kind).toBe('seats-json');
-    expect(r.seats).toHaveLength(3);
-    expect(r.total).toBe(4);
-    expect(r.problems).toEqual(['The file has 3 of 4 seats. Some pages may be missing. Save every page, for example with gh api --paginate.']);
+    const parsed = parseLicenseFile(JSON.stringify(page([REST_SEAT_A, REST_SEAT_B, REST_SEAT_C], 4)));
+    expect(parsed.kind).toBe('seats-json');
+    expect(parsed.seats).toHaveLength(3);
+    expect(parsed.total).toBe(4);
+    expect(parsed.problems).toEqual(['The file has 3 of 4 seats. Some pages may be missing. Save every page, for example with gh api --paginate.']);
   });
 
   it('takes the largest total_seats when pages are joined', () => {
-    const r = parseLicenseFile(JSON.stringify([page([A], 2), page([B], 5)]));
-    expect(r.total).toBe(5);
-    expect(r.problems.some((p) => p.startsWith('The file has 2 of 5 seats.'))).toBe(true);
+    const parsed = parseLicenseFile(JSON.stringify([page([REST_SEAT_A], 2), page([REST_SEAT_B], 5)]));
+    expect(parsed.total).toBe(5);
+    expect(parsed.problems.some((problem) => problem.startsWith('The file has 2 of 5 seats.'))).toBe(true);
   });
 
   it('reads an empty answer as a seat list with no seats', () => {
-    const r = parseLicenseFile('{"total_seats":0,"seats":[]}');
-    expect(r.kind).toBe('seats-json');
-    expect(r.seats).toEqual([]);
-    expect(r.total).toBe(0);
-    expect(r.problems).toEqual(['The file has no seats.']);
+    const parsed = parseLicenseFile('{"total_seats":0,"seats":[]}');
+    expect(parsed.kind).toBe('seats-json');
+    expect(parsed.seats).toEqual([]);
+    expect(parsed.total).toBe(0);
+    expect(parsed.problems).toEqual(['The file has no seats.']);
   });
 
   it('merges a user who appears once per organization or team', () => {
@@ -344,10 +344,10 @@ describe('parseLicenseFile: REST seats JSON', () => {
       restSeat({ login: 'user010', org: 'acme-eu', team: 'platform', plan: 'business', created: '2025-06-01T00:00:00Z', activity: '2026-01-15T00:00:00Z', authenticated: '2026-01-16T00:00:00Z' }),
       restSeat({ login: 'user011', org: 'acme-eu' }),
     ];
-    const r = parseLicenseFile(JSON.stringify(page(rows)));
-    expect(r.records).toBe(4);
-    expect(r.seats).toHaveLength(2);
-    expect(r.seats[0]).toEqual({
+    const parsed = parseLicenseFile(JSON.stringify(page(rows)));
+    expect(parsed.records).toBe(4);
+    expect(parsed.seats).toHaveLength(2);
+    expect(parsed.seats[0]).toEqual({
       login: 'user010',
       plan: 'Enterprise',
       orgs: ['acme-eu', 'acme-us'],
@@ -362,75 +362,75 @@ describe('parseLicenseFile: REST seats JSON', () => {
   });
 
   it('turns a timestamp with a UTC offset into the UTC day', () => {
-    const r = parseLicenseFile(JSON.stringify(page([restSeat({ login: 'user020', activity: '2026-03-20T23:30:00-06:00', authenticated: '2026-03-21T00:30:00+01:00', created: '2025-01-01T00:30:00+01:00' })])));
-    expect(r.seats[0].lastActivityAt).toBe('2026-03-21');
-    expect(r.seats[0].lastAuthenticatedAt).toBe('2026-03-20');
-    expect(r.seats[0].createdAt).toBe('2024-12-31');
+    const parsed = parseLicenseFile(JSON.stringify(page([restSeat({ login: 'user020', activity: '2026-03-20T23:30:00-06:00', authenticated: '2026-03-21T00:30:00+01:00', created: '2025-01-01T00:30:00+01:00' })])));
+    expect(parsed.seats[0].lastActivityAt).toBe('2026-03-21');
+    expect(parsed.seats[0].lastAuthenticatedAt).toBe('2026-03-20');
+    expect(parsed.seats[0].createdAt).toBe('2024-12-31');
   });
 
   it('counts values it cannot read and keeps the seat', () => {
-    const r = parseLicenseFile(JSON.stringify(page([restSeat({ login: 'user030', activity: 'yesterday', plan: 'platinum', created: '2025-02-30T00:00:00Z' })])));
-    expect(r.kind).toBe('seats-json');
-    expect(r.seats).toHaveLength(1);
-    expect(r.seats[0].lastActivityAt).toBeUndefined();
-    expect(r.seats[0].plan).toBeUndefined();
-    expect(r.seats[0].createdAt).toBeUndefined();
-    expect(r.problems).toEqual(['2 dates could not be read. They were treated as missing.', '1 plan could not be read. It was left empty.']);
+    const parsed = parseLicenseFile(JSON.stringify(page([restSeat({ login: 'user030', activity: 'yesterday', plan: 'platinum', created: '2025-02-30T00:00:00Z' })])));
+    expect(parsed.kind).toBe('seats-json');
+    expect(parsed.seats).toHaveLength(1);
+    expect(parsed.seats[0].lastActivityAt).toBeUndefined();
+    expect(parsed.seats[0].plan).toBeUndefined();
+    expect(parsed.seats[0].createdAt).toBeUndefined();
+    expect(parsed.problems).toEqual(['2 dates could not be read. They were treated as missing.', '1 plan could not be read. It was left empty.']);
   });
 
   it('skips records without a usable login and counts them', () => {
-    const r = parseLicenseFile(JSON.stringify(page([A, { assignee: { login: 'foo.bar' } }, 7, null, { assignee: {} }, B], 6)));
-    expect(logins(r)).toEqual(['user001', 'user002']);
-    expect(r.skipped).toBe(4);
-    expect(r.problems).toEqual(['4 entries without a username were left out.']);
+    const parsed = parseLicenseFile(JSON.stringify(page([REST_SEAT_A, { assignee: { login: 'foo.bar' } }, 7, null, { assignee: {} }, REST_SEAT_B], 6)));
+    expect(logins(parsed)).toEqual(['user001', 'user002']);
+    expect(parsed.skipped).toBe(4);
+    expect(parsed.problems).toEqual(['4 entries without a username were left out.']);
   });
 
   it('drops a piece of the file that is not JSON and says so', () => {
-    const r = parseLicenseFile(`${JSON.stringify(page([A], 1))}\n{"seats": [oops]}\n${JSON.stringify(page([B], 1))}`);
-    expect(r.kind).toBe('seats-json');
-    expect(logins(r)).toEqual(['user001', 'user002']);
-    expect(r.problems).toEqual(['1 piece of the file could not be read as JSON. It was left out.']);
+    const parsed = parseLicenseFile(`${JSON.stringify(page([REST_SEAT_A], 1))}\n{"seats": [oops]}\n${JSON.stringify(page([REST_SEAT_B], 1))}`);
+    expect(parsed.kind).toBe('seats-json');
+    expect(logins(parsed)).toEqual(['user001', 'user002']);
+    expect(parsed.problems).toEqual(['1 piece of the file could not be read as JSON. It was left out.']);
   });
 
   it('explains a GitHub error answer', () => {
-    const r = parseLicenseFile('{"message":"Not Found","documentation_url":"https://docs.github.com/rest","status":"404"}');
-    expect(r.kind).toBe('unknown');
-    expect(r.seats).toEqual([]);
-    expect(r.problems).toHaveLength(1);
-    expect(r.problems[0]).toContain('Not Found');
-    expect(r.problems[0]).toContain('manage_billing:copilot');
+    const parsed = parseLicenseFile('{"message":"Not Found","documentation_url":"https://docs.github.com/rest","status":"404"}');
+    expect(parsed.kind).toBe('unknown');
+    expect(parsed.seats).toEqual([]);
+    expect(parsed.problems).toHaveLength(1);
+    expect(parsed.problems[0]).toContain('Not Found');
+    expect(parsed.problems[0]).toContain('manage_billing:copilot');
   });
 
   it('does not take JSON that is not a seat list for one', () => {
     for (const text of ['{"foo":1}', '{"seats":"none"}', '[1,2,3]', '[{"a":1},{"b":2}]', '{"items":[{"login":"x"}]}']) {
-      const r = parseLicenseFile(text);
-      expect(r.kind, text).toBe('unknown');
-      expect(r.seats, text).toEqual([]);
-      expect(r.problems.length, text).toBeGreaterThan(0);
+      const parsed = parseLicenseFile(text);
+      expect(parsed.kind, text).toBe('unknown');
+      expect(parsed.seats, text).toEqual([]);
+      expect(parsed.problems.length, text).toBeGreaterThan(0);
     }
   });
 
   it('reads a JSON list of logins', () => {
-    const r = parseLicenseFile('["user001", "@User002", "user003", 5, "not a login!"]');
-    expect(r.kind).toBe('seats-json');
-    expect(logins(r)).toEqual(['user001', 'User002', 'user003']);
-    expect(r.seats.every((s) => s.source === 'list')).toBe(true);
-    expect(r.skipped).toBe(2);
+    const parsed = parseLicenseFile('["user001", "@User002", "user003", 5, "not a login!"]');
+    expect(parsed.kind).toBe('seats-json');
+    expect(logins(parsed)).toEqual(['user001', 'User002', 'user003']);
+    expect(parsed.seats.every((seat) => seat.source === 'list')).toBe(true);
+    expect(parsed.skipped).toBe(2);
   });
 
   it('reads the keys of a CSV export saved as JSON (flat records)', () => {
-    const r = parseLicenseFile('[{"login":"user001","plan":"enterprise","org":"acme","last_activity_at":"2026-03-01"},{"login":"user002","plan":"business"}]');
-    expect(r.kind).toBe('seats-json');
-    expect(r.seats[0]).toMatchObject({ login: 'user001', plan: 'Enterprise', orgs: ['acme'], lastActivityAt: '2026-03-01', source: 'api' });
-    expect(r.seats[1]).toMatchObject({ login: 'user002', plan: 'Business', source: 'api' });
+    const parsed = parseLicenseFile('[{"login":"user001","plan":"enterprise","org":"acme","last_activity_at":"2026-03-01"},{"login":"user002","plan":"business"}]');
+    expect(parsed.kind).toBe('seats-json');
+    expect(parsed.seats[0]).toMatchObject({ login: 'user001', plan: 'Enterprise', orgs: ['acme'], lastActivityAt: '2026-03-01', source: 'api' });
+    expect(parsed.seats[1]).toMatchObject({ login: 'user002', plan: 'Business', source: 'api' });
   });
 
   it('stops at the size limit and says so', () => {
-    const records = Array.from({ length: MAX_SEATS + 5 }, (_, i) => `{"login":"u${i}"}`).join(',');
-    const r = parseLicenseFile(`[${records}]`);
-    expect(r.kind).toBe('seats-json');
-    expect(r.seats).toHaveLength(MAX_SEATS);
-    expect(r.problems.some((p) => p.includes('more than 250,000 seats'))).toBe(true);
+    const records = Array.from({ length: MAX_SEATS + 5 }, (_, index) => `{"login":"u${index}"}`).join(',');
+    const parsed = parseLicenseFile(`[${records}]`);
+    expect(parsed.kind).toBe('seats-json');
+    expect(parsed.seats).toHaveLength(MAX_SEATS);
+    expect(parsed.problems.some((problem) => problem.includes('more than 250,000 seats'))).toBe(true);
   });
 });
 
@@ -444,16 +444,16 @@ describe('parseLicenseFile: CSV', () => {
 
   it('reads the Activity report of the Copilot access page', () => {
     for (const text of [ACTIVITY, `\uFEFF${ACTIVITY}`, `${ACTIVITY}\n`, ACTIVITY.replace(/\n/g, '\r\n')]) {
-      const r = parseLicenseFile(text, 'copilot_activity_report.csv');
-      expect(r.kind).toBe('activity-csv');
-      expect(r.seats).toEqual([
+      const parsed = parseLicenseFile(text, 'copilot_activity_report.csv');
+      expect(parsed.kind).toBe('activity-csv');
+      expect(parsed.seats).toEqual([
         { login: 'user001', orgs: [], teams: [], lastAuthenticatedAt: '2026-03-30', lastActivityAt: '2026-03-29', lastSurface: 'vscode', source: 'activity' },
         { login: 'user002', orgs: [], teams: [], source: 'activity' },
         { login: 'User003', orgs: [], teams: [], lastAuthenticatedAt: '2026-01-05', lastActivityAt: '2026-01-04', lastSurface: 'JetBrains-IC', source: 'activity' },
       ]);
-      expect(r.exportedAt).toBe('2026-03-31');
-      expect(r.skipped).toBe(0);
-      expect(r.problems).toEqual([]);
+      expect(parsed.exportedAt).toBe('2026-03-31');
+      expect(parsed.skipped).toBe(0);
+      expect(parsed.problems).toEqual([]);
     }
   });
 
@@ -467,12 +467,12 @@ describe('parseLicenseFile: CSV', () => {
     ];
     for (const header of headers) {
       for (const delimiter of [',', ';', '\t']) {
-        const text = [header, ...rows].map((l) => l.replace(/,/g, delimiter)).join('\n');
-        const r = parseLicenseFile(`\uFEFF${text}`);
-        expect(r.kind, `${header} ${JSON.stringify(delimiter)}`).toBe('activity-csv');
-        expect(logins(r)).toEqual(['user001', 'user002']);
-        expect(r.seats[0].lastActivityAt).toBe('2026-03-29');
-        expect(r.exportedAt).toBe('2026-03-31');
+        const text = [header, ...rows].map((line) => line.replace(/,/g, delimiter)).join('\n');
+        const parsed = parseLicenseFile(`\uFEFF${text}`);
+        expect(parsed.kind, `${header} ${JSON.stringify(delimiter)}`).toBe('activity-csv');
+        expect(logins(parsed)).toEqual(['user001', 'user002']);
+        expect(parsed.seats[0].lastActivityAt).toBe('2026-03-29');
+        expect(parsed.exportedAt).toBe('2026-03-31');
       }
     }
   });
@@ -484,149 +484,149 @@ describe('parseLicenseFile: CSV', () => {
 
   it('uses the latest date in the file when there is no report time', () => {
     const text = 'login,last_activity_at,last_authenticated_at\nuser001,2026-03-01,2026-03-05\nuser002,2026-03-09,\n';
-    const r = parseLicenseFile(text);
-    expect(r.kind).toBe('seats-csv');
-    expect(r.exportedAt).toBe('2026-03-09');
-    expect(r.seats.every((s) => s.source === 'activity')).toBe(true);
+    const parsed = parseLicenseFile(text);
+    expect(parsed.kind).toBe('seats-csv');
+    expect(parsed.exportedAt).toBe('2026-03-09');
+    expect(parsed.seats.every((seat) => seat.source === 'activity')).toBe(true);
   });
 
   it('reads a CSV with a login column and plan, organization and email columns', () => {
     const text = ['login,plan,org,email', 'user001,business,acme,user001@example.com', 'user002,Enterprise,acme,', 'USER003,,beta,', 'user004,platinum,,'].join('\n');
-    const r = parseLicenseFile(text, 'seats.csv');
-    expect(r.kind).toBe('seats-csv');
-    expect(r.seats).toEqual([
+    const parsed = parseLicenseFile(text, 'seats.csv');
+    expect(parsed.kind).toBe('seats-csv');
+    expect(parsed.seats).toEqual([
       { login: 'user001', plan: 'Business', orgs: ['acme'], teams: [], email: 'user001@example.com', source: 'list' },
       { login: 'user002', plan: 'Enterprise', orgs: ['acme'], teams: [], source: 'list' },
       { login: 'USER003', orgs: ['beta'], teams: [], source: 'list' },
       { login: 'user004', orgs: [], teams: [], source: 'list' },
     ]);
-    expect(r.exportedAt).toBeUndefined();
-    expect(r.problems).toEqual(['1 plan could not be read. It was left empty.']);
+    expect(parsed.exportedAt).toBeUndefined();
+    expect(parsed.problems).toEqual(['1 plan could not be read. It was left empty.']);
   });
 
   it('keeps the plan label the report gives a custom plan, without a problem', () => {
     const text = ['login,plan', 'user001,"Custom (2,500 credits)"', 'user002,Custom (500 credits)', 'user003,Business'].join('\n');
-    const r = parseLicenseFile(text, 'seats.csv');
-    expect(r.kind).toBe('seats-csv');
-    expect(r.seats.map((s) => s.plan)).toEqual(['2500', '5', 'Business']);
-    expect(r.problems).toEqual([]);
+    const parsed = parseLicenseFile(text, 'seats.csv');
+    expect(parsed.kind).toBe('seats-csv');
+    expect(parsed.seats.map((seat) => seat.plan)).toEqual(['2500', '5', 'Business']);
+    expect(parsed.problems).toEqual([]);
   });
 
   it('accepts login, username and user as the login column, and plan_type or plan for the plan', () => {
     for (const [login, plan] of [['login', 'plan'], ['username', 'plan_type'], ['user', 'plan'], ['Username', 'Plan Type'], ['GitHub Login', 'Seat Type']]) {
-      const r = parseLicenseFile(`${login};${plan}\nuser001;enterprise\nuser002;business\n`);
-      expect(r.kind, login).toBe('seats-csv');
-      expect(r.seats.map((s) => s.plan)).toEqual(['Enterprise', 'Business']);
+      const parsed = parseLicenseFile(`${login};${plan}\nuser001;enterprise\nuser002;business\n`);
+      expect(parsed.kind, login).toBe('seats-csv');
+      expect(parsed.seats.map((seat) => seat.plan)).toEqual(['Enterprise', 'Business']);
     }
   });
 
   it('reads a one-column file with a login header', () => {
-    const r = parseLicenseFile('login\nuser001\nuser002\n');
-    expect(r.kind).toBe('seats-csv');
-    expect(logins(r)).toEqual(['user001', 'user002']);
+    const parsed = parseLicenseFile('login\nuser001\nuser002\n');
+    expect(parsed.kind).toBe('seats-csv');
+    expect(logins(parsed)).toEqual(['user001', 'user002']);
   });
 
   it('skips blank rows and repeated headers without counting them, and counts rows without a login', () => {
     const text = ['login,plan', 'user001,business', ',', '', 'login,plan', 'user002,enterprise', 'not a login!,business', 'user@example.com,business'].join('\n');
-    const r = parseLicenseFile(text);
-    expect(r.kind).toBe('seats-csv');
-    expect(logins(r)).toEqual(['user001', 'user002']);
-    expect(r.skipped).toBe(2);
-    expect(r.problems).toEqual(['2 entries without a username were left out.']);
+    const parsed = parseLicenseFile(text);
+    expect(parsed.kind).toBe('seats-csv');
+    expect(logins(parsed)).toEqual(['user001', 'user002']);
+    expect(parsed.skipped).toBe(2);
+    expect(parsed.problems).toEqual(['2 entries without a username were left out.']);
   });
 
   it('merges a user who has several rows', () => {
     const text = ['login,org,team,plan', 'user001,acme-eu,a,business', 'USER001,acme-us,b,enterprise'].join('\n');
-    const r = parseLicenseFile(text);
-    expect(r.records).toBe(2);
-    expect(r.seats).toEqual([{ login: 'user001', plan: 'Enterprise', orgs: ['acme-eu', 'acme-us'], teams: ['a', 'b'], source: 'list' }]);
+    const parsed = parseLicenseFile(text);
+    expect(parsed.records).toBe(2);
+    expect(parsed.seats).toEqual([{ login: 'user001', plan: 'Enterprise', orgs: ['acme-eu', 'acme-us'], teams: ['a', 'b'], source: 'list' }]);
   });
 
   it('refuses a usage report and says so', () => {
-    const r = parseLicenseFile(makeCsv([{ date: '2026-03-01', user: 'user001', gross: 1 }]), 'AIUsageReport.csv');
-    expect(r.kind).toBe('unknown');
-    expect(r.seats).toEqual([]);
-    expect(r.problems).toEqual(['This file is a usage report, not a license list. Load it with the other usage reports.']);
+    const parsed = parseLicenseFile(makeCsv([{ date: '2026-03-01', user: 'user001', gross: 1 }]), 'AIUsageReport.csv');
+    expect(parsed.kind).toBe('unknown');
+    expect(parsed.seats).toEqual([]);
+    expect(parsed.problems).toEqual(['This file is a usage report, not a license list. Load it with the other usage reports.']);
   });
 
   it('asks for a login column when a table has none', () => {
-    const r = parseLicenseFile('name,plan\nAda,business\nBo,enterprise\n');
-    expect(r.kind).toBe('unknown');
-    expect(r.problems).toEqual(['The table has no username column. Name the column with the GitHub usernames "login" or "username".']);
+    const parsed = parseLicenseFile('name,plan\nAda,business\nBo,enterprise\n');
+    expect(parsed.kind).toBe('unknown');
+    expect(parsed.problems).toEqual(['The table has no username column. Name the column with the GitHub usernames "login" or "username".']);
   });
 });
 
 describe('parseLicenseFile: plain login lists', () => {
   it('reads one login per line, with any line ending, blank lines and spaces', () => {
     for (const text of ['user001\nuser002\nUSER003\n', 'user001\r\nuser002\r\nUSER003', 'user001\ruser002\rUSER003', '\n\nuser001\n\nuser002\n  USER003  \n\n', '\uFEFFuser001\nuser002\nUSER003']) {
-      const r = parseLicenseFile(text, 'logins.txt');
-      expect(r.kind, JSON.stringify(text)).toBe('login-list');
-      expect(logins(r)).toEqual(['user001', 'user002', 'USER003']);
-      expect(r.seats.every((s) => s.source === 'list' && s.orgs.length === 0)).toBe(true);
-      expect(r.skipped).toBe(0);
-      expect(r.problems).toEqual([]);
-      expect(r.exportedAt).toBeUndefined();
+      const parsed = parseLicenseFile(text, 'logins.txt');
+      expect(parsed.kind, JSON.stringify(text)).toBe('login-list');
+      expect(logins(parsed)).toEqual(['user001', 'user002', 'USER003']);
+      expect(parsed.seats.every((seat) => seat.source === 'list' && seat.orgs.length === 0)).toBe(true);
+      expect(parsed.skipped).toBe(0);
+      expect(parsed.problems).toEqual([]);
+      expect(parsed.exportedAt).toBeUndefined();
     }
   });
 
   it('reads logins separated by commas, semicolons or spaces, with @ and quotes', () => {
     for (const text of ['user001, user002;USER003 user004', 'user001,user002,USER003,user004', '@user001 "user002" \'USER003\' @user004', 'user001;user002;USER003;user004']) {
-      const r = parseLicenseFile(text);
-      expect(r.kind, text).toBe('login-list');
-      expect(logins(r).map((l) => l.toLowerCase())).toEqual(['user001', 'user002', 'user003', 'user004']);
+      const parsed = parseLicenseFile(text);
+      expect(parsed.kind, text).toBe('login-list');
+      expect(logins(parsed).map((login) => login.toLowerCase())).toEqual(['user001', 'user002', 'user003', 'user004']);
     }
   });
 
   it('ignores comment lines', () => {
-    const r = parseLicenseFile('# exported from the admin page\nuser001\n// not this one: x y z\nuser002\n');
-    expect(logins(r)).toEqual(['user001', 'user002']);
-    expect(r.skipped).toBe(0);
+    const parsed = parseLicenseFile('# exported from the admin page\nuser001\n// not this one: x y z\nuser002\n');
+    expect(logins(parsed)).toEqual(['user001', 'user002']);
+    expect(parsed.skipped).toBe(0);
   });
 
   it('counts junk and says how many entries were left out', () => {
-    const r = parseLicenseFile('user001\nuser002\nuser003\nuser004\nuser005\nuser@example.com\nfoo.bar\n-bad\n');
-    expect(r.kind).toBe('login-list');
-    expect(r.seats).toHaveLength(5);
-    expect(r.skipped).toBe(3);
-    expect(r.problems).toEqual(['3 entries that are not GitHub usernames were left out.']);
+    const parsed = parseLicenseFile('user001\nuser002\nuser003\nuser004\nuser005\nuser@example.com\nfoo.bar\n-bad\n');
+    expect(parsed.kind).toBe('login-list');
+    expect(parsed.seats).toHaveLength(5);
+    expect(parsed.skipped).toBe(3);
+    expect(parsed.problems).toEqual(['3 entries that are not GitHub usernames were left out.']);
     const one = parseLicenseFile('user001\nuser002\nfoo.bar\n');
     expect(one.problems).toEqual(['1 entry that is not a GitHub username was left out.']);
   });
 
   it('keeps one seat for logins that differ only in case, and the first spelling', () => {
-    const r = parseLicenseFile('User001\nuser001\nUSER001\nuser002\n');
-    expect(logins(r)).toEqual(['User001', 'user002']);
-    expect(r.records).toBe(4);
+    const parsed = parseLicenseFile('User001\nuser001\nUSER001\nuser002\n');
+    expect(logins(parsed)).toEqual(['User001', 'user002']);
+    expect(parsed.records).toBe(4);
   });
 
   it('does not take a file that is mostly junk for a list', () => {
-    const r = parseLicenseFile('user001\nfoo.bar\nuser@example.com\n-bad\n');
-    expect(r.kind).toBe('unknown');
-    expect(r.seats).toEqual([]);
-    expect(r.problems).toEqual(['Most entries in the file are not GitHub usernames, so it was not read as a list of usernames.']);
+    const parsed = parseLicenseFile('user001\nfoo.bar\nuser@example.com\n-bad\n');
+    expect(parsed.kind).toBe('unknown');
+    expect(parsed.seats).toEqual([]);
+    expect(parsed.problems).toEqual(['Most entries in the file are not GitHub usernames, so it was not read as a list of usernames.']);
   });
 
   it('says when no login is found', () => {
-    const r = parseLicenseFile('foo.bar\nuser@example.com\n-bad\n');
-    expect(r.kind).toBe('unknown');
-    expect(r.problems).toEqual(['No GitHub usernames were found. A list of usernames has one username per line, or usernames separated by commas.']);
+    const parsed = parseLicenseFile('foo.bar\nuser@example.com\n-bad\n');
+    expect(parsed.kind).toBe('unknown');
+    expect(parsed.problems).toEqual(['No GitHub usernames were found. A list of usernames has one username per line, or usernames separated by commas.']);
   });
 
   it('stops at the size limit and says so', () => {
-    const text = Array.from({ length: MAX_SEATS + 5 }, (_, i) => `u${i}`).join('\n');
-    const r = parseLicenseFile(text, 'logins.txt');
-    expect(r.kind).toBe('login-list');
-    expect(r.seats).toHaveLength(MAX_SEATS);
-    expect(r.problems).toEqual(['The list has more than 250,000 usernames. Only the first 250,000 were read.']);
+    const text = Array.from({ length: MAX_SEATS + 5 }, (_, index) => `u${index}`).join('\n');
+    const parsed = parseLicenseFile(text, 'logins.txt');
+    expect(parsed.kind).toBe('login-list');
+    expect(parsed.seats).toHaveLength(MAX_SEATS);
+    expect(parsed.problems).toEqual(['The list has more than 250,000 usernames. Only the first 250,000 were read.']);
   });
 });
 
 describe('parseLicenseFile: empty and bad input', () => {
   it('says an empty file is empty', () => {
     for (const text of ['', ' ', '\n\n', '\uFEFF', '\t \r\n']) {
-      const r = parseLicenseFile(text);
-      expect(r.kind).toBe('unknown');
-      expect(r.problems).toEqual(['The file is empty.']);
+      const parsed = parseLicenseFile(text);
+      expect(parsed.kind).toBe('unknown');
+      expect(parsed.problems).toEqual(['The file is empty.']);
     }
   });
 
@@ -636,7 +636,7 @@ describe('parseLicenseFile: empty and bad input', () => {
     '{"a":{"b":{"c":{}}}}', '{"seats":[{"assignee":{"login":"user001"}}]} trailing words', 'a,b\n1', 'login\n', 'login,plan\n,,\n,,',
     '\u0000\u0001\u0002', '😀😀😀', 'x'.repeat(10_000), '{"seats":' + '['.repeat(10_000), '{'.repeat(5_000), '"'.repeat(5_001), 'login,'.repeat(5_000),
     '['.repeat(100_000) + ']'.repeat(100_000), '{"a":'.repeat(50_000) + '1' + '}'.repeat(50_000),
-    Array.from({ length: 3000 }, (_, i) => String.fromCharCode(i % 256)).join(''),
+    Array.from({ length: 3000 }, (_, index) => String.fromCharCode(index % 256)).join(''),
     '{"seats":[{"assignee":{"login":"user001"},"last_activity_at":{"x":1},"plan_type":[1],"created_at":5}]}',
     '{"seats":[{"assignee":"user001"}]}', '{"assignee":{"login":null}}', '{"total_seats":"many","seats":[]}', '{"total_seats":-5,"seats":[]}',
   ];
@@ -644,16 +644,16 @@ describe('parseLicenseFile: empty and bad input', () => {
   it('never throws, whatever the text and the file name', () => {
     for (const text of NASTY) {
       for (const name of [undefined, '', 'a.json', 'a.csv', 'a.txt', 'a.ndjson', 'A.JSON']) {
-        let r: LicenseParse | undefined;
+        let parsed: LicenseParse | undefined;
         expect(() => {
-          r = parseLicenseFile(text, name);
+          parsed = parseLicenseFile(text, name);
         }, `${text.slice(0, 30)} ${name}`).not.toThrow();
-        expect(['seats-json', 'activity-csv', 'seats-csv', 'login-list', 'unknown']).toContain(r?.kind);
-        expect(Array.isArray(r?.seats)).toBe(true);
-        expect(Array.isArray(r?.problems)).toBe(true);
-        if (r?.kind === 'unknown') {
-          expect(r.seats).toEqual([]);
-          expect(r.problems.length).toBeGreaterThan(0);
+        expect(['seats-json', 'activity-csv', 'seats-csv', 'login-list', 'unknown']).toContain(parsed?.kind);
+        expect(Array.isArray(parsed?.seats)).toBe(true);
+        expect(Array.isArray(parsed?.problems)).toBe(true);
+        if (parsed?.kind === 'unknown') {
+          expect(parsed.seats).toEqual([]);
+          expect(parsed.problems.length).toBeGreaterThan(0);
         }
       }
     }
@@ -661,9 +661,9 @@ describe('parseLicenseFile: empty and bad input', () => {
 
   it('never throws on values that are not text', () => {
     for (const value of [null, undefined, 42, {}, [], true, Symbol.iterator] as unknown[]) {
-      const r = parseLicenseFile(value as string);
-      expect(r.kind).toBe('unknown');
-      expect(r.seats).toEqual([]);
+      const parsed = parseLicenseFile(value as string);
+      expect(parsed.kind).toBe('unknown');
+      expect(parsed.seats).toEqual([]);
     }
   });
 
@@ -715,7 +715,7 @@ describe('mergeSeats', () => {
   });
 
   it('keeps the first spelling and the order in which logins first appear', () => {
-    expect(logins({ seats: mergeSeats(['Zed', 'amy', 'ZED', 'AMY', 'bob', ' Amy '].map((l) => seat(l))) } as LicenseParse)).toEqual(['Zed', 'amy', 'bob']);
+    expect(logins({ seats: mergeSeats(['Zed', 'amy', 'ZED', 'AMY', 'bob', ' Amy '].map((login) => seat(login))) } as LicenseParse)).toEqual(['Zed', 'amy', 'bob']);
   });
 
   it('does not change what it is given', () => {
@@ -756,6 +756,6 @@ describe('mergeSeats', () => {
 
   it('handles an empty list and skips records without a login', () => {
     expect(mergeSeats([])).toEqual([]);
-    expect(mergeSeats([seat(''), seat('  '), seat('a')]).map((s) => s.login)).toEqual(['a']);
+    expect(mergeSeats([seat(''), seat('  '), seat('a')]).map((mergedSeat) => mergedSeat.login)).toEqual(['a']);
   });
 });

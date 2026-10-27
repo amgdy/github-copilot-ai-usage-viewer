@@ -1,9 +1,9 @@
 import type { Dict, PluralEntry } from '../core';
 
-const p = (one: string, two: string, few: string, many: string, other: string): PluralEntry => ({ zero: other, one, two, few, many, other });
+const plural = (one: string, two: string, few: string, many: string, other: string): PluralEntry => ({ zero: other, one, two, few, many, other });
 
 /** Arabic text for the Usage and pool page. */
-const ar: Dict = {
+const arabic: Dict = {
   // Page
   'How much was used, what was billed on top of seats, what drives it, and whether the included credits will last.':
     'كم استُخدم، وما دُفع إضافيًا فوق التراخيص، وما الذي يدفعه، وهل تكفي الأرصدة المشمولة.',
@@ -158,7 +158,7 @@ const ar: Dict = {
   'No billing month in the selected period': 'لا يوجد شهر فوترة في الفترة المحددة',
   '* Counts only the seats that appear in the report. {link} for the real pool size.': '* يحسب التراخيص الواردة في التقرير فقط. {link} لمعرفة الحجم الحقيقي للرصيد المشترك.',
   'Add your roster in Settings': 'أضف قائمة التراخيص في الإعدادات',
-  'No usage rows for {months}, so those months are not listed.': p(
+  'No usage rows for {months}, so those months are not listed.': plural(
     'لا توجد صفوف استخدام لشهر {months}، لذا لم يُدرج هذا الشهر.',
     'لا توجد صفوف استخدام للشهرين {months}، لذا لم يُدرجا.',
     'لا توجد صفوف استخدام للأشهر {months}، لذا لم تُدرج هذه الأشهر.',
@@ -177,14 +177,14 @@ const ar: Dict = {
     'لا يحتوي الملف عمود discount_amount أو net_amount، لذا لا يستطيع التقرير معرفة أي استخدام دُفع إضافيًا فوق التراخيص. حمّل تقرير الاستخدام الكامل لترى من يتسبب في التجاوز.',
   'Nothing was billed on top of seats': 'لم يُدفع أي مبلغ إضافي فوق التراخيص',
   'Included credits covered all usage in this period, so there is no overage to trace back to people.': 'غطّت الأرصدة المشمولة كل الاستخدام في هذه الفترة، لذا لا يوجد تجاوز يُنسب إلى أشخاص.',
-  '{n} users had usage billed on top of seats. The top 3 account for {share} of the billed amount.': p(
+  '{n} users had usage billed on top of seats. The top 3 account for {share} of the billed amount.': plural(
     'لدى مستخدم واحد استخدام مدفوع إضافيًا فوق التراخيص. يمثل أكبر 3 نسبة {share} من المبلغ المدفوع إضافيًا.',
     'لدى مستخدمَين استخدام مدفوع إضافيًا فوق التراخيص. يمثل أكبر 3 نسبة {share} من المبلغ المدفوع إضافيًا.',
     'لدى {n} مستخدمين استخدام مدفوع إضافيًا فوق التراخيص. يمثل أكبر 3 نسبة {share} من المبلغ المدفوع إضافيًا.',
     'لدى {n} مستخدمًا استخدام مدفوع إضافيًا فوق التراخيص. يمثل أكبر 3 نسبة {share} من المبلغ المدفوع إضافيًا.',
     'لدى {n} مستخدم استخدام مدفوع إضافيًا فوق التراخيص. يمثل أكبر 3 نسبة {share} من المبلغ المدفوع إضافيًا.',
   ),
-  '{n} users had usage billed on top of seats.': p(
+  '{n} users had usage billed on top of seats.': plural(
     'لدى مستخدم واحد استخدام مدفوع إضافيًا فوق التراخيص.',
     'لدى مستخدمَين استخدام مدفوع إضافيًا فوق التراخيص.',
     'لدى {n} مستخدمين استخدام مدفوع إضافيًا فوق التراخيص.',
@@ -232,7 +232,7 @@ const ar: Dict = {
   'nothing billed in this period': 'لم يُدفع شيء إضافي في هذه الفترة',
   'Usage that went beyond the pooled included credits. This is the amount charged in addition to the seat fees.':
     'الاستخدام الذي تجاوز الرصيد المشترك من الأرصدة المشمولة. وهو المبلغ الذي يُحتسب إضافةً إلى رسوم التراخيص.',
-  '{n} AI credits': p('رصيد ذكاء اصطناعي واحد', 'رصيدا ذكاء اصطناعي', '{n} أرصدة ذكاء اصطناعي', '{n} رصيدًا من أرصدة الذكاء الاصطناعي', '{n} رصيد ذكاء اصطناعي'),
+  '{n} AI credits': plural('رصيد ذكاء اصطناعي واحد', 'رصيدا ذكاء اصطناعي', '{n} أرصدة ذكاء اصطناعي', '{n} رصيدًا من أرصدة الذكاء الاصطناعي', '{n} رصيد ذكاء اصطناعي'),
   'Value of all AI credits used in this period (1 credit = $0.01), including usage already paid for by included credits. Rows that went through Auto are shown after the Auto discount.':
     'قيمة كل أرصدة الذكاء الاصطناعي المستخدمة في هذه الفترة (الرصيد الواحد = 0.01$)، بما فيها الاستخدام المدفوع سلفًا من الأرصدة المشمولة. تظهر الصفوف التي مرّت عبر Auto بعد خصم Auto.',
   '{pct} of usage': '{pct} من الاستخدام',
@@ -325,7 +325,7 @@ const ar: Dict = {
   'That stays within the included credits, so nothing would be billed on top of seats.': 'يبقى ذلك ضمن الأرصدة المشمولة، لذا لن يُدفع شيء إضافي فوق التراخيص.',
   'The credits are expected to run out around {date}.': 'يُتوقع أن تنفد الأرصدة نحو {date}.',
   'At the average pace, the credits last until the end of the month.': 'بالوتيرة المتوسطة، تكفي الأرصدة حتى نهاية الشهر.',
-  '{takers} of {active} active users used more than the credits in their own seat, by {amount} together.': p(
+  '{takers} of {active} active users used more than the credits in their own seat, by {amount} together.': plural(
     '{takers} من {active} مستخدم نشط استخدموا أكثر من الأرصدة التي في تراخيصهم، بمقدار {amount} مجتمعين.',
     '{takers} من {active} مستخدمَين نشطَين استخدموا أكثر من الأرصدة التي في تراخيصهم، بمقدار {amount} مجتمعين.',
     '{takers} من {active} مستخدمين نشطين استخدموا أكثر من الأرصدة التي في تراخيصهم، بمقدار {amount} مجتمعين.',
@@ -351,7 +351,7 @@ const ar: Dict = {
   'Mostly {model}': 'غالبًا {model}',
   '{amount}, {multiple} a typical day ({baseline})': '{amount}، أي {multiple} اليوم المعتاد ({baseline})',
   'Unusual day': 'يوم غير معتاد',
-  '{n} unusual days': p('يوم غير معتاد واحد', 'يومان غير معتادين', '{n} أيام غير معتادة', '{n} يومًا غير معتاد', '{n} يوم غير معتاد'),
+  '{n} unusual days': plural('يوم غير معتاد واحد', 'يومان غير معتادين', '{n} أيام غير معتادة', '{n} يومًا غير معتاد', '{n} يوم غير معتاد'),
   'Unusual day {date}': 'يوم غير معتاد {date}',
   'Usage so far': 'الاستخدام حتى الآن',
   'Likely range': 'النطاق المرجّح',
@@ -359,4 +359,4 @@ const ar: Dict = {
   'Included credits {amount}': 'الأرصدة المشمولة {amount}',
 };
 
-export default ar;
+export default arabic;

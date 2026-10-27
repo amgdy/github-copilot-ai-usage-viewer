@@ -4,38 +4,38 @@ import type { UserProfile } from '../../lib/analytics/users';
 import { fmtCompact, fmtInt, fmtPct, fmtUSD } from '../../lib/utils/format';
 
 /** Included credits are known only for users whose seat size appears in the file. */
-export const hasQuota = (p: UserProfile): boolean => p.quotaCredits > 0;
+export const hasQuota = (user: UserProfile): boolean => user.quotaCredits > 0;
 
 export const quotaKnown = (profiles: readonly UserProfile[]): boolean => profiles.some(hasQuota);
 
 /** Token counts: whole numbers below 1,000 and a unit (K, M, B, T) above. */
-export const fmtCount = (v: number): string => (Math.abs(v) >= 1000 ? fmtCompact(v) : fmtInt(v));
+export const fmtCount = (count: number): string => (Math.abs(count) >= 1000 ? fmtCompact(count) : fmtInt(count));
 
 /** "+$12.00" or "−$3.50" (with the real minus sign). An en dash when the value is not a number. */
-export function signedUsd(v: number, digits: 0 | 2 = 2): string {
-  if (!Number.isFinite(v)) return '–';
-  if (Math.abs(v) < 0.005) return fmtUSD(0, digits);
-  return `${v > 0 ? '+' : '−'}${fmtUSD(Math.abs(v), digits)}`;
+export function signedUsd(amount: number, digits: 0 | 2 = 2): string {
+  if (!Number.isFinite(amount)) return '–';
+  if (Math.abs(amount) < 0.005) return fmtUSD(0, digits);
+  return `${amount > 0 ? '+' : '−'}${fmtUSD(Math.abs(amount), digits)}`;
 }
 
 /** Whole dollars for big amounts, cents for small ones. */
-export const money = (v: number): string => fmtUSD(v, Math.abs(v) >= 100 ? 0 : 2);
+export const money = (amount: number): string => fmtUSD(amount, Math.abs(amount) >= 100 ? 0 : 2);
 
 /** "Engineering and others" when the user appears under more than one value. */
 export const withOthers = (value: string, mixed: boolean): string => (value && mixed ? t('{value} and others', { value }) : value);
 
 /** "Engineering · CC-100 · Business". Blank parts are left out. */
-export function userSubtitle(p: UserProfile): string {
-  const plan = hasQuota(p) ? p.plan : '';
-  return [withOthers(p.org, p.orgMixed), withOthers(p.costCenter, p.costCenterMixed), plan].filter(Boolean).join(' · ');
+export function userSubtitle(user: UserProfile): string {
+  const plan = hasQuota(user) ? user.plan : '';
+  return [withOthers(user.org, user.orgMixed), withOthers(user.costCenter, user.costCenterMixed), plan].filter(Boolean).join(' · ');
 }
 
 /** Middle value, ignoring numbers that are not finite. NaN when nothing is left. */
 export function median(values: readonly number[]): number {
-  const v = values.filter((x) => Number.isFinite(x)).sort((a, b) => a - b);
-  if (!v.length) return Number.NaN;
-  const mid = v.length >> 1;
-  return v.length % 2 ? v[mid] : (v[mid - 1] + v[mid]) / 2;
+  const sorted = values.filter((value) => Number.isFinite(value)).sort((a, b) => a - b);
+  if (!sorted.length) return Number.NaN;
+  const middleIndex = sorted.length >> 1;
+  return sorted.length % 2 ? sorted[middleIndex] : (sorted[middleIndex - 1] + sorted[middleIndex]) / 2;
 }
 
 /**

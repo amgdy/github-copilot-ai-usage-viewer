@@ -17,7 +17,7 @@ const GRANULARITY_OPTIONS = [
 
 export default function DailyUsage() {
   const { analysis } = useAnalysis();
-  const { agg, range, anomalies } = analysis;
+  const { agg: aggregates, range, anomalies } = analysis;
   const colors = useChartColors();
   const [choice, setChoice] = useState<Granularity | null>(null);
   const [showActive, setShowActive] = useState(false);
@@ -26,7 +26,7 @@ export default function DailyUsage() {
   const granularity: Granularity = !canAggregate ? 'day' : (choice ?? (range.length > LONG_RANGE_DAYS ? 'week' : 'day'));
   const day = granularity === 'day';
 
-  const buckets = useMemo(() => dailyBuckets(range, agg.days, granularity), [range, agg, granularity]);
+  const buckets = useMemo(() => dailyBuckets(range, aggregates.days, granularity), [range, aggregates, granularity]);
   const marks = useMemo(() => marksFor(buckets, anomalies), [buckets, anomalies]);
   const zoom = useMemo(() => zoomSpec(granularity, buckets.count, range.length), [granularity, buckets.count, range.length]);
   const option = useMemo(
@@ -36,17 +36,17 @@ export default function DailyUsage() {
 
   const drillTo = (from: number, to: number) => drill({ dateFrom: from, dateTo: to }, { merge: true });
 
-  const onClick = (p: ChartClick) => {
-    if (p.componentType === 'markPoint') {
-      const mark = marks[p.dataIndex];
+  const onClick = (event: ChartClick) => {
+    if (event.componentType === 'markPoint') {
+      const mark = marks[event.dataIndex];
       if (!mark) return;
       if (mark.anomalies.length === 1) drillTo(mark.anomalies[0].day, mark.anomalies[0].day);
       else drillTo(buckets.startDay[mark.idx], buckets.endDay[mark.idx]);
       return;
     }
-    if (p.componentType !== 'series') return;
-    const i = p.dataIndex;
-    if (buckets.gross[i] > 0) drillTo(buckets.startDay[i], buckets.endDay[i]);
+    if (event.componentType !== 'series') return;
+    const bucketIndex = event.dataIndex;
+    if (buckets.gross[bucketIndex] > 0) drillTo(buckets.startDay[bucketIndex], buckets.endDay[bucketIndex]);
   };
 
   const notes: string[] = [];
@@ -64,7 +64,7 @@ export default function DailyUsage() {
   if (zoom.narrowed) notes.push(t('Zoomed to the latest {days}. Drag the slider to see earlier days.', { days: pluralize(LATEST_DAYS, 'day') }));
   else if (zoom.slider) notes.push(t('Drag the slider to zoom in.'));
 
-  const options = GRANULARITY_OPTIONS.map((o) => ({ ...o, label: t(o.label), title: t(o.title) }));
+  const options = GRANULARITY_OPTIONS.map((granularityOption) => ({ ...granularityOption, label: t(granularityOption.label), title: t(granularityOption.title) }));
 
   return (
     <ChartCard
@@ -81,7 +81,7 @@ export default function DailyUsage() {
       onClick={onClick}
       exportName="github-copilot-daily-usage"
       label={day ? t('Bar chart of usage per day with a moving average') : t('Bar chart of usage per week with a moving average')}
-      empty={agg.totals.gross > 0 ? false : t('No usage in this range')}
+      empty={aggregates.totals.gross > 0 ? false : t('No usage in this range')}
       footer={notes.join(' ')}
       calc={['daily-usage', 'moving-average', 'active-users-per-day']}
     />

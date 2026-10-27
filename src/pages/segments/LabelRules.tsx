@@ -36,7 +36,7 @@ export function LabelRules({ current, context }: { current: LensId; context: Rul
     >
       <div className="flex flex-col gap-2">
         {LENSES.map((lens) => (
-          <details key={lens.id} open={open.has(lens.id)} onToggle={(e) => sync(lens.id, e.currentTarget.open)} className="group card overflow-hidden">
+          <details key={lens.id} open={open.has(lens.id)} onToggle={(event) => sync(lens.id, event.currentTarget.open)} className="group card overflow-hidden">
             <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 hover:bg-surface-2 [&::-webkit-details-marker]:hidden">
               <span className="min-w-0">
                 <span className="block text-sm font-medium">{t(lens.label)}</span>

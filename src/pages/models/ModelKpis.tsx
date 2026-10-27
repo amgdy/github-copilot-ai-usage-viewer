@@ -18,19 +18,19 @@ export function ModelKpis({ rows }: { rows: ModelRow[] }) {
 
   const stats = useMemo(() => {
     const byVendor = rollupByVendor(models, analysis.agg.model);
-    const vendors = VENDORS.map((name, i) => ({ name, rows: byVendor.rows[i], gross: byVendor.gross[i] }))
-      .filter((v) => v.rows > 0)
+    const vendors = VENDORS.map((name, index) => ({ name, rows: byVendor.rows[index], gross: byVendor.gross[index] }))
+      .filter((vendor) => vendor.rows > 0)
       .sort((a, b) => b.gross - a.gross);
-    const unpriced = rows.filter((r) => !r.priced);
+    const unpriced = rows.filter((model) => !model.priced);
     return {
       vendors,
-      known: vendors.filter((v) => v.name !== 'Other'),
+      known: vendors.filter((vendor) => vendor.name !== 'Other'),
       top: rows[0] ?? null,
-      top3: rows.slice(0, 3).reduce((a, r) => a + r.gross, 0),
+      top3: rows.slice(0, 3).reduce((total, model) => total + model.gross, 0),
       powerfulGross: totals.tierGross[CATEGORIES.indexOf('Powerful')],
-      powerfulModels: rows.filter((r) => r.tier === 'Powerful').length,
+      powerfulModels: rows.filter((model) => model.tier === 'Powerful').length,
       unpricedModels: unpriced.length,
-      unpricedGross: unpriced.reduce((a, r) => a + r.gross, 0),
+      unpricedGross: unpriced.reduce((total, model) => total + model.gross, 0),
     };
   }, [rows, models, analysis.agg.model, totals.tierGross]);
 

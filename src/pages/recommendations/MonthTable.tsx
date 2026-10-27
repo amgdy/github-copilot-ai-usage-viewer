@@ -2,7 +2,7 @@ import { Badge, Card, cx } from '../../components/ui';
 import { msg, t } from '../../i18n';
 import type { Scenario, ScenarioMonth } from '../../lib/analytics/simulator';
 import { fmtMoney, monthBilled, monthNewBilled } from './scenario';
-import { TABLE, TABLE_WRAP, TD, TH } from './tableClasses';
+import { TABLE, TABLE_WRAP, BODY_CELL_CLASSES, HEADER_CELL_CLASSES } from './tableClasses';
 
 /** `pool`: the pool size is known; `billed`: only the overage billed on top of seats is known; `usage`: no cash figures. */
 export type MonthTableMode = 'pool' | 'billed' | 'usage';
@@ -12,24 +12,24 @@ interface Column {
   key: string;
   header: string;
   hint: string;
-  value: (m: ScenarioMonth) => number;
+  value: (month: ScenarioMonth) => number;
   modes: MonthTableMode[];
   saving?: boolean;
 }
 
 const COLUMNS: Column[] = [
-  { key: 'gross', header: msg('Usage'), hint: msg('Usage in the month'), value: (m) => m.gross, modes: ['pool', 'billed', 'usage'] },
-  { key: 'newGross', header: msg('New usage'), hint: msg('Usage after the levers'), value: (m) => m.newGross, modes: ['pool', 'billed', 'usage'] },
-  { key: 'capacity', header: msg('Pool'), hint: msg('Included credits of all seats, which equal the seat prices'), value: (m) => m.capacity, modes: ['pool'] },
-  { key: 'newCapacity', header: msg('New pool'), hint: msg('Pool after the seat actions'), value: (m) => m.newCapacity, modes: ['pool'] },
-  { key: 'baseCost', header: msg('Cost'), hint: msg('The larger of the pool and the usage'), value: (m) => m.baseCost, modes: ['pool'] },
-  { key: 'newCost', header: msg('New cost'), hint: msg('The larger of the new pool and the new usage'), value: (m) => m.newCost, modes: ['pool'] },
+  { key: 'gross', header: msg('Usage'), hint: msg('Usage in the month'), value: (month) => month.gross, modes: ['pool', 'billed', 'usage'] },
+  { key: 'newGross', header: msg('New usage'), hint: msg('Usage after the levers'), value: (month) => month.newGross, modes: ['pool', 'billed', 'usage'] },
+  { key: 'capacity', header: msg('Pool'), hint: msg('Included credits of all seats, which equal the seat prices'), value: (month) => month.capacity, modes: ['pool'] },
+  { key: 'newCapacity', header: msg('New pool'), hint: msg('Pool after the seat actions'), value: (month) => month.newCapacity, modes: ['pool'] },
+  { key: 'baseCost', header: msg('Cost'), hint: msg('The larger of the pool and the usage'), value: (month) => month.baseCost, modes: ['pool'] },
+  { key: 'newCost', header: msg('New cost'), hint: msg('The larger of the new pool and the new usage'), value: (month) => month.newCost, modes: ['pool'] },
   { key: 'billed', header: msg('Billed'), hint: msg('Usage above the pool, billed on top of seats'), value: monthBilled, modes: ['billed'] },
   { key: 'newBilled', header: msg('New billed'), hint: msg('Usage above the pool after the levers'), value: monthNewBilled, modes: ['billed'] },
-  { key: 'saving', header: msg('Saving'), hint: msg('Cost minus new cost'), value: (m) => m.saving, modes: ['pool', 'billed'], saving: true },
+  { key: 'saving', header: msg('Saving'), hint: msg('Cost minus new cost'), value: (month) => month.saving, modes: ['pool', 'billed'], saving: true },
 ];
 
-const sum = (months: ScenarioMonth[], pick: (m: ScenarioMonth) => number): number => months.reduce((a, m) => a + pick(m), 0);
+const sum = (months: ScenarioMonth[], pick: (month: ScenarioMonth) => number): number => months.reduce((total, month) => total + pick(month), 0);
 
 const SUBTITLE: Record<MonthTableMode, string> = {
   pool: msg('Figures in US dollars. Cost is the larger of the pool and the usage.'),
@@ -41,12 +41,12 @@ const SUBTITLE: Record<MonthTableMode, string> = {
 export function MonthTable({ scenario, mode, lowerBound }: { scenario: Scenario; mode: MonthTableMode; lowerBound: boolean }) {
   const months = scenario.months;
   if (months.length === 0) return null;
-  const cols = COLUMNS.filter((c) => c.modes.includes(mode));
-  const hasProjected = months.some((m) => m.projected);
+  const cols = COLUMNS.filter((column) => column.modes.includes(mode));
+  const hasProjected = months.some((month) => month.projected);
 
-  const cell = (c: Column, v: number, key: string) => (
-    <td key={key} className={cx(TD, 'num text-end', c.saving && (v >= 0.005 ? 'font-medium text-good' : 'text-fg-muted'))}>
-      {fmtMoney(v)}
+  const cell = (column: Column, amount: number, key: string) => (
+    <td key={key} className={cx(BODY_CELL_CLASSES, 'num text-end', column.saving && (amount >= 0.005 ? 'font-medium text-good' : 'text-fg-muted'))}>
+      {fmtMoney(amount)}
     </td>
   );
 
@@ -57,47 +57,47 @@ export function MonthTable({ scenario, mode, lowerBound }: { scenario: Scenario;
           <caption className="sr-only">{t('Usage, pool and cost for each month before and after the scenario')}</caption>
           <thead>
             <tr>
-              <th scope="col" className={TH}>
+              <th scope="col" className={HEADER_CELL_CLASSES}>
                 {t('Month')}
               </th>
-              {cols.map((c) => (
-                <th key={c.key} scope="col" className={cx(TH, 'text-end')} title={t(c.hint)}>
-                  {t(c.header)}
-                  {lowerBound && mode === 'pool' && c.key === 'capacity' ? '*' : ''}
+              {cols.map((column) => (
+                <th key={column.key} scope="col" className={cx(HEADER_CELL_CLASSES, 'text-end')} title={t(column.hint)}>
+                  {t(column.header)}
+                  {lowerBound && mode === 'pool' && column.key === 'capacity' ? '*' : ''}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {months.map((m) => (
-              <tr key={m.label}>
-                <th scope="row" className={cx(TD, 'whitespace-nowrap font-medium')}>
+            {months.map((month) => (
+              <tr key={month.label}>
+                <th scope="row" className={cx(BODY_CELL_CLASSES, 'whitespace-nowrap font-medium')}>
                   <span className="inline-flex items-center gap-2">
-                    {m.label}
-                    {m.projected ? (
+                    {month.label}
+                    {month.projected ? (
                       <Badge tone="info" title={t('The month is not over. Its usage is projected to the end of the month from the recent daily rate.')}>
                         {t('projected')}
                       </Badge>
                     ) : null}
                   </span>
                 </th>
-                {cols.map((c) => cell(c, c.value(m), c.key))}
+                {cols.map((column) => cell(column, column.value(month), column.key))}
               </tr>
             ))}
           </tbody>
           {months.length > 1 ? (
             <tfoot>
               <tr className="bg-surface-2 font-semibold">
-                <th scope="row" className={cx(TD, 'text-start')}>
+                <th scope="row" className={cx(BODY_CELL_CLASSES, 'text-start')}>
                   {t('Total')}
                 </th>
-                {cols.map((c) => cell(c, sum(months, c.value), c.key))}
+                {cols.map((column) => cell(column, sum(months, column.value), column.key))}
               </tr>
               <tr className="bg-surface-2">
-                <th scope="row" className={cx(TD, 'whitespace-nowrap text-start')}>
+                <th scope="row" className={cx(BODY_CELL_CLASSES, 'whitespace-nowrap text-start')}>
                   {t('Average per month')}
                 </th>
-                {cols.map((c) => cell(c, sum(months, c.value) / months.length, c.key))}
+                {cols.map((column) => cell(column, sum(months, column.value) / months.length, column.key))}
               </tr>
             </tfoot>
           ) : null}

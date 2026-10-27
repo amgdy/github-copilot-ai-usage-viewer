@@ -30,7 +30,7 @@ export interface LiveCheck {
 /** Sums up the differences between the live GitHub Docs prices and the price card. */
 export function summarizeLive(live: readonly LiveModel[], warnings = 0): LiveCheck {
   const diffs = compareWithCard(live);
-  const count = (kind: PriceDifference['kind']) => diffs.filter((d) => d.kind === kind).length;
+  const count = (kind: PriceDifference['kind']) => diffs.filter((difference) => difference.kind === kind).length;
   return { diffs, changed: count('changed'), added: count('new'), missing: count('missing'), warnings, live: [...live] };
 }
 

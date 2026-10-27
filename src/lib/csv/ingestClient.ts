@@ -7,39 +7,39 @@ export type { IngestProgress };
 
 export interface IngestOptions {
   dedupe?: boolean;
-  onProgress?: (p: IngestProgress) => void;
+  onProgress?: (progress: IngestProgress) => void;
 }
 
-function runInWorker(sources: TextSource[], opts: IngestOptions): Promise<DataStore> {
+function runInWorker(sources: TextSource[], options: IngestOptions): Promise<DataStore> {
   return new Promise((resolve, reject) => {
     let worker: Worker;
     try {
       worker = new IngestWorker();
-    } catch (err) {
-      reject(err);
+    } catch (error) {
+      reject(error);
       return;
     }
     let started = false;
-    worker.onmessage = (e: MessageEvent<WorkerResponse>) => {
-      const msg = e.data;
+    worker.onmessage = (event: MessageEvent<WorkerResponse>) => {
+      const response = event.data;
       started = true;
-      if (msg.type === 'progress') {
-        opts.onProgress?.(msg);
-      } else if (msg.type === 'done') {
+      if (response.type === 'progress') {
+        options.onProgress?.(response);
+      } else if (response.type === 'done') {
         worker.terminate();
-        resolve(rebuildIndexes(msg.store as unknown as DataStore));
+        resolve(rebuildIndexes(response.store as unknown as DataStore));
       } else {
         worker.terminate();
-        reject(new ParseError(msg.message));
+        reject(new ParseError(response.message));
       }
     };
-    worker.onerror = (e) => {
+    worker.onerror = (event) => {
       worker.terminate();
       // A worker that never ran (blocked by CSP, unsupported) is recoverable; a failure mid-parse is not.
-      reject(started ? new ParseError(e.message || 'The file could not be read.') : new WorkerUnavailable(e.message));
+      reject(started ? new ParseError(event.message || 'The file could not be read.') : new WorkerUnavailable(event.message));
     };
-    const req: WorkerRequest = { sources, dedupe: opts.dedupe ?? sources.length > 1 };
-    worker.postMessage(req);
+    const request: WorkerRequest = { sources, dedupe: options.dedupe ?? sources.length > 1 };
+    worker.postMessage(request);
   });
 }
 
@@ -48,17 +48,17 @@ export class ParseError extends Error {}
 class WorkerUnavailable extends Error {}
 
 /** Parses CSV sources off the main thread; falls back to the main thread when workers are unavailable. */
-export async function ingestSources(sources: TextSource[], opts: IngestOptions = {}): Promise<DataStore> {
+export async function ingestSources(sources: TextSource[], options: IngestOptions = {}): Promise<DataStore> {
   if (typeof Worker !== 'undefined') {
     try {
-      return await runInWorker(sources, opts);
-    } catch (err) {
-      if (err instanceof ParseError) throw err;
+      return await runInWorker(sources, options);
+    } catch (error) {
+      if (error instanceof ParseError) throw error;
     }
   }
   try {
-    return await buildStore(sources, { dedupe: opts.dedupe ?? sources.length > 1 }, opts.onProgress);
-  } catch (err) {
-    throw new ParseError(err instanceof Error ? err.message : String(err));
+    return await buildStore(sources, { dedupe: options.dedupe ?? sources.length > 1 }, options.onProgress);
+  } catch (error) {
+    throw new ParseError(error instanceof Error ? error.message : String(error));
   }
 }

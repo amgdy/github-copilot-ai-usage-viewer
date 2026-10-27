@@ -1,9 +1,9 @@
 import type { Dict, PluralEntry } from '../core';
 
-const p = (one: string, two: string, few: string, many: string, other: string): PluralEntry => ({ zero: other, one, two, few, many, other });
+const plural = (one: string, two: string, few: string, many: string, other: string): PluralEntry => ({ zero: other, one, two, few, many, other });
 
 /** Arabic text for the Segments page: lenses, group cards, the group table, the charts, the shared pool and the label rules. */
-const ar: Dict = {
+const arabic: Dict = {
   // Page
   'What kinds of users do you have, how much does each kind use, and what should you do about each? Every user has a persona, a usage tier, an engagement level, a usage profile, a Pareto class and an Auto use class, and may have traits. Choose a lens to compare the groups of one label.':
     'ما أنواع المستخدمين لديك، وكم يستخدم كل نوع، وماذا تفعل مع كل نوع؟ لكل مستخدم نمط مستخدم ومستوى استخدام ومستوى تفاعل وملف استخدام وفئة باريتو وفئة استخدام Auto، وقد تكون له سمات. اختر زاوية مقارنة لتقارن مجموعات تصنيف واحد.',
@@ -320,7 +320,7 @@ const ar: Dict = {
   'under $0.01': 'أقل من $0.01',
   'There are no individual users in the data in view.': 'لا يوجد مستخدمون أفراد في البيانات المعروضة.',
   'No user has any of these traits in the data in view.': 'لا يوجد مستخدم لديه أي من هذه السمات في البيانات المعروضة.',
-  '{n} users ({share}) have at least one trait. Each user is counted once.': p(
+  '{n} users ({share}) have at least one trait. Each user is counted once.': plural(
     'مستخدم واحد ({share}) لديه سمة واحدة على الأقل. كل مستخدم يُحسب مرة واحدة.',
     'مستخدمان ({share}) لديهما سمة واحدة على الأقل. كل مستخدم يُحسب مرة واحدة.',
     '{n} مستخدمين ({share}) لديهم سمة واحدة على الأقل. كل مستخدم يُحسب مرة واحدة.',
@@ -339,4 +339,4 @@ const ar: Dict = {
   'Usage is spread fairly evenly across these groups.': 'الاستخدام موزّع بشكل متقارب بين هذه المجموعات.',
 };
 
-export default ar;
+export default arabic;

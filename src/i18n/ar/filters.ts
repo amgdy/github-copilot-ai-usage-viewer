@@ -1,7 +1,7 @@
 import type { Dict } from '../core';
 
 /** Arabic text for the filter panel, the filter chips, the date range and the names of report columns. */
-const ar: Dict = {
+const arabic: Dict = {
   // Date range
   'Last {n} days': 'الأيام الـ{n} الأخيرة',
   '{from} to {to}': 'من {from} إلى {to}',
@@ -74,4 +74,4 @@ const ar: Dict = {
   '(file)': '(الملف)',
 };
 
-export default ar;
+export default arabic;

@@ -13,7 +13,7 @@ import { SeatListCard } from './SeatListCard';
 import { downgradeColumns, idleColumns, unusedColumns } from './seatColumns';
 import { BUSINESS_ALLOTMENT, DOWNGRADE_LIMIT, DOWNGRADE_SAVING, seatCashEffect, seatRows, type SeatRow } from './seatData';
 
-const rowKey = (r: SeatRow): string | number => (r.id >= 0 ? r.id : `roster:${r.name}`);
+const rowKey = (seat: SeatRow): string | number => (seat.id >= 0 ? seat.id : `roster:${seat.name}`);
 
 /** Seats that could be reclaimed or moved to a cheaper plan, with what each action is worth. */
 export function SeatsTab() {

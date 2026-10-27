@@ -1,10 +1,10 @@
 import type { Dict, PluralEntry } from '../core';
 
 /** Arabic counted noun: one, two, 3 to 10, 11 to 99, and 0 or 100 and up. */
-const p = (one: string, two: string, few: string, many: string, other: string): PluralEntry => ({ zero: other, one, two, few, many, other });
+const plural = (one: string, two: string, few: string, many: string, other: string): PluralEntry => ({ zero: other, one, two, few, many, other });
 
 /** Arabic text for the Settings page and the setting references shown in the formula panels. */
-const ar: Dict = {
+const arabic: Dict = {
   // Setting references
   'Active-day threshold': 'حد يوم النشاط',
   '{amount} of usage in a day': '{amount} من الاستخدام في اليوم',
@@ -42,7 +42,7 @@ const ar: Dict = {
   '{business} Business, {enterprise} Enterprise': '{business} Business، و{enterprise} Enterprise',
   'Model pricing and tiers': 'أسعار النماذج وفئاتها',
   'Price card as shipped': 'قائمة الأسعار كما وردت مع التطبيق',
-  '{n} models edited': p('نموذج واحد معدّل', 'نموذجان معدّلان', '{n} نماذج معدّلة', '{n} نموذجًا معدّلًا', '{n} نموذج معدّل'),
+  '{n} models edited': plural('نموذج واحد معدّل', 'نموذجان معدّلان', '{n} نماذج معدّلة', '{n} نموذجًا معدّلًا', '{n} نموذج معدّل'),
   'Top N users': 'عدد أعلى المستخدمين',
 
   // Page and sections
@@ -141,7 +141,7 @@ const ar: Dict = {
   'Settings imported': 'استُوردت الإعدادات',
   'Nothing to change': 'لا شيء لتغييره',
   'Undo import': 'التراجع عن الاستيراد',
-  '{file} changed {n} settings.': p(
+  '{file} changed {n} settings.': plural(
     'غيّر {file} إعدادًا واحدًا.',
     'غيّر {file} إعدادين.',
     'غيّر {file} {n} إعدادات.',
@@ -150,7 +150,7 @@ const ar: Dict = {
   ),
   '{file} has the same settings as the ones in use.': 'يحتوي {file} على الإعدادات المستخدمة نفسها.',
   'You can undo this until you change another setting.': 'يمكنك التراجع عن هذا ما لم تغيّر إعدادًا آخر.',
-  '{n} items in the file were left out': p(
+  '{n} items in the file were left out': plural(
     'استُبعد عنصر واحد من الملف',
     'استُبعد عنصران من الملف',
     'استُبعدت {n} عناصر من الملف',
@@ -204,7 +204,7 @@ const ar: Dict = {
     'تشمل الأعداد المستخدمين في الفترة المحددة، وتتحدّث عند تغيير أي حد.',
   'Load a report to see how many users fall in each band.': 'حمّل تقريرًا لترى عدد المستخدمين في كل شريحة.',
   'Users in the selected period that match this label': 'المستخدمون في الفترة المحددة المطابقون لهذا التصنيف',
-  '{n} users now': p('مستخدم واحد الآن', 'مستخدمان الآن', '{n} مستخدمين الآن', '{n} مستخدمًا الآن', '{n} مستخدم الآن'),
+  '{n} users now': plural('مستخدم واحد الآن', 'مستخدمان الآن', '{n} مستخدمين الآن', '{n} مستخدمًا الآن', '{n} مستخدم الآن'),
   'First {value} of usage': 'أول {value} من الاستخدام',
   'Next {value}': 'الـ{value} التالية',
   'Last {value}': 'آخر {value}',
@@ -221,21 +221,21 @@ const ar: Dict = {
   'Check the connection, or compare the prices by hand on the GitHub Docs page.': 'تحقق من الاتصال، أو قارن الأسعار يدويًا في صفحة GitHub Docs.',
   'The price card matches the GitHub Docs page.': 'قائمة الأسعار مطابقة لصفحة GitHub Docs.',
   '{list}.': '{list}.',
-  '{n} models have a changed price or tier': p(
+  '{n} models have a changed price or tier': plural(
     'نموذج واحد تغيّر سعره أو فئته',
     'نموذجان تغيّر سعرهما أو فئتهما',
     '{n} نماذج تغيّر سعرها أو فئتها',
     '{n} نموذجًا تغيّر سعره أو فئته',
     '{n} نموذج تغيّر سعره أو فئته',
   ),
-  '{n} models are new on the page': p(
+  '{n} models are new on the page': plural(
     'نموذج واحد جديد في الصفحة',
     'نموذجان جديدان في الصفحة',
     '{n} نماذج جديدة في الصفحة',
     '{n} نموذجًا جديدًا في الصفحة',
     '{n} نموذج جديد في الصفحة',
   ),
-  '{n} models are no longer on the page': p(
+  '{n} models are no longer on the page': plural(
     'نموذج واحد لم يعد في الصفحة',
     'نموذجان لم يعودا في الصفحة',
     '{n} نماذج لم تعد في الصفحة',
@@ -246,7 +246,7 @@ const ar: Dict = {
   'No longer on the page': 'لم يعد في الصفحة',
   'Changed: {fields}': 'ما تغيّر: {fields}',
   'And {n} more.': 'و{n} غيرها.',
-  '{n} rows of the page could not be read.': p(
+  '{n} rows of the page could not be read.': plural(
     'تعذّرت قراءة صف واحد من الصفحة.',
     'تعذّرت قراءة صفين من الصفحة.',
     'تعذّرت قراءة {n} صفوف من الصفحة.',
@@ -257,7 +257,7 @@ const ar: Dict = {
   'Load a report to apply the live prices.': 'حمّل تقريرًا لتطبيق الأسعار الحالية.',
   'Saved as price changes below. You can remove them at any time.': 'حُفظت تعديلات أسعار في الأسفل. يمكنك إزالتها في أي وقت.',
   'The models in this report already use these prices.': 'نماذج هذا التقرير تستخدم هذه الأسعار أصلًا.',
-  'Saved new prices for {n} models.': p(
+  'Saved new prices for {n} models.': plural(
     'حُفظت أسعار جديدة لنموذج واحد.',
     'حُفظت أسعار جديدة لنموذجين.',
     'حُفظت أسعار جديدة لـ{n} نماذج.',
@@ -360,9 +360,9 @@ const ar: Dict = {
   'Users to add': 'المستخدمون المراد إضافتهم',
   'One user per line, as {user} or {userPlan}. The plan can be Business, Enterprise, a custom plan label such as Custom (2,500 credits) or a number. A number of 1,000 or more is AI credits, for example 3900. A smaller number is dollars of included credits, for example 19. A header row is skipped, and users are matched without regard to case.':
     'مستخدم واحد في كل سطر، بصيغة {user} أو {userPlan}. يمكن أن تكون الخطة Business أو Enterprise أو تسمية خطة مخصصة مثل Custom (2,500 credits) أو رقمًا. الرقم 1,000 أو أكثر يعني أرصدة ذكاء اصطناعي، مثل 3900. والرقم الأصغر يعني دولارات من الأرصدة المشمولة، مثل 19. يُتجاهل صف العناوين، وتُطابق أسماء المستخدمين دون تمييز بين الأحرف الكبيرة والصغيرة.',
-  '{n} users found': p('عُثر على مستخدم واحد', 'عُثر على مستخدمَين', 'عُثر على {n} مستخدمين', 'عُثر على {n} مستخدمًا', 'عُثر على {n} مستخدم'),
-  '{n} duplicates skipped': p('تُجوهل تكرار واحد', 'تُجوهل تكراران', 'تُجوهلت {n} تكرارات', 'تُجوهل {n} تكرارًا', 'تُجوهل {n} تكرار'),
-  '{n} lines ignored': p('تُجوهل سطر واحد', 'تُجوهل سطران', 'تُجوهلت {n} أسطر', 'تُجوهل {n} سطرًا', 'تُجوهل {n} سطر'),
+  '{n} users found': plural('عُثر على مستخدم واحد', 'عُثر على مستخدمَين', 'عُثر على {n} مستخدمين', 'عُثر على {n} مستخدمًا', 'عُثر على {n} مستخدم'),
+  '{n} duplicates skipped': plural('تُجوهل تكرار واحد', 'تُجوهل تكراران', 'تُجوهلت {n} تكرارات', 'تُجوهل {n} تكرارًا', 'تُجوهل {n} تكرار'),
+  '{n} lines ignored': plural('تُجوهل سطر واحد', 'تُجوهل سطران', 'تُجوهلت {n} أسطر', 'تُجوهل {n} سطرًا', 'تُجوهل {n} سطر'),
   'The header row was skipped.': 'تُجوهل صف العناوين.',
   '{n} plans could not be read, for example {samples}. Those users are added without a plan.':
     'عدد الخطط التي تعذّرت قراءتها: {n}، مثل {samples}. يُضاف هؤلاء المستخدمون دون خطة.',
@@ -438,7 +438,7 @@ const ar: Dict = {
   'The rules that sort users into tiers, engagement levels, usage profiles, personas and classes. The counts update as you change a value.':
     'القواعد التي توزّع المستخدمين على شرائح الاستخدام ومستويات التفاعل وملفات الاستخدام وأنماط المستخدمين والفئات. تتحدّث الأعداد عند تغيير أي قيمة.',
   'At $0, any day with a usage row counts as active.': 'عند $0، يُحسب كل يوم فيه صف استخدام يومَ نشاط.',
-  'About {n} AI credits.': p(
+  'About {n} AI credits.': plural(
     'نحو رصيد واحد من أرصدة الذكاء الاصطناعي.',
     'نحو رصيدين من أرصدة الذكاء الاصطناعي.',
     'نحو {n} أرصدة ذكاء اصطناعي.',
@@ -542,7 +542,7 @@ const ar: Dict = {
   'use an amount from {min} to {max}': 'استخدم مبلغًا من {min} إلى {max}',
   'use a whole number from {min} to {max}': 'استخدم عددًا صحيحًا من {min} إلى {max}',
   'Model price overrides: expected an object': 'تعديلات أسعار النماذج: يجب أن تكون كائنًا',
-  'Model price overrides: {n} entries could not be read and were left out': p(
+  'Model price overrides: {n} entries could not be read and were left out': plural(
     'تعديلات أسعار النماذج: تعذّرت قراءة إدخال واحد فاستُبعد',
     'تعديلات أسعار النماذج: تعذّرت قراءة إدخالين فاستُبعدا',
     'تعديلات أسعار النماذج: تعذّرت قراءة {n} إدخالات فاستُبعدت',
@@ -550,14 +550,14 @@ const ar: Dict = {
     'تعديلات أسعار النماذج: تعذّرت قراءة {n} إدخال فاستُبعدت',
   ),
   'License list: expected a list': 'قائمة التراخيص: يجب أن تكون قائمة',
-  'License list: {n} entries without a usable username left out': p(
+  'License list: {n} entries without a usable username left out': plural(
     'قائمة التراخيص: استُبعد إدخال واحد بلا اسم مستخدم صالح',
     'قائمة التراخيص: استُبعد إدخالان بلا اسم مستخدم صالح',
     'قائمة التراخيص: استُبعدت {n} إدخالات بلا اسم مستخدم صالح',
     'قائمة التراخيص: استُبعد {n} إدخالًا بلا اسم مستخدم صالح',
     'قائمة التراخيص: استُبعد {n} إدخال بلا اسم مستخدم صالح',
   ),
-  'License list: {n} duplicates left out': p(
+  'License list: {n} duplicates left out': plural(
     'قائمة التراخيص: استُبعد تكرار واحد',
     'قائمة التراخيص: استُبعد تكراران',
     'قائمة التراخيص: استُبعدت {n} تكرارات',
@@ -726,4 +726,4 @@ const ar: Dict = {
     'تقدير لبقية أحدث شهر، ولا يُحسب إلا إذا لم ينتهِ ذلك الشهر: الاستخدام حتى الآن مضافًا إليه الأيام المتبقية مضروبة في معدل يومي. المنخفض يستخدم الأقل من معدلين يوميين (متوسط الشهر حتى الآن ومتوسط آخر 7 أيام)، والمرتفع يستخدم الأعلى، والمتوسط يستخدم متوسطهما. الاستخدام المتوقع دفعه إضافيًا هو ما يتجاوز الرصيد المشترك، وبعد نفاد الرصيد المشترك يُدفع كل استخدام لاحق إضافيًا.',
 };
 
-export default ar;
+export default arabic;

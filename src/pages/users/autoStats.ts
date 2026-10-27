@@ -8,10 +8,10 @@ import { fmtPct } from '../../lib/utils/format';
 export function measuredMissedShare(profiles: readonly UserProfile[], rates: AutoRates): number {
   let measured = 0;
   let all = 0;
-  for (const p of profiles) {
-    if (!(p.autoMissed > 0)) continue;
-    all += p.autoMissed;
-    if (rates.plans.some((r) => r.credits === p.quotaCredits && r.source === 'measured')) measured += p.autoMissed;
+  for (const user of profiles) {
+    if (!(user.autoMissed > 0)) continue;
+    all += user.autoMissed;
+    if (rates.plans.some((planRate) => planRate.credits === user.quotaCredits && planRate.source === 'measured')) measured += user.autoMissed;
   }
   return all > 0 ? measured / all : 0;
 }
@@ -28,9 +28,9 @@ export function planRatesNote(rates: AutoRates): string {
     return t('The report has no Auto usage to measure a discount rate, so the {rate} from Settings is assumed.', { rate: assumed });
   }
   const list = rates.plans
-    .map((p) => {
-      const vars = { plan: seatPlanLabel(p.label), rate: fmtPct(p.rate, 1) };
-      return p.source === 'measured' ? t('{plan} {rate} (measured)', vars) : t('{plan} {rate} (assumed)', vars);
+    .map((planRate) => {
+      const values = { plan: seatPlanLabel(planRate.label), rate: fmtPct(planRate.rate, 1) };
+      return planRate.source === 'measured' ? t('{plan} {rate} (measured)', values) : t('{plan} {rate} (assumed)', values);
     })
     .join(', ');
   return t('Discount rate by plan: {list}. A plan without Auto usage uses the {rate} from Settings.', { list, rate: assumed });

@@ -21,8 +21,8 @@ export interface Dataset {
 }
 
 /** The dataset name in the current language. File names are shown as they are. */
-export function datasetLabel(d: Pick<Dataset, 'label' | 'labelVars'>): string {
-  return d.labelVars ? t(d.label, d.labelVars) : d.label;
+export function datasetLabel(dataset: Pick<Dataset, 'label' | 'labelVars'>): string {
+  return dataset.labelVars ? t(dataset.label, dataset.labelVars) : dataset.label;
 }
 
 export interface LoadingState {
@@ -46,8 +46,8 @@ function loadTheme(): ThemeMode {
   const requested = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('theme') : null;
   if (requested === 'light' || requested === 'dark') return requested;
   try {
-    const t = localStorage.getItem(THEME_KEY);
-    return t === 'light' || t === 'dark' || t === 'system' ? t : 'system';
+    const storedTheme = localStorage.getItem(THEME_KEY);
+    return storedTheme === 'light' || storedTheme === 'dark' || storedTheme === 'system' ? storedTheme : 'system';
   } catch {
     return 'system';
   }
@@ -66,14 +66,14 @@ export function applyTheme(mode: ThemeMode): void {
 
 interface AppState {
   dataset: Dataset | null;
-  setDataset: (d: Dataset | null) => void;
+  setDataset: (dataset: Dataset | null) => void;
   /** True while the landing page is shown on top of an already loaded dataset ("Load other data"). */
   pickingData: boolean;
   setPickingData: (picking: boolean) => void;
   loading: LoadingState | null;
-  setLoading: (l: LoadingState | null) => void;
+  setLoading: (loading: LoadingState | null) => void;
   error: string | null;
-  setError: (e: string | null) => void;
+  setError: (error: string | null) => void;
 
   filters: Filters;
   /** Merge a partial filter set into the current filters. */
@@ -82,7 +82,7 @@ interface AppState {
   replaceFilters: (patch?: Partial<Filters>) => void;
   /** Add the value to a string-list filter when absent, remove it when present. */
   toggleFilterValue: (key: ListFilterKey, value: string) => void;
-  toggleWeekday: (dow: number) => void;
+  toggleWeekday: (weekday: number) => void;
   resetFilters: () => void;
 
   settings: Settings;
@@ -95,7 +95,7 @@ interface AppState {
   settingsSaved: SaveResult;
 
   theme: ThemeMode;
-  setTheme: (t: ThemeMode) => void;
+  setTheme: (theme: ThemeMode) => void;
 
   /** Prints the formula of every number under it, in addition to the calculator icon. */
   showCalc: boolean;
@@ -120,18 +120,18 @@ export const useApp = create<AppState>((set, get) => ({
   setError: (error) => set({ error }),
 
   filters: emptyFilters(),
-  setFilters: (patch) => set((s) => ({ filters: { ...s.filters, ...patch } })),
+  setFilters: (patch) => set((state) => ({ filters: { ...state.filters, ...patch } })),
   replaceFilters: (patch) => set({ filters: { ...emptyFilters(), ...patch } }),
   toggleFilterValue: (key, value) =>
-    set((s) => {
-      const cur = s.filters[key];
-      const next = cur.includes(value) ? cur.filter((v) => v !== value) : [...cur, value];
-      return { filters: { ...s.filters, [key]: next } };
+    set((state) => {
+      const currentValues = state.filters[key];
+      const next = currentValues.includes(value) ? currentValues.filter((otherValue) => otherValue !== value) : [...currentValues, value];
+      return { filters: { ...state.filters, [key]: next } };
     }),
-  toggleWeekday: (dow) =>
-    set((s) => {
-      const cur = s.filters.weekdays;
-      return { filters: { ...s.filters, weekdays: cur.includes(dow) ? cur.filter((d) => d !== dow) : [...cur, dow].sort((a, b) => a - b) } };
+  toggleWeekday: (weekday) =>
+    set((state) => {
+      const currentWeekdays = state.filters.weekdays;
+      return { filters: { ...state.filters, weekdays: currentWeekdays.includes(weekday) ? currentWeekdays.filter((otherWeekday) => otherWeekday !== weekday) : [...currentWeekdays, weekday].sort((a, b) => a - b) } };
     }),
   resetFilters: () => set({ filters: emptyFilters() }),
 

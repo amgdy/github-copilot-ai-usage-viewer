@@ -42,14 +42,14 @@ function rowName(driver: Driver, row: DriverRow): ReactNode {
 export function BillDrivers() {
   const { analysis, store, models } = useAnalysis();
   const colors = useChartColors();
-  const { agg, coverage } = analysis;
+  const { agg: aggregates, coverage } = analysis;
   const billing = coverage.billing;
   const [driver, setDriver] = useState<Driver>('product');
   const [metricPick, setMetricPick] = useState<DriverMetric>('gross');
   const metric: DriverMetric = billing ? metricPick : 'gross';
 
-  const items = useMemo(() => withOther(driverRows(driver, metric, agg, store, models), 10), [driver, metric, agg, store, models]);
-  const total = metric === 'gross' ? agg.totals.gross : agg.totals.net;
+  const items = useMemo(() => withOther(driverRows(driver, metric, aggregates, store, models), 10), [driver, metric, aggregates, store, models]);
+  const total = metric === 'gross' ? aggregates.totals.gross : aggregates.totals.net;
   const key = metric === 'gross' ? 'gross' : 'billed';
 
   const option = useMemo(
@@ -57,17 +57,17 @@ export function BillDrivers() {
       rankBarOption(colors, {
         labelWidth: 150,
         color: metric === 'net' ? colors.warn : colors.accent,
-        items: items.map((r) => {
-          const vars = { usage: fmtUSD(r.gross), covered: fmtUSD(r.covered), billed: fmtUSD(r.billed), share: fmtPct(total > 0 ? r[key] / total : 0, 0) };
+        items: items.map((driverRow) => {
+          const noteValues = { usage: fmtUSD(driverRow.gross), covered: fmtUSD(driverRow.covered), billed: fmtUSD(driverRow.billed), share: fmtPct(total > 0 ? driverRow[key] / total : 0, 0) };
           return {
-            name: r.name,
-            value: r[key],
-            color: r.filter === null ? colors.muted : r.color,
+            name: driverRow.name,
+            value: driverRow[key],
+            color: driverRow.filter === null ? colors.muted : driverRow.color,
             note: !billing
-              ? t('Usage {usage} · {share} of usage', vars)
+              ? t('Usage {usage} · {share} of usage', noteValues)
               : metric === 'gross'
-                ? t('Usage {usage} · Covered {covered} · Billed {billed} · {share} of usage', vars)
-                : t('Usage {usage} · Covered {covered} · Billed {billed} · {share} of the billed amount', vars),
+                ? t('Usage {usage} · Covered {covered} · Billed {billed} · {share} of usage', noteValues)
+                : t('Usage {usage} · Covered {covered} · Billed {billed} · {share} of the billed amount', noteValues),
           };
         }),
       }),
@@ -92,15 +92,15 @@ export function BillDrivers() {
             options={(Object.keys(DRIVER_LABELS) as Driver[]).map((value) => ({ value, label: t(DRIVER_LABELS[value]) }))}
           />
           {billing ? (
-            <Segmented size="sm" label={t('Measure')} value={metric} onChange={setMetricPick} options={METRICS.map((x) => ({ value: x.value, label: t(x.label) }))} />
+            <Segmented size="sm" label={t('Measure')} value={metric} onChange={setMetricPick} options={METRICS.map((metricOption) => ({ value: metricOption.value, label: t(metricOption.label) }))} />
           ) : null}
         </>
       }
       option={option}
       height={Math.max(120, items.length * 26 + 16)}
       empty={items.length === 0 ? (metric === 'net' ? t('Nothing was billed on top of seats in this period') : t('No usage in this period')) : false}
-      onClick={(p) => {
-        const row = items[p.dataIndex];
+      onClick={(event) => {
+        const row = items[event.dataIndex];
         if (row && row.filter !== null) drill(filterPatch(driver, row.filter), { merge: true });
       }}
       exportName={`github-copilot-cost-drivers-${driver}-${metric}`}

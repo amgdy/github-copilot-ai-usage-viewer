@@ -23,20 +23,20 @@ import {
 } from './helpers';
 import { FIXTURE_A, FIXTURE_B, analyzeFixtures, readFixture } from './fixtures';
 
-const F = (over: Partial<Filters> = {}): Filters => ({ ...emptyFilters(), ...over });
-const D = dayNum;
+const makeFilters = (over: Partial<Filters> = {}): Filters => ({ ...emptyFilters(), ...over });
+const dayOf = dayNum;
 
-const inWindow = (rows: NaiveRow[], from: number, to: number, keep: (r: NaiveRow) => boolean = () => true): NaiveRow[] =>
-  rows.filter((r) => {
-    const d = dayNum(r.date);
-    return d >= from && d <= to && keep(r);
+const inWindow = (rows: NaiveRow[], from: number, to: number, keep: (row: NaiveRow) => boolean = () => true): NaiveRow[] =>
+  rows.filter((row) => {
+    const day = dayNum(row.date);
+    return day >= from && day <= to && keep(row);
   });
 
 const EMPTY_HEADLINE = { status: 'watch', title: 'No rows match the current filters', detail: 'Widen the date range or clear some filters.' };
 
 /** An analysis with the timing removed, to compare two runs. */
-const stripped = (a: Analysis): Omit<Analysis, 'ms'> => {
-  const { ms: _ms, ...rest } = a;
+const stripped = (analysis: Analysis): Omit<Analysis, 'ms'> => {
+  const { ms: _ms, ...rest } = analysis;
   return rest;
 };
 
@@ -49,75 +49,75 @@ function expectTotals(got: { rows: number; gross: number; discount: number; net:
   expect(got.credits).toBeCloseTo(want.credits, 4);
 }
 
-let p: Pipeline & { demo: DemoResult };
+let pipeline: Pipeline & { demo: DemoResult };
 let rows: NaiveRow[];
 let min: number;
 let max: number;
 
 beforeAll(async () => {
-  p = await analyzeDemo();
-  rows = naiveRows(p.demo.csv);
-  min = p.store.minDay;
-  max = p.store.maxDay;
+  pipeline = await analyzeDemo();
+  rows = naiveRows(pipeline.demo.csv);
+  min = pipeline.store.minDay;
+  max = pipeline.store.maxDay;
 });
 
 describe('analyze: date range', () => {
   it('analyses the whole data when no date is set', () => {
-    const a = p.analysis;
-    expect(a.range).toEqual({ start: min, end: max, length: max - min + 1 });
-    expect(a.range).toBe(a.agg.range);
+    const analysis = pipeline.analysis;
+    expect(analysis.range).toEqual({ start: min, end: max, length: max - min + 1 });
+    expect(analysis.range).toBe(analysis.agg.range);
     expect(isoOf(min)).toBe('2026-09-01');
     expect(isoOf(max)).toBe('2026-10-26');
-    expect(a.narrowed).toBe(false);
-    expect(a.segmentFiltered).toBe(false);
-    expect(a.baseMask).toBeNull();
-    expect(a.mask).toBeNull();
-    expect(a.users).toBe(a.population);
-    expect(a.agg.totals.rows).toBe(rows.length);
+    expect(analysis.narrowed).toBe(false);
+    expect(analysis.segmentFiltered).toBe(false);
+    expect(analysis.baseMask).toBeNull();
+    expect(analysis.mask).toBeNull();
+    expect(analysis.users).toBe(analysis.population);
+    expect(analysis.agg.totals.rows).toBe(rows.length);
   });
 
   it('clamps a range that is wider than the data to the data', () => {
-    const a = p.run(F({ dateFrom: min - 100, dateTo: max + 100 }));
-    const whole = p.analysis;
-    expect(a.range).toEqual(whole.range);
-    expect(a.agg.totals).toEqual(whole.agg.totals);
-    expect(a.previous).toBeNull();
-    expect(a.narrowed).toBe(false);
-    expect(stripped(a).recs).toEqual(stripped(whole).recs);
-    expect(p.run(F({ dateFrom: min - 100 })).range).toEqual(whole.range);
-    expect(p.run(F({ dateTo: max + 100 })).range).toEqual(whole.range);
+    const clamped = pipeline.run(makeFilters({ dateFrom: min - 100, dateTo: max + 100 }));
+    const whole = pipeline.analysis;
+    expect(clamped.range).toEqual(whole.range);
+    expect(clamped.agg.totals).toEqual(whole.agg.totals);
+    expect(clamped.previous).toBeNull();
+    expect(clamped.narrowed).toBe(false);
+    expect(stripped(clamped).recs).toEqual(stripped(whole).recs);
+    expect(pipeline.run(makeFilters({ dateFrom: min - 100 })).range).toEqual(whole.range);
+    expect(pipeline.run(makeFilters({ dateTo: max + 100 })).range).toEqual(whole.range);
   });
 
   it('uses the first or the last day of the data for an open end', () => {
-    const fromOct = p.run(F({ dateFrom: D('2026-10-01') }));
-    expect(fromOct.range).toEqual({ start: D('2026-10-01'), end: max, length: max - D('2026-10-01') + 1 });
-    expectTotals({ ...fromOct.agg.totals, credits: fromOct.agg.totals.credits, users: fromOct.agg.totals.users }, naiveTotals(inWindow(rows, D('2026-10-01'), max)));
-    const toSep = p.run(F({ dateTo: D('2026-09-30') }));
-    expect(toSep.range).toEqual({ start: min, end: D('2026-09-30'), length: 30 });
-    expectTotals(toSep.agg.totals, naiveTotals(inWindow(rows, min, D('2026-09-30'))));
+    const fromOct = pipeline.run(makeFilters({ dateFrom: dayOf('2026-10-01') }));
+    expect(fromOct.range).toEqual({ start: dayOf('2026-10-01'), end: max, length: max - dayOf('2026-10-01') + 1 });
+    expectTotals({ ...fromOct.agg.totals, credits: fromOct.agg.totals.credits, users: fromOct.agg.totals.users }, naiveTotals(inWindow(rows, dayOf('2026-10-01'), max)));
+    const toSep = pipeline.run(makeFilters({ dateTo: dayOf('2026-09-30') }));
+    expect(toSep.range).toEqual({ start: min, end: dayOf('2026-09-30'), length: 30 });
+    expectTotals(toSep.agg.totals, naiveTotals(inWindow(rows, min, dayOf('2026-09-30'))));
     expect(fromOct.narrowed).toBe(false);
     expect(toSep.narrowed).toBe(false);
   });
 
   it('analyses exactly the days of a range inside the data, and the pool months it touches', () => {
-    const from = D('2026-09-25');
-    const to = D('2026-10-04');
-    const a = p.run(F({ dateFrom: from, dateTo: to }));
-    expect(a.range).toEqual({ start: from, end: to, length: 10 });
-    expectTotals(a.agg.totals, naiveTotals(inWindow(rows, from, to)));
-    expect(a.agg.days.gross).toHaveLength(10);
-    expect(sum([...a.agg.days.gross])).toBeCloseTo(a.agg.totals.gross, 6);
-    expect(a.pool.months.map((m) => m.key)).toEqual(['2026-09', '2026-10']);
+    const from = dayOf('2026-09-25');
+    const to = dayOf('2026-10-04');
+    const analysis = pipeline.run(makeFilters({ dateFrom: from, dateTo: to }));
+    expect(analysis.range).toEqual({ start: from, end: to, length: 10 });
+    expectTotals(analysis.agg.totals, naiveTotals(inWindow(rows, from, to)));
+    expect(analysis.agg.days.gross).toHaveLength(10);
+    expect(sum([...analysis.agg.days.gross])).toBeCloseTo(analysis.agg.totals.gross, 6);
+    expect(analysis.pool.months.map((month) => month.key)).toEqual(['2026-09', '2026-10']);
   });
 
   it('analyses a single day', () => {
-    const day = D('2026-09-11');
-    const a = p.run(F({ dateFrom: day, dateTo: day }));
-    expect(a.range).toEqual({ start: day, end: day, length: 1 });
-    expectTotals(a.agg.totals, naiveTotals(inWindow(rows, day, day)));
-    expect(a.previous).toMatchObject({ from: day - 1, to: day - 1 });
-    expect(a.trend.reliable).toBe(false);
-    expect(analysisTexts(a).filter((t) => BAD_TEXT.test(t))).toEqual([]);
+    const day = dayOf('2026-09-11');
+    const analysis = pipeline.run(makeFilters({ dateFrom: day, dateTo: day }));
+    expect(analysis.range).toEqual({ start: day, end: day, length: 1 });
+    expectTotals(analysis.agg.totals, naiveTotals(inWindow(rows, day, day)));
+    expect(analysis.previous).toMatchObject({ from: day - 1, to: day - 1 });
+    expect(analysis.trend.reliable).toBe(false);
+    expect(analysisTexts(analysis).filter((text) => BAD_TEXT.test(text))).toEqual([]);
   });
 
   const OUTSIDE: [string, () => Partial<Filters>][] = [
@@ -130,34 +130,34 @@ describe('analyze: date range', () => {
 
   for (const [name, filters] of OUTSIDE) {
     it(`a range ${name} is an empty scope, not an error`, () => {
-      const a = p.run(F(filters()));
-      expect(a.agg.totals).toMatchObject({ rows: 0, gross: 0, discount: 0, net: 0, credits: 0 });
-      expect(a.agg.range.length).toBe(0);
-      expect(a.recs).toEqual([]);
-      expect(a.headline).toEqual(EMPTY_HEADLINE);
-      expect(a.previous).toBeNull();
-      expect(a.pool.months).toEqual([]);
-      expect(a.users.profiles).toEqual([]);
-      expect(a.anomalies).toEqual([]);
-      expect(a.trend.reliable).toBe(false);
-      expect(a.levers.total).toBe(0);
-      expect(a.plan.saving).toBe(0);
-      expect(a.plan.baseCost).toBe(0);
-      expect(analysisTexts(a).filter((t) => BAD_TEXT.test(t))).toEqual([]);
+      const analysis = pipeline.run(makeFilters(filters()));
+      expect(analysis.agg.totals).toMatchObject({ rows: 0, gross: 0, discount: 0, net: 0, credits: 0 });
+      expect(analysis.agg.range.length).toBe(0);
+      expect(analysis.recs).toEqual([]);
+      expect(analysis.headline).toEqual(EMPTY_HEADLINE);
+      expect(analysis.previous).toBeNull();
+      expect(analysis.pool.months).toEqual([]);
+      expect(analysis.users.profiles).toEqual([]);
+      expect(analysis.anomalies).toEqual([]);
+      expect(analysis.trend.reliable).toBe(false);
+      expect(analysis.levers.total).toBe(0);
+      expect(analysis.plan.saving).toBe(0);
+      expect(analysis.plan.baseCost).toBe(0);
+      expect(analysisTexts(analysis).filter((text) => BAD_TEXT.test(text))).toEqual([]);
     });
   }
 
   it('a file without data rows analyses to an empty scope', async () => {
-    const header = `\uFEFF${CSV_HEADER.map((h) => `"${h}"`).join(',')}\n`;
-    const e = await analyzeSources([{ name: 'empty.csv', data: header }]);
-    expect(e.store.n).toBe(0);
-    const a = e.analysis;
-    expect(a.agg.totals).toMatchObject({ rows: 0, gross: 0, discount: 0, net: 0 });
-    expect(a.recs).toEqual([]);
-    expect(a.headline).toEqual(EMPTY_HEADLINE);
-    expect(a.pool.months).toEqual([]);
-    expect(a.previous).toBeNull();
-    expect(analysisTexts(a).filter((t) => BAD_TEXT.test(t))).toEqual([]);
+    const header = `\uFEFF${CSV_HEADER.map((column) => `"${column}"`).join(',')}\n`;
+    const emptyPipeline = await analyzeSources([{ name: 'empty.csv', data: header }]);
+    expect(emptyPipeline.store.n).toBe(0);
+    const analysis = emptyPipeline.analysis;
+    expect(analysis.agg.totals).toMatchObject({ rows: 0, gross: 0, discount: 0, net: 0 });
+    expect(analysis.recs).toEqual([]);
+    expect(analysis.headline).toEqual(EMPTY_HEADLINE);
+    expect(analysis.pool.months).toEqual([]);
+    expect(analysis.previous).toBeNull();
+    expect(analysisTexts(analysis).filter((text) => BAD_TEXT.test(text))).toEqual([]);
   });
 });
 
@@ -166,99 +166,99 @@ describe('analyze: the previous period', () => {
   for (const length of [1, 7, 14, 20, 28, 29, 30, 40, 56]) {
     it(`the last ${length} days: ${length <= 28 ? 'the window before it is compared' : 'there is no full window before it'}`, () => {
       const start = max - length + 1;
-      const a = p.run(F({ dateFrom: start }));
-      expect(a.range.length).toBe(length);
+      const analysis = pipeline.run(makeFilters({ dateFrom: start }));
+      expect(analysis.range.length).toBe(length);
       if (length > 28) {
-        expect(a.previous).toBeNull();
+        expect(analysis.previous).toBeNull();
         return;
       }
-      const prev = a.previous!;
+      const prev = analysis.previous!;
       expect(prev).not.toBeNull();
       expect(prev.from).toBe(start - length);
       expect(prev.to).toBe(start - 1);
       expect(prev.to - prev.from + 1).toBe(length);
       expectTotals(prev.totals, naiveTotals(inWindow(rows, prev.from, prev.to)));
-      expect(prev.totals).toEqual(quickTotals(p.store, null, prev.from, prev.to));
+      expect(prev.totals).toEqual(quickTotals(pipeline.store, null, prev.from, prev.to));
     });
   }
 
   it('the longest comparable range starts the previous window on the first day of the data', () => {
-    const a = p.run(F({ dateFrom: max - 27 }));
-    expect(a.previous!.from).toBe(min);
-    expect(p.run(F({ dateFrom: max - 28 })).previous).toBeNull();
+    const analysis = pipeline.run(makeFilters({ dateFrom: max - 27 }));
+    expect(analysis.previous!.from).toBe(min);
+    expect(pipeline.run(makeFilters({ dateFrom: max - 28 })).previous).toBeNull();
   });
 
   it('a range in the middle of the data compares with the days just before it', () => {
-    const a = p.run(F({ dateFrom: D('2026-10-01'), dateTo: D('2026-10-10') }));
-    expect(isoOf(a.previous!.from)).toBe('2026-09-21');
-    expect(isoOf(a.previous!.to)).toBe('2026-09-30');
-    expectTotals(a.previous!.totals, naiveTotals(inWindow(rows, D('2026-09-21'), D('2026-09-30'))));
+    const analysis = pipeline.run(makeFilters({ dateFrom: dayOf('2026-10-01'), dateTo: dayOf('2026-10-10') }));
+    expect(isoOf(analysis.previous!.from)).toBe('2026-09-21');
+    expect(isoOf(analysis.previous!.to)).toBe('2026-09-30');
+    expectTotals(analysis.previous!.totals, naiveTotals(inWindow(rows, dayOf('2026-09-21'), dayOf('2026-09-30'))));
     // The window just before a range that starts too early is not fully covered.
-    expect(p.run(F({ dateFrom: D('2026-09-10'), dateTo: D('2026-09-30') })).previous).toBeNull();
+    expect(pipeline.run(makeFilters({ dateFrom: dayOf('2026-09-10'), dateTo: dayOf('2026-09-30') })).previous).toBeNull();
   });
 
   it('is never set for the whole data, and a clamped range counts as the whole data', () => {
-    expect(p.analysis.previous).toBeNull();
-    expect(p.run(F({ dateFrom: min - 30 })).previous).toBeNull();
+    expect(pipeline.analysis.previous).toBeNull();
+    expect(pipeline.run(makeFilters({ dateFrom: min - 30 })).previous).toBeNull();
   });
 
   it('applies the row filters and ignores the date filter when it looks back', () => {
     const start = max - 13;
-    const a = p.run(F({ dateFrom: start, models: ['GPT-6 Astra'] }));
-    const prev = a.previous!;
-    const want = naiveTotals(inWindow(rows, prev.from, prev.to, (r) => modelOfRow(r) === 'GPT-6 Astra'));
+    const analysis = pipeline.run(makeFilters({ dateFrom: start, models: ['GPT-6 Astra'] }));
+    const prev = analysis.previous!;
+    const want = naiveTotals(inWindow(rows, prev.from, prev.to, (row) => modelOfRow(row) === 'GPT-6 Astra'));
     expect(want.rows).toBeGreaterThan(0);
     expectTotals(prev.totals, want);
-    expect(a.narrowed).toBe(true);
+    expect(analysis.narrowed).toBe(true);
   });
 
   it('applies a segment filter, keeping the users that qualify in the current range', () => {
     const start = max - 13;
-    const a = p.run(F({ dateFrom: start, tiers: ['power', 'runaway'] }));
-    const names = new Set(a.users.profiles.map((u) => u.name));
+    const analysis = pipeline.run(makeFilters({ dateFrom: start, tiers: ['power', 'runaway'] }));
+    const names = new Set(analysis.users.profiles.map((user) => user.name));
     expect(names.size).toBeGreaterThan(0);
-    expect(names.size).toBeLessThan(p.analysis.users.profiles.length);
-    const prev = a.previous!;
-    expectTotals(prev.totals, naiveTotals(inWindow(rows, prev.from, prev.to, (r) => names.has(r.username))));
+    expect(names.size).toBeLessThan(pipeline.analysis.users.profiles.length);
+    const prev = analysis.previous!;
+    expectTotals(prev.totals, naiveTotals(inWindow(rows, prev.from, prev.to, (row) => names.has(row.username))));
   });
 
   it('an empty current scope still compares with the earlier window, which is empty too', () => {
-    const a = p.run(F({ dateFrom: max - 13, users: ['nobody-here'] }));
-    expect(a.agg.totals.rows).toBe(0);
-    expect(a.previous!.totals).toMatchObject({ rows: 0, gross: 0, users: 0 });
-    expect(a.headline).toEqual(EMPTY_HEADLINE);
-    expect(a.recs).toEqual([]);
+    const analysis = pipeline.run(makeFilters({ dateFrom: max - 13, users: ['nobody-here'] }));
+    expect(analysis.agg.totals.rows).toBe(0);
+    expect(analysis.previous!.totals).toMatchObject({ rows: 0, gross: 0, users: 0 });
+    expect(analysis.headline).toEqual(EMPTY_HEADLINE);
+    expect(analysis.recs).toEqual([]);
   });
 
   it('fixtures: the whole range has no previous period, a trailing week of the partial export has', async () => {
-    const a = await analyzeFixtures([FIXTURE_A]);
-    const b = await analyzeFixtures([FIXTURE_B]);
-    expect(a.analysis.previous).toBeNull();
-    expect(b.analysis.previous).toBeNull();
-    const last7 = b.run(F({ dateFrom: b.store.maxDay - 6 }));
-    const braw = naiveRows(readFixture(FIXTURE_B));
+    const pipelineA = await analyzeFixtures([FIXTURE_A]);
+    const pipelineB = await analyzeFixtures([FIXTURE_B]);
+    expect(pipelineA.analysis.previous).toBeNull();
+    expect(pipelineB.analysis.previous).toBeNull();
+    const last7 = pipelineB.run(makeFilters({ dateFrom: pipelineB.store.maxDay - 6 }));
+    const rowsB = naiveRows(readFixture(FIXTURE_B));
     expect(last7.range.length).toBe(7);
-    expect(last7.previous).toMatchObject({ from: b.store.maxDay - 13, to: b.store.maxDay - 7 });
-    expectTotals(last7.previous!.totals, naiveTotals(inWindow(braw, b.store.maxDay - 13, b.store.maxDay - 7)));
+    expect(last7.previous).toMatchObject({ from: pipelineB.store.maxDay - 13, to: pipelineB.store.maxDay - 7 });
+    expectTotals(last7.previous!.totals, naiveTotals(inWindow(rowsB, pipelineB.store.maxDay - 13, pipelineB.store.maxDay - 7)));
     expect(last7.previous!.totals.rows).toBe(12);
   });
 });
 
 describe('analyze: narrowed and segment-filtered scopes', () => {
-  const flags = (f: Partial<Filters>): { narrowed: boolean; segmentFiltered: boolean } => {
-    const a = p.run(F(f));
-    return { narrowed: a.narrowed, segmentFiltered: a.segmentFiltered };
+  const flags = (filters: Partial<Filters>): { narrowed: boolean; segmentFiltered: boolean } => {
+    const analysis = pipeline.run(makeFilters(filters));
+    return { narrowed: analysis.narrowed, segmentFiltered: analysis.segmentFiltered };
   };
 
   it('a date range alone does not narrow the scope', () => {
-    for (const f of [{ dateFrom: min + 3 }, { dateTo: max - 3 }, { dateFrom: min + 3, dateTo: max - 3 }, { dateFrom: max + 5 }, { dateFrom: min - 9 }]) {
-      expect(flags(f), JSON.stringify(f)).toEqual({ narrowed: false, segmentFiltered: false });
+    for (const filters of [{ dateFrom: min + 3 }, { dateTo: max - 3 }, { dateFrom: min + 3, dateTo: max - 3 }, { dateFrom: max + 5 }, { dateFrom: min - 9 }]) {
+      expect(flags(filters), JSON.stringify(filters)).toEqual({ narrowed: false, segmentFiltered: false });
     }
     expect(flags({ search: '   ' })).toEqual({ narrowed: false, segmentFiltered: false });
   });
 
   it('every row filter narrows the scope without being a segment filter', () => {
-    const user = p.store.dicts.user.values.find((u) => u !== '')!;
+    const user = pipeline.store.dicts.user.values.find((username) => username !== '')!;
     const cases: Record<string, Partial<Filters>> = {
       users: { users: [user] },
       products: { products: ['copilot'] },
@@ -270,7 +270,7 @@ describe('analyze: narrowed and segment-filtered scopes', () => {
       costCenters: { costCenters: ['Analytics Lab'] },
       repos: { repos: ['billing-api'] },
       apps: { apps: ['no-such-app'] },
-      files: { files: [p.store.dicts.file.values[0]] },
+      files: { files: [pipeline.store.dicts.file.values[0]] },
       plans: { plans: ['Enterprise'] },
       weekdays: { weekdays: [0, 1, 2, 3, 4] },
       selection: { selection: 'manual' },
@@ -281,7 +281,7 @@ describe('analyze: narrowed and segment-filtered scopes', () => {
       search: { search: 'astra' },
       'date and a model': { dateFrom: min + 2, models: ['GPT-6 Astra'] },
     };
-    for (const [name, f] of Object.entries(cases)) expect(flags(f), name).toEqual({ narrowed: true, segmentFiltered: false });
+    for (const [name, filters] of Object.entries(cases)) expect(flags(filters), name).toEqual({ narrowed: true, segmentFiltered: false });
   });
 
   it('every segment filter narrows the scope and is reported as a segment filter', () => {
@@ -295,34 +295,34 @@ describe('analyze: narrowed and segment-filtered scopes', () => {
       minUserSpend: { minUserSpend: 10 },
       maxUserSpend: { maxUserSpend: 500 },
     };
-    for (const [name, f] of Object.entries(cases)) expect(flags(f), name).toEqual({ narrowed: true, segmentFiltered: true });
+    for (const [name, filters] of Object.entries(cases)) expect(flags(filters), name).toEqual({ narrowed: true, segmentFiltered: true });
   });
 
   it('a segment filter narrows the rows but keeps the whole population for labelling', () => {
-    const whole = p.analysis;
-    const a = p.run(F({ tiers: ['power', 'runaway'] }));
-    expect(a.population.profiles).toHaveLength(whole.users.profiles.length);
-    expect(a.population.groups.tier).toEqual(whole.population.groups.tier);
-    expect(a.users).not.toBe(a.population);
-    expect(a.users.profiles.length).toBeGreaterThan(0);
-    expect(a.users.profiles.length).toBeLessThan(a.population.profiles.length);
-    expect(a.users.profiles.every((u) => u.tier === 'power' || u.tier === 'runaway')).toBe(true);
-    expect(a.agg.totals.rows).toBeLessThan(whole.agg.totals.rows);
+    const whole = pipeline.analysis;
+    const filtered = pipeline.run(makeFilters({ tiers: ['power', 'runaway'] }));
+    expect(filtered.population.profiles).toHaveLength(whole.users.profiles.length);
+    expect(filtered.population.groups.tier).toEqual(whole.population.groups.tier);
+    expect(filtered.users).not.toBe(filtered.population);
+    expect(filtered.users.profiles.length).toBeGreaterThan(0);
+    expect(filtered.users.profiles.length).toBeLessThan(filtered.population.profiles.length);
+    expect(filtered.users.profiles.every((user) => user.tier === 'power' || user.tier === 'runaway')).toBe(true);
+    expect(filtered.agg.totals.rows).toBeLessThan(whole.agg.totals.rows);
     // Rows without a user (repo-level) cannot belong to a segment.
-    const names = new Set(a.users.profiles.map((u) => u.name));
-    expectTotals(a.agg.totals, naiveTotals(rows.filter((r) => names.has(r.username))));
-    expect(a.mask).not.toBeNull();
-    expect(a.baseMask).toBeNull();
+    const names = new Set(filtered.users.profiles.map((user) => user.name));
+    expectTotals(filtered.agg.totals, naiveTotals(rows.filter((row) => names.has(row.username))));
+    expect(filtered.mask).not.toBeNull();
+    expect(filtered.baseMask).toBeNull();
   });
 
   it('the final mask is a subset of the base mask, and equals it without a segment filter', () => {
-    const withSegment = p.run(F({ models: ['GPT-6 Astra'], tiers: ['power', 'runaway'] }));
+    const withSegment = pipeline.run(makeFilters({ models: ['GPT-6 Astra'], tiers: ['power', 'runaway'] }));
     expect(withSegment.baseMask).not.toBeNull();
     expect(withSegment.mask).not.toBe(withSegment.baseMask);
-    expect(withSegment.mask!.length).toBe(p.store.n);
+    expect(withSegment.mask!.length).toBe(pipeline.store.n);
     let extra = 0;
     let kept = 0;
-    for (let i = 0; i < p.store.n; i++) {
+    for (let i = 0; i < pipeline.store.n; i++) {
       if (withSegment.mask![i] === 1) {
         kept++;
         if (withSegment.baseMask![i] === 0) extra++;
@@ -330,19 +330,19 @@ describe('analyze: narrowed and segment-filtered scopes', () => {
     }
     expect(extra).toBe(0);
     expect(kept).toBe(withSegment.agg.totals.rows);
-    const rowOnly = p.run(F({ models: ['GPT-6 Astra'] }));
+    const rowOnly = pipeline.run(makeFilters({ models: ['GPT-6 Astra'] }));
     expect(rowOnly.mask).toBe(rowOnly.baseMask);
     expect(rowOnly.users).toBe(rowOnly.population);
   });
 
   it('a segment that matches nobody leaves an empty scope but a full population', () => {
-    const a = p.run(F({ traits: ['longContext'], tiers: ['minimal'], paretoClasses: ['A'], minUserSpend: 1e9 }));
-    expect(a.users.profiles).toEqual([]);
-    expect(a.population.profiles.length).toBe(p.analysis.users.profiles.length);
-    expect(a.agg.totals.rows).toBe(0);
-    expect(a.recs).toEqual([]);
-    expect(a.headline).toEqual(EMPTY_HEADLINE);
-    expect(analysisTexts(a).filter((t) => BAD_TEXT.test(t))).toEqual([]);
+    const analysis = pipeline.run(makeFilters({ traits: ['longContext'], tiers: ['minimal'], paretoClasses: ['A'], minUserSpend: 1e9 }));
+    expect(analysis.users.profiles).toEqual([]);
+    expect(analysis.population.profiles.length).toBe(pipeline.analysis.users.profiles.length);
+    expect(analysis.agg.totals.rows).toBe(0);
+    expect(analysis.recs).toEqual([]);
+    expect(analysis.headline).toEqual(EMPTY_HEADLINE);
+    expect(analysisTexts(analysis).filter((text) => BAD_TEXT.test(text))).toEqual([]);
   });
 
   it('does not treat roster seats without activity dates as unused', () => {
@@ -350,129 +350,129 @@ describe('analyze: narrowed and segment-filtered scopes', () => {
       { user: 'ghost-business', plan: 'Business' },
       { user: 'ghost-enterprise', plan: 'Enterprise' },
     ];
-    const s = mergeSettings({ roster });
-    const whole = p.run(F(), s);
+    const settings = mergeSettings({ roster });
+    const whole = pipeline.run(makeFilters(), settings);
     expect(whole.seats.unused).toEqual([]);
     expect(whole.seats.unusedValue).toBe(0);
     expect(whole.plan.seatValue).toBeCloseTo(whole.seats.idleValue + whole.seats.downgradeValue + whole.seats.unusedValue, 9);
-    for (const f of [F({ models: ['GPT-6 Astra'] }), F({ orgs: ['northwind-data'] }), F({ tiers: ['minimal'] })]) {
-      const a = p.run(f, s);
-      expect(a.narrowed).toBe(true);
-      expect(a.seats.unused).toEqual([]);
-      expect(a.plan.seatValue).toBe(0);
+    for (const filters of [makeFilters({ models: ['GPT-6 Astra'] }), makeFilters({ orgs: ['northwind-data'] }), makeFilters({ tiers: ['minimal'] })]) {
+      const analysis = pipeline.run(filters, settings);
+      expect(analysis.narrowed).toBe(true);
+      expect(analysis.seats.unused).toEqual([]);
+      expect(analysis.plan.seatValue).toBe(0);
     }
     // A date range does not narrow the scope.
-    const dated = p.run(F({ dateFrom: min + 10 }), s);
+    const dated = pipeline.run(makeFilters({ dateFrom: min + 10 }), settings);
     expect(dated.narrowed).toBe(false);
     expect(dated.seats.unused).toEqual([]);
   });
 
   it('no seat actions when the pool size is unknown (partial-export fixture), even with a roster', async () => {
-    const b = await analyzeFixtures([FIXTURE_B], { settings: { roster: [{ user: 'ghost', plan: 'Business' }] } });
-    const a = b.analysis;
-    expect(a.pool.capacityExceeded).toBe(true);
-    expect(a.narrowed).toBe(false);
-    expect(a.seats.unused).toEqual([]);
-    expect(a.plan.seatValue).toBe(0);
+    const pipelineB = await analyzeFixtures([FIXTURE_B], { settings: { roster: [{ user: 'ghost', plan: 'Business' }] } });
+    const analysis = pipelineB.analysis;
+    expect(analysis.pool.capacityExceeded).toBe(true);
+    expect(analysis.narrowed).toBe(false);
+    expect(analysis.seats.unused).toEqual([]);
+    expect(analysis.plan.seatValue).toBe(0);
   });
 });
 
 describe('analyze: wiring', () => {
   it('reports the data coverage of the store', () => {
-    expect(p.analysis.coverage).toEqual(dataCoverage(p.store));
+    expect(pipeline.analysis.coverage).toEqual(dataCoverage(pipeline.store));
   });
 
   it('computes the aggregates from its own mask and range', () => {
-    for (const f of [F(), F({ dateFrom: min + 5, dateTo: max - 5 }), F({ models: ['GPT-6 Astra'] }), F({ tiers: ['runaway'] })]) {
-      const a = p.run(f);
-      expect(a.agg).toEqual(aggregate(p.store, p.prep, p.models, a.mask, a.range, { activeThreshold: p.settings.activeThreshold }));
+    for (const filters of [makeFilters(), makeFilters({ dateFrom: min + 5, dateTo: max - 5 }), makeFilters({ models: ['GPT-6 Astra'] }), makeFilters({ tiers: ['runaway'] })]) {
+      const analysis = pipeline.run(filters);
+      expect(analysis.agg).toEqual(aggregate(pipeline.store, pipeline.prep, pipeline.models, analysis.mask, analysis.range, { activeThreshold: pipeline.settings.activeThreshold }));
     }
   });
 
   it('plans the scenario with the default levers, and its lever result is the same as the plain one', () => {
-    const a = p.analysis;
-    expect(a.plan.levers).toEqual(a.levers);
-    expect(a.plan.saving).toBeGreaterThanOrEqual(0);
-    expect(a.plan.newCost).toBeLessThanOrEqual(a.plan.baseCost + 1e-9);
-    expect(a.plan.months.map((m) => m.label)).toEqual(a.pool.months.map((m) => m.label));
+    const analysis = pipeline.analysis;
+    expect(analysis.plan.levers).toEqual(analysis.levers);
+    expect(analysis.plan.saving).toBeGreaterThanOrEqual(0);
+    expect(analysis.plan.newCost).toBeLessThanOrEqual(analysis.plan.baseCost + 1e-9);
+    expect(analysis.plan.months.map((month) => month.label)).toEqual(analysis.pool.months.map((month) => month.label));
   });
 
   it('measures its own time', () => {
-    const times = [p.analysis.ms, p.run().ms, p.run().ms];
-    for (const t of times) {
-      expect(Number.isFinite(t)).toBe(true);
-      expect(t).toBeGreaterThanOrEqual(0);
+    const times = [pipeline.analysis.ms, pipeline.run().ms, pipeline.run().ms];
+    for (const elapsedMs of times) {
+      expect(Number.isFinite(elapsedMs)).toBe(true);
+      expect(elapsedMs).toBeGreaterThanOrEqual(0);
     }
     expect(Math.min(...times)).toBeLessThan(500);
   });
 
   it('the exported analyze function takes the same inputs as the pipeline', () => {
-    const f = F({ dateFrom: min + 7, orgs: ['northwind-platform'] });
-    const direct = analyze({ store: p.store, prep: p.prep, models: p.models, filters: f, settings: p.settings });
-    expect(stripped(direct)).toEqual(stripped(p.run(f)));
+    const filters = makeFilters({ dateFrom: min + 7, orgs: ['northwind-platform'] });
+    const direct = analyze({ store: pipeline.store, prep: pipeline.prep, models: pipeline.models, filters: filters, settings: pipeline.settings });
+    expect(stripped(direct)).toEqual(stripped(pipeline.run(filters)));
   });
 });
 
 describe('analyze: purity', () => {
   const settings = (): Settings =>
     mergeSettings({ budgetMonthlyBilled: 100, roster: [{ user: 'ghost', plan: 'Enterprise' }], extraSeats: { business: 2, enterprise: 1 }, tiers: { minimal: 0.2, light: 0.5, core: 1.5, power: 4 } });
-  const filters = (): Filters => F({ dateFrom: min + 3, dateTo: max - 2, models: ['GPT-6 Astra', 'Claude Opus 5.5'], tiers: ['light', 'core', 'power', 'runaway'], weekdays: [0, 1, 2, 3, 4] });
+  const filters = (): Filters => makeFilters({ dateFrom: min + 3, dateTo: max - 2, models: ['GPT-6 Astra', 'Claude Opus 5.5'], tiers: ['light', 'core', 'power', 'runaway'], weekdays: [0, 1, 2, 3, 4] });
 
   const fingerprint = (): string => {
-    const s = p.store;
-    return JSON.stringify([s.n, s.minDay, s.maxDay, s.dicts.user.values, s.dicts.model.values, sum([...s.gross]), sum([...s.net]), sum([...s.day]), sum([...s.user]), sum([...s.quota])]);
+    const store = pipeline.store;
+    return JSON.stringify([store.n, store.minDay, store.maxDay, store.dicts.user.values, store.dicts.model.values, sum([...store.gross]), sum([...store.net]), sum([...store.day]), sum([...store.user]), sum([...store.quota])]);
   };
 
   it('gives the same analysis for the same input', () => {
-    for (const [f, s] of [[F(), p.settings], [filters(), settings()]] as [Filters, Settings][]) {
-      expect(stripped(p.run(f, s))).toEqual(stripped(p.run(f, s)));
-      expect(stripped(p.run(structuredClone(f), structuredClone(s)))).toEqual(stripped(p.run(f, s)));
+    for (const [inputFilters, inputSettings] of [[makeFilters(), pipeline.settings], [filters(), settings()]] as [Filters, Settings][]) {
+      expect(stripped(pipeline.run(inputFilters, inputSettings))).toEqual(stripped(pipeline.run(inputFilters, inputSettings)));
+      expect(stripped(pipeline.run(structuredClone(inputFilters), structuredClone(inputSettings)))).toEqual(stripped(pipeline.run(inputFilters, inputSettings)));
     }
   });
 
   it('does not change its inputs', () => {
-    const f = filters();
-    const s = settings();
-    const before = JSON.stringify([f, s]);
+    const inputFilters = filters();
+    const inputSettings = settings();
+    const before = JSON.stringify([inputFilters, inputSettings]);
     const storeBefore = fingerprint();
-    const prepFingerprint = (): string => JSON.stringify(p.prep, (_k, v) => (ArrayBuffer.isView(v) ? sum(Array.from(v as unknown as ArrayLike<number>)) : v));
+    const prepFingerprint = (): string => JSON.stringify(pipeline.prep, (_k, value) => (ArrayBuffer.isView(value) ? sum(Array.from(value as unknown as ArrayLike<number>)) : value));
     const prepBefore = prepFingerprint();
-    p.run(f, s);
-    expect(JSON.stringify([f, s])).toBe(before);
+    pipeline.run(inputFilters, inputSettings);
+    expect(JSON.stringify([inputFilters, inputSettings])).toBe(before);
     expect(fingerprint()).toBe(storeBefore);
     expect(prepFingerprint()).toBe(prepBefore);
   });
 
   it('keeps no state between runs: a run in between does not change the next result', () => {
-    const first = stripped(p.run());
-    p.run(filters(), settings());
-    p.run(F({ users: ['nobody-here'] }));
-    p.run(F({ tiers: ['runaway'] }));
-    expect(stripped(p.run())).toEqual(first);
+    const first = stripped(pipeline.run());
+    pipeline.run(filters(), settings());
+    pipeline.run(makeFilters({ users: ['nobody-here'] }));
+    pipeline.run(makeFilters({ tiers: ['runaway'] }));
+    expect(stripped(pipeline.run())).toEqual(first);
   });
 
   it('does not share arrays with the store: changing a result does not change the next one', () => {
-    const a = p.run();
-    const gross = a.agg.totals.gross;
-    a.agg.days.gross.fill(0);
-    a.recs.length = 0;
-    a.users.profiles.length = 0;
-    const b = p.run();
-    expect(b.agg.totals.gross).toBeCloseTo(gross, 9);
-    expect(sum([...b.agg.days.gross])).toBeCloseTo(gross, 6);
-    expect(b.recs.length).toBeGreaterThan(0);
-    expect(b.users.profiles.length).toBeGreaterThan(0);
+    const first = pipeline.run();
+    const gross = first.agg.totals.gross;
+    first.agg.days.gross.fill(0);
+    first.recs.length = 0;
+    first.users.profiles.length = 0;
+    const second = pipeline.run();
+    expect(second.agg.totals.gross).toBeCloseTo(gross, 9);
+    expect(sum([...second.agg.days.gross])).toBeCloseTo(gross, 6);
+    expect(second.recs.length).toBeGreaterThan(0);
+    expect(second.users.profiles.length).toBeGreaterThan(0);
   });
 });
 
 describe('analyze: settings change the analysis', () => {
-  const tierCounts = (a: Analysis) => Object.fromEntries(Object.entries(a.users.groups.tier).map(([k, v]) => [k, v.users]));
+  const tierCounts = (analysis: Analysis) => Object.fromEntries(Object.entries(analysis.users.groups.tier).map(([tier, group]) => [tier, group.users]));
 
   it('tier thresholds move users between tiers but never change the number of users', () => {
-    const base = p.run();
-    const strict = p.run(F(), mergeSettings({ tiers: { minimal: 0.02, light: 0.05, core: 0.1, power: 0.2 } }));
-    const lenient = p.run(F(), mergeSettings({ tiers: { minimal: 0.5, light: 1, core: 5, power: 50 } }));
-    const total = (a: Analysis) => sum(Object.values(tierCounts(a)));
+    const base = pipeline.run();
+    const strict = pipeline.run(makeFilters(), mergeSettings({ tiers: { minimal: 0.02, light: 0.05, core: 0.1, power: 0.2 } }));
+    const lenient = pipeline.run(makeFilters(), mergeSettings({ tiers: { minimal: 0.5, light: 1, core: 5, power: 50 } }));
+    const total = (analysis: Analysis) => sum(Object.values(tierCounts(analysis)));
     expect(total(base)).toBe(base.users.profiles.length);
     expect(total(strict)).toBe(total(base));
     expect(total(lenient)).toBe(total(base));
@@ -488,39 +488,39 @@ describe('analyze: settings change the analysis', () => {
   });
 
   it('a tier filter selects the users the thresholds define', () => {
-    const s = mergeSettings({ tiers: { minimal: 0.02, light: 0.05, core: 0.1, power: 0.2 } });
-    const a = p.run(F({ tiers: ['runaway'] }), s);
-    const all = p.run(F(), s);
-    expect(a.users.profiles.length).toBe(all.users.groups.tier.runaway.users);
-    expect(a.users.profiles.length).toBeGreaterThan(p.run(F({ tiers: ['runaway'] })).users.profiles.length);
-    expect(a.users.profiles.every((u) => u.utilization > 0.2)).toBe(true);
+    const settings = mergeSettings({ tiers: { minimal: 0.02, light: 0.05, core: 0.1, power: 0.2 } });
+    const filtered = pipeline.run(makeFilters({ tiers: ['runaway'] }), settings);
+    const all = pipeline.run(makeFilters(), settings);
+    expect(filtered.users.profiles.length).toBe(all.users.groups.tier.runaway.users);
+    expect(filtered.users.profiles.length).toBeGreaterThan(pipeline.run(makeFilters({ tiers: ['runaway'] })).users.profiles.length);
+    expect(filtered.users.profiles.every((user) => user.utilization > 0.2)).toBe(true);
   });
 
   it('the active-day threshold decides what counts as an active day', () => {
-    const base = p.run();
-    const never = p.run(F(), mergeSettings({ activeThreshold: 1e9 }));
-    expect(sum(base.users.profiles.map((u) => u.activeDays))).toBeGreaterThan(0);
-    expect(sum(never.users.profiles.map((u) => u.activeDays))).toBe(0);
+    const base = pipeline.run();
+    const never = pipeline.run(makeFilters(), mergeSettings({ activeThreshold: 1e9 }));
+    expect(sum(base.users.profiles.map((user) => user.activeDays))).toBeGreaterThan(0);
+    expect(sum(never.users.profiles.map((user) => user.activeDays))).toBe(0);
     expect(never.agg.totals).toEqual(base.agg.totals);
   });
 
   it('a monthly budget turns on the budget status', () => {
-    expect(p.analysis.pool.budget).toBeNull();
-    const a = p.run(F(), mergeSettings({ budgetMonthlyBilled: 250 }));
-    const b = a.pool.budget;
-    expect(b).not.toBeNull();
-    expect(b!.monthlyBudget).toBe(250);
-    expect(b!.month).toBe(a.pool.months[a.pool.months.length - 1].label);
-    expect(b!.month).toBe('Oct 2026');
+    expect(pipeline.analysis.pool.budget).toBeNull();
+    const analysis = pipeline.run(makeFilters(), mergeSettings({ budgetMonthlyBilled: 250 }));
+    const budget = analysis.pool.budget;
+    expect(budget).not.toBeNull();
+    expect(budget!.monthlyBudget).toBe(250);
+    expect(budget!.month).toBe(analysis.pool.months[analysis.pool.months.length - 1].label);
+    expect(budget!.month).toBe('Oct 2026');
   });
 
   it('a roster adds seats that never appear in the report, and makes the pool size a lower bound no more', () => {
-    expect(p.analysis.pool.capacityIsLowerBound).toBe(true);
-    const s = mergeSettings({ roster: [{ user: 'ghost-a', plan: 'Business' }, { user: 'ghost-b', plan: 'Enterprise' }] });
-    const a = p.run(F(), s);
-    expect(a.pool.capacityIsLowerBound).toBe(false);
-    expect(a.users.inactive.map((i) => i.user).sort()).toEqual(['ghost-a', 'ghost-b']);
-    expect(a.pool.capacity).toBeGreaterThan(p.analysis.pool.capacity);
-    expect(a.agg.totals).toEqual(p.analysis.agg.totals);
+    expect(pipeline.analysis.pool.capacityIsLowerBound).toBe(true);
+    const settings = mergeSettings({ roster: [{ user: 'ghost-a', plan: 'Business' }, { user: 'ghost-b', plan: 'Enterprise' }] });
+    const withRoster = pipeline.run(makeFilters(), settings);
+    expect(withRoster.pool.capacityIsLowerBound).toBe(false);
+    expect(withRoster.users.inactive.map((seat) => seat.user).sort()).toEqual(['ghost-a', 'ghost-b']);
+    expect(withRoster.pool.capacity).toBeGreaterThan(pipeline.analysis.pool.capacity);
+    expect(withRoster.agg.totals).toEqual(pipeline.analysis.agg.totals);
   });
 });

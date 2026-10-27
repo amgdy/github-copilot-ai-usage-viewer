@@ -29,9 +29,9 @@ function firstRow(head: string): string[] {
 /** The head of a text that ended in the middle of a line: cut at the last separator so no half token is judged. */
 function wholeTokens(head: string, truncated: boolean): string {
   if (!truncated) return head;
-  let cut = -1;
-  for (const sep of ['\n', '\r', ',', ';', ' ', '\t']) cut = Math.max(cut, head.lastIndexOf(sep));
-  return cut > 0 ? head.slice(0, cut) : head;
+  let lastSeparatorIndex = -1;
+  for (const separator of ['\n', '\r', ',', ';', ' ', '\t']) lastSeparatorIndex = Math.max(lastSeparatorIndex, head.lastIndexOf(separator));
+  return lastSeparatorIndex > 0 ? head.slice(0, lastSeparatorIndex) : head;
 }
 
 function isLoginList(head: string, truncated: boolean, fileName: string): boolean {
@@ -39,15 +39,15 @@ function isLoginList(head: string, truncated: boolean, fileName: string): boolea
   if (looksTabular(text)) return false;
   if (LIST_NAME.test(fileName)) {
     const tokens = listTokens(text);
-    const valid = tokens.filter((t) => readLogin(t) !== null).length;
+    const valid = tokens.filter((token) => readLogin(token) !== null).length;
     return valid >= 1 && valid / tokens.length >= NAMED_LIST_SHARE;
   }
   // Without a list-like name, only a column of logins (one per line, at least two lines) is taken for a list.
   const lines = text
     .split(/\r\n|\n|\r/)
-    .map((l) => l.trim())
-    .filter((l) => l !== '' && !l.startsWith('#') && !l.startsWith('//'));
-  return lines.length >= 2 && lines.every((l) => readLogin(l) !== null);
+    .map((line) => line.trim())
+    .filter((line) => line !== '' && !line.startsWith('#') && !line.startsWith('//'));
+  return lines.length >= 2 && lines.every((line) => readLogin(line) !== null);
 }
 
 /**

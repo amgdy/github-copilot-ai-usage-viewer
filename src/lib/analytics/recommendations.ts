@@ -40,9 +40,9 @@ export type Confidence = 'high' | 'medium' | 'low';
 export const SEVERITY_ORDER: Record<Severity, number> = { critical: 0, high: 1, medium: 2, low: 3, info: 4, positive: 5 };
 
 /** The monthly figure shown on a card: cash when there is some, otherwise the usage avoided. Never NaN. */
-export function recValue(r: Pick<Recommendation, 'cashUsd' | 'impactUsd'>): number {
-  const v = r.cashUsd > 0.5 ? r.cashUsd : r.impactUsd > 0.5 ? r.impactUsd : 0;
-  return Number.isFinite(v) ? v : 0;
+export function recValue(recommendation: Pick<Recommendation, 'cashUsd' | 'impactUsd'>): number {
+  const monthlyValue = recommendation.cashUsd > 0.5 ? recommendation.cashUsd : recommendation.impactUsd > 0.5 ? recommendation.impactUsd : 0;
+  return Number.isFinite(monthlyValue) ? monthlyValue : 0;
 }
 
 export interface DocLink {
@@ -50,23 +50,23 @@ export interface DocLink {
   url: string;
 }
 
-const D = 'https://docs.github.com/en/copilot';
+const DOCS_BASE_URL = 'https://docs.github.com/en/copilot';
 export const DOCS = {
-  pricing: { label: msg('Models and pricing'), url: `${D}/reference/copilot-billing/models-and-pricing` },
-  optimize: { label: msg('Optimizing your AI usage'), url: `${D}/tutorials/optimize-ai-usage` },
-  optimizeChat: { label: msg('Optimizing chat usage'), url: `${D}/tutorials/optimize-chat-usage` },
-  budgets: { label: msg('Budgets for usage-based billing'), url: `${D}/concepts/billing-and-usage/organizations-and-enterprises/budgets` },
-  budgetTuning: { label: msg('Optimizing your budget configuration'), url: `${D}/tutorials/budgets/optimizing-your-budget-configuration` },
-  budgetStart: { label: msg('Getting started with budget controls'), url: `${D}/tutorials/budgets/getting-started-with-budget-controls` },
-  auto: { label: msg('About GitHub Copilot auto model selection'), url: `${D}/concepts/models/auto-model-selection` },
-  sessionLimit: { label: msg('Setting an AI credit session limit in GitHub Copilot CLI'), url: `${D}/how-tos/copilot-cli/use-copilot-cli/set-session-limit` },
-  context: { label: msg('Managing context for GitHub Copilot'), url: `${D}/concepts/prompting-and-context/context-management` },
-  prompting: { label: msg('Prompt engineering for GitHub Copilot'), url: `${D}/concepts/prompting-and-context/prompt-engineering` },
-  comparison: { label: msg('AI model comparison'), url: `${D}/reference/ai-models/model-comparison` },
-  licenseUsage: { label: msg('Viewing license usage'), url: `${D}/how-tos/administer-copilot/manage-for-enterprise/manage-access/view-license-usage` },
-  seats: { label: msg('Seats and billing cycles'), url: `${D}/concepts/billing-and-usage/organizations-and-enterprises/seats-and-billing-cycles` },
-  monitor: { label: msg('Monitoring AI usage'), url: `${D}/how-tos/manage-and-track-spending/monitor-ai-usage` },
-  usageMetrics: { label: msg('GitHub Copilot usage metrics'), url: `${D}/concepts/billing-and-usage/copilot-usage-metrics` },
+  pricing: { label: msg('Models and pricing'), url: `${DOCS_BASE_URL}/reference/copilot-billing/models-and-pricing` },
+  optimize: { label: msg('Optimizing your AI usage'), url: `${DOCS_BASE_URL}/tutorials/optimize-ai-usage` },
+  optimizeChat: { label: msg('Optimizing chat usage'), url: `${DOCS_BASE_URL}/tutorials/optimize-chat-usage` },
+  budgets: { label: msg('Budgets for usage-based billing'), url: `${DOCS_BASE_URL}/concepts/billing-and-usage/organizations-and-enterprises/budgets` },
+  budgetTuning: { label: msg('Optimizing your budget configuration'), url: `${DOCS_BASE_URL}/tutorials/budgets/optimizing-your-budget-configuration` },
+  budgetStart: { label: msg('Getting started with budget controls'), url: `${DOCS_BASE_URL}/tutorials/budgets/getting-started-with-budget-controls` },
+  auto: { label: msg('About GitHub Copilot auto model selection'), url: `${DOCS_BASE_URL}/concepts/models/auto-model-selection` },
+  sessionLimit: { label: msg('Setting an AI credit session limit in GitHub Copilot CLI'), url: `${DOCS_BASE_URL}/how-tos/copilot-cli/use-copilot-cli/set-session-limit` },
+  context: { label: msg('Managing context for GitHub Copilot'), url: `${DOCS_BASE_URL}/concepts/prompting-and-context/context-management` },
+  prompting: { label: msg('Prompt engineering for GitHub Copilot'), url: `${DOCS_BASE_URL}/concepts/prompting-and-context/prompt-engineering` },
+  comparison: { label: msg('AI model comparison'), url: `${DOCS_BASE_URL}/reference/ai-models/model-comparison` },
+  licenseUsage: { label: msg('Viewing license usage'), url: `${DOCS_BASE_URL}/how-tos/administer-copilot/manage-for-enterprise/manage-access/view-license-usage` },
+  seats: { label: msg('Seats and billing cycles'), url: `${DOCS_BASE_URL}/concepts/billing-and-usage/organizations-and-enterprises/seats-and-billing-cycles` },
+  monitor: { label: msg('Monitoring AI usage'), url: `${DOCS_BASE_URL}/how-tos/manage-and-track-spending/monitor-ai-usage` },
+  usageMetrics: { label: msg('GitHub Copilot usage metrics'), url: `${DOCS_BASE_URL}/concepts/billing-and-usage/copilot-usage-metrics` },
 } satisfies Record<string, DocLink>;
 
 export interface RecJump {
@@ -135,30 +135,30 @@ type RecInput = Pick<Recommendation, 'id' | 'theme' | 'audience' | 'severity' | 
   Partial<Omit<Recommendation, 'id' | 'theme' | 'audience' | 'severity' | 'title' | 'summary' | 'actions'>>;
 
 const MONTH_DAYS = 30.4375;
-const ceil5 = (x: number): number => Math.max(5, Math.ceil(x / 5) * 5);
-const brief = (ps: { name: string }[], n = 5): string => {
-  const names = ps.slice(0, n).map((p) => p.name).join(t(', '));
-  return ps.length > n ? t('{names} and {n} more', { names, n: fmtInt(ps.length - n) }) : names;
+const ceil5 = (amount: number): number => Math.max(5, Math.ceil(amount / 5) * 5);
+const brief = (people: { name: string }[], limit = 5): string => {
+  const names = people.slice(0, limit).map((person) => person.name).join(t(', '));
+  return people.length > limit ? t('{names} and {n} more', { names, n: fmtInt(people.length - limit) }) : names;
 };
-const who = (ps: UserProfile[], n = 12): { id: number; name: string }[] => ps.slice(0, n).map((p) => ({ id: p.id, name: p.name }));
+const who = (profiles: UserProfile[], limit = 12): { id: number; name: string }[] => profiles.slice(0, limit).map((user) => ({ id: user.id, name: user.name }));
 
-export function buildRecommendations(c: RecContext): Recommendation[] {
-  const { store, agg, users, pool, seats, levers, settings, narrowed } = c;
-  const tot = agg.totals;
+export function buildRecommendations(context: RecContext): Recommendation[] {
+  const { store, agg: aggregates, users, pool, seats, levers, settings, narrowed } = context;
+  const totals = aggregates.totals;
   const out: Recommendation[] = [];
-  if (tot.rows === 0 || tot.gross <= 0) return out;
+  if (totals.rows === 0 || totals.gross <= 0) return out;
 
-  const ps = users.profiles;
-  const scopeDays = Math.max(1, agg.range.length);
+  const profiles = users.profiles;
+  const scopeDays = Math.max(1, aggregates.range.length);
   const baseConf: Confidence = scopeDays >= 21 ? 'high' : scopeDays >= 10 ? 'medium' : 'low';
   const perMonth = MONTH_DAYS / scopeDays;
   const months = narrowed ? [] : monthInputs(pool);
   const nMonths = months.length;
-  const avgGross = nMonths ? months.reduce((a, m) => a + m.gross, 0) / nMonths : 0;
+  const avgGross = nMonths ? months.reduce((total, month) => total + month.gross, 0) / nMonths : 0;
   const poolWhole = !narrowed && nMonths > 0;
 
-  const add = (r: RecInput): void => {
-    const rec: Recommendation = {
+  const add = (input: RecInput): void => {
+    const recommendation: Recommendation = {
       evidence: [],
       impactUsd: 0,
       impactKind: 'usage',
@@ -166,52 +166,52 @@ export function buildRecommendations(c: RecContext): Recommendation[] {
       cashLowerBound: !poolWhole,
       confidence: baseConf,
       affected: [],
-      affectedCount: r.affected?.length ?? 0,
-      calc: recDocId(r.id),
-      ...r,
+      affectedCount: input.affected?.length ?? 0,
+      calc: recDocId(input.id),
+      ...input,
     };
     // An efficiency gain that frees no cash today (the pool already covers the usage) is worth doing but is not urgent.
-    if (rec.theme === 'efficiency' && poolWhole && rec.cashUsd <= 0.005 && SEVERITY_ORDER[rec.severity] < SEVERITY_ORDER.medium) rec.severity = 'medium';
-    out.push(rec);
+    if (recommendation.theme === 'efficiency' && poolWhole && recommendation.cashUsd <= 0.005 && SEVERITY_ORDER[recommendation.severity] < SEVERITY_ORDER.medium) recommendation.severity = 'medium';
+    out.push(recommendation);
   };
-  const step = (id: LeverStep['id']): number => levers.steps.find((s) => s.id === id)?.savings ?? 0;
-  const fractionOf = (usd: number): number => Math.min(1, usd / tot.gross);
+  const step = (id: LeverStep['id']): number => levers.steps.find((leverStep) => leverStep.id === id)?.savings ?? 0;
+  const fractionOf = (usd: number): number => Math.min(1, usd / totals.gross);
 
   /** Monthly usage avoided and monthly cash saved when usage drops by `fraction`. */
   const reduce = (fraction: number): { impact: number; cash: number } => {
     if (!(fraction > 0)) return { impact: 0, cash: 0 };
     if (!poolWhole) {
-      const impact = tot.gross * fraction * perMonth;
-      return { impact, cash: Math.min(impact, tot.net * perMonth) };
+      const impact = totals.gross * fraction * perMonth;
+      return { impact, cash: Math.min(impact, totals.net * perMonth) };
     }
     return { impact: avgGross * fraction, cash: cashSaving(months, fraction, 0) / nMonths };
   };
 
   // Projected pool use over the months in scope (current month extrapolated).
-  const capacityTotal = months.reduce((a, m) => a + m.capacity, 0);
-  const usedTotal = months.reduce((a, m) => a + Math.min(m.capacity, m.gross), 0);
+  const capacityTotal = months.reduce((total, month) => total + month.capacity, 0);
+  const usedTotal = months.reduce((total, month) => total + Math.min(month.capacity, month.gross), 0);
   const poolUse = capacityTotal > 0 ? usedTotal / capacityTotal : 0;
 
   // 1. Billed overage ------------------------------------------------------
-  if (tot.net > 0.005) {
-    const top = ps.filter((p) => p.net > 0).sort((a, b) => b.net - a.net).slice(0, 3);
-    const share = tot.net / tot.gross;
+  if (totals.net > 0.005) {
+    const top = profiles.filter((user) => user.net > 0).sort((a, b) => b.net - a.net).slice(0, 3);
+    const share = totals.net / totals.gross;
     const overBudget = pool.budget?.projectedBilled != null && pool.budget.projectedBilled > pool.budget.monthlyBudget;
     add({
       id: 'overage',
       theme: 'cost',
       audience: ['management', 'admin'],
-      severity: overBudget ? 'critical' : share >= 0.25 || tot.net >= 100 ? 'high' : 'medium',
-      title: t('{amount} was billed beyond included credits', { amount: fmtUSD(tot.net, 0) }),
+      severity: overBudget ? 'critical' : share >= 0.25 || totals.net >= 100 ? 'high' : 'medium',
+      title: t('{amount} was billed beyond included credits', { amount: fmtUSD(totals.net, 0) }),
       summary: t('{share} of usage was billed as overage because the pooled credits ran out.', { share: fmtPct(share, 0) }),
       evidence: [
-        t('Usage {usage}: {covered} covered by the pool, {billed} billed.', { usage: fmtUSD(tot.gross, 0), covered: fmtUSD(tot.discount, 0), billed: fmtUSD(tot.net, 0) }),
-        ...top.map((p) =>
+        t('Usage {usage}: {covered} covered by the pool, {billed} billed.', { usage: fmtUSD(totals.gross, 0), covered: fmtUSD(totals.discount, 0), billed: fmtUSD(totals.net, 0) }),
+        ...top.map((user) =>
           t('{name}: {billed} billed ({share} of all overage), {own} of their own allotment.', {
-            name: p.name,
-            billed: fmtUSD(p.net, 0),
-            share: fmtPct(p.net / tot.net, 0),
-            own: fmtPctAuto(p.utilization),
+            name: user.name,
+            billed: fmtUSD(user.net, 0),
+            share: fmtPct(user.net / totals.net, 0),
+            own: fmtPctAuto(user.utilization),
           }),
         ),
       ],
@@ -221,7 +221,7 @@ export function buildRecommendations(c: RecContext): Recommendation[] {
         t('Overage costs the same $0.01 per credit as included credits, so adding seats does not make credits cheaper. It only pays off when the new seats get used.'),
       ],
       affected: who(top),
-      affectedCount: ps.filter((p) => p.net > 0).length,
+      affectedCount: profiles.filter((user) => user.net > 0).length,
       docs: [DOCS.budgets, DOCS.optimize],
       jump: { page: 'spend', label: t('Open Usage and pool') },
     });
@@ -231,45 +231,45 @@ export function buildRecommendations(c: RecContext): Recommendation[] {
   if (poolWhole) {
     const lines: string[] = [];
     let projNet = 0;
-    for (const m of pool.months) {
-      if (m.exhaustedOn !== null) {
-        lines.push(t('{month}: pool used up on {day} (day {n} of {total}).', { month: m.label, day: fmtDay(m.exhaustedOn), n: m.exhaustedOn - m.monthStart + 1, total: m.daysInMonth }));
+    for (const month of pool.months) {
+      if (month.exhaustedOn !== null) {
+        lines.push(t('{month}: pool used up on {day} (day {n} of {total}).', { month: month.label, day: fmtDay(month.exhaustedOn), n: month.exhaustedOn - month.monthStart + 1, total: month.daysInMonth }));
       }
-      const p = m.projection;
-      if (p) {
-        if (m.exhaustedOn === null && p.exhaustionDate !== null) lines.push(t('{month}: on the current pace the pool runs out around {day}.', { month: m.label, day: fmtDay(p.exhaustionDate) }));
-        if (p.projNet > 0.005) {
-          projNet += p.projNet;
-          lines.push(t('{month}: projected billed overage {amount} (range {low} to {high}).', { month: m.label, amount: fmtUSD(p.projNet, 0), low: fmtUSD(p.projNetLow, 0), high: fmtUSD(p.projNetHigh, 0) }));
+      const projection = month.projection;
+      if (projection) {
+        if (month.exhaustedOn === null && projection.exhaustionDate !== null) lines.push(t('{month}: on the current pace the pool runs out around {day}.', { month: month.label, day: fmtDay(projection.exhaustionDate) }));
+        if (projection.projNet > 0.005) {
+          projNet += projection.projNet;
+          lines.push(t('{month}: projected billed overage {amount} (range {low} to {high}).', { month: month.label, amount: fmtUSD(projection.projNet, 0), low: fmtUSD(projection.projNetLow, 0), high: fmtUSD(projection.projNetHigh, 0) }));
         }
       }
     }
-    const b = pool.budget;
-    if (b) {
-      const v = {
-        budget: fmtUSD(b.monthlyBudget, 0),
-        month: b.month,
-        burn: fmtPct(b.burn, 0),
-        projected: b.projectedBurn !== null ? fmtPct(b.projectedBurn, 0) : '',
-        day: b.hitDate !== null ? fmtDay(b.hitDate) : '',
+    const budget = pool.budget;
+    if (budget) {
+      const values = {
+        budget: fmtUSD(budget.monthlyBudget, 0),
+        month: budget.month,
+        burn: fmtPct(budget.burn, 0),
+        projected: budget.projectedBurn !== null ? fmtPct(budget.projectedBurn, 0) : '',
+        day: budget.hitDate !== null ? fmtDay(budget.hitDate) : '',
       };
       lines.push(
-        b.projectedBurn !== null
-          ? b.hitDate !== null
-            ? t('Budget {budget} for {month}: {burn} used so far, {projected} projected, limit reached around {day}.', v)
-            : t('Budget {budget} for {month}: {burn} used so far, {projected} projected.', v)
-          : b.hitDate !== null
-            ? t('Budget {budget} for {month}: {burn} used so far, limit reached around {day}.', v)
-            : t('Budget {budget} for {month}: {burn} used so far.', v),
+        budget.projectedBurn !== null
+          ? budget.hitDate !== null
+            ? t('Budget {budget} for {month}: {burn} used so far, {projected} projected, limit reached around {day}.', values)
+            : t('Budget {budget} for {month}: {burn} used so far, {projected} projected.', values)
+          : budget.hitDate !== null
+            ? t('Budget {budget} for {month}: {burn} used so far, limit reached around {day}.', values)
+            : t('Budget {budget} for {month}: {burn} used so far.', values),
       );
     }
     if (lines.length) {
-      const budgetHit = b?.projectedBurn != null && b.projectedBurn >= 1;
+      const budgetHit = budget?.projectedBurn != null && budget.projectedBurn >= 1;
       add({
         id: 'pool-exhaustion',
         theme: 'pool',
         audience: ['management', 'admin'],
-        severity: budgetHit ? 'critical' : tot.net > 0.005 || projNet > 0 ? 'high' : 'medium',
+        severity: budgetHit ? 'critical' : totals.net > 0.005 || projNet > 0 ? 'high' : 'medium',
         title: pool.monthsExhausted > 0 ? t('The shared pool runs out before month end') : t('The shared pool is on track to run out'),
         summary: t('Included credits are pooled across all seats and reset on the 1st (UTC); unused credits do not carry over.'),
         evidence: lines,
@@ -337,7 +337,7 @@ export function buildRecommendations(c: RecContext): Recommendation[] {
               t('{users} in the report with minimal use and little activity (seat value {value}/month): {names}.', {
                 users: pluralize(seats.idle.length, 'user'),
                 value: fmtUSD(seats.idleValue, 0),
-                names: brief(seats.idle.map((s) => ({ name: s.name }))),
+                names: brief(seats.idle.map((seat) => ({ name: seat.name }))),
               }),
             ]
           : []),
@@ -346,11 +346,11 @@ export function buildRecommendations(c: RecContext): Recommendation[] {
               tp(seats.unused.length, '{n} roster seat never appears in the report ({value}/month): {names}.', '{n} roster seats never appear in the report ({value}/month): {names}.', {
                 n: fmtInt(seats.unused.length),
                 value: fmtUSD(seats.unusedValue, 0),
-                names: brief(seats.unused.map((s) => ({ name: s.name }))),
+                names: brief(seats.unused.map((seat) => ({ name: seat.name }))),
               }),
             ]
           : []),
-        ...(c.settings.roster.some((seat) => seat.source === 'api' || seat.source === 'activity' || seat.lastActivityAt !== undefined || seat.pendingCancellation)
+        ...(context.settings.roster.some((seat) => seat.source === 'api' || seat.source === 'activity' || seat.lastActivityAt !== undefined || seat.pendingCancellation)
           ? [t('Only dated activity from the license list is used here. Recently active seats and seats pending cancellation are excluded. Seats without a recent activity date are not counted as idle. Check the Licenses page for the recorded activity dates.')]
           : []),
       ],
@@ -364,7 +364,7 @@ export function buildRecommendations(c: RecContext): Recommendation[] {
       cashUsd: cash,
       confidence: scopeDays >= 21 ? 'medium' : 'low',
       caveat: t('This report covers AI-credit usage only. Code completions and next edit suggestions are not billed in credits and do not appear, so "idle in this report" is not the same as "idle seat".'),
-      affected: who(ps.filter((p) => seats.idle.some((s) => s.id === p.id))),
+      affected: who(profiles.filter((user) => seats.idle.some((seat) => seat.id === user.id))),
       affectedCount: idleCount,
       docs: [DOCS.licenseUsage, DOCS.seats],
       jump: { page: 'users', label: t('Show low-activity users'), filters: { tiers: ['minimal'], segments: ['dormant', 'lapsed'] } },
@@ -392,7 +392,7 @@ export function buildRecommendations(c: RecContext): Recommendation[] {
       impactKind: 'seats',
       cashUsd: cash,
       confidence: scopeDays >= 21 ? 'medium' : 'low',
-      affected: who(ps.filter((p) => seats.downgrade.some((s) => s.id === p.id))),
+      affected: who(profiles.filter((user) => seats.downgrade.some((seat) => seat.id === user.id))),
       affectedCount: seats.downgrade.length,
       docs: [DOCS.seats],
       jump: { page: 'users', label: t('Open Users') },
@@ -400,32 +400,32 @@ export function buildRecommendations(c: RecContext): Recommendation[] {
   }
 
   // 6. Usage concentration ---------------------------------------------------
-  if (ps.length >= 5) {
-    const top1 = ps[0].share;
-    const top3 = ps.slice(0, 3).reduce((a, p) => a + p.share, 0);
+  if (profiles.length >= 5) {
+    const topUserShare = profiles[0].share;
+    const topThreeShare = profiles.slice(0, 3).reduce((total, user) => total + user.share, 0);
     const aUsers = users.groups.pareto.A.users;
-    if (top1 >= 0.25 || top3 >= 0.5) {
+    if (topUserShare >= 0.25 || topThreeShare >= 0.5) {
       add({
         id: 'concentration',
         theme: 'governance',
         audience: ['management'],
-        severity: top1 >= 0.4 ? 'high' : 'medium',
-        title: t('{share} of usage comes from three users', { share: fmtPct(top3, 0) }),
+        severity: topUserShare >= 0.4 ? 'high' : 'medium',
+        title: t('{share} of usage comes from three users', { share: fmtPct(topThreeShare, 0) }),
         summary: t('{a} of {n} users ({share}) generate at least {threshold} of attributed usage.', {
           a: aUsers,
-          n: ps.length,
-          share: fmtPct(aUsers / ps.length, 0),
+          n: profiles.length,
+          share: fmtPct(aUsers / profiles.length, 0),
           threshold: fmtPct(settings.pareto.a, 0),
         }),
         evidence: [
-          t('Top user {name}: {share} of attributed usage ({amount}).', { name: ps[0].name, share: fmtPct(top1, 0), amount: fmtUSD(ps[0].gross, 0) }),
-          t('Top three: {names} = {share}.', { names: brief(ps.slice(0, 3), 3), share: fmtPct(top3, 0) }),
+          t('Top user {name}: {share} of attributed usage ({amount}).', { name: profiles[0].name, share: fmtPct(topUserShare, 0), amount: fmtUSD(profiles[0].gross, 0) }),
+          t('Top three: {names} = {share}.', { names: brief(profiles.slice(0, 3), 3), share: fmtPct(topThreeShare, 0) }),
         ],
         actions: [
           t('Review how the heaviest users work: long agent sessions, large contexts and Powerful models drive most cost.'),
           t('Give them targeted coaching and a per-user limit rather than a blanket restriction. They are often your most productive users.'),
         ],
-        affected: who(ps.slice(0, 3)),
+        affected: who(profiles.slice(0, 3)),
         affectedCount: aUsers,
         docs: [DOCS.optimize, DOCS.budgets],
         jump: { page: 'users', label: t('Show Pareto class A'), filters: { paretoClasses: ['A'] } },
@@ -434,29 +434,29 @@ export function buildRecommendations(c: RecContext): Recommendation[] {
   }
 
   // 7. Runaway users -----------------------------------------------------------
-  const runaway = ps.filter((p) => p.tier === 'runaway');
+  const runaway = profiles.filter((user) => user.tier === 'runaway');
   if (runaway.length > 0) {
     const { impact, cash } = reduce(fractionOf(step('capRunaway')));
-    const taken = runaway.reduce((a, p) => a + Math.max(0, -p.balance), 0);
-    const aboveCap = runaway.reduce((a, p) => a + Math.max(0, p.gross - DEFAULT_LEVERS.capUtil * p.allotment), 0);
+    const taken = runaway.reduce((total, user) => total + Math.max(0, -user.balance), 0);
+    const aboveCap = runaway.reduce((total, user) => total + Math.max(0, user.gross - DEFAULT_LEVERS.capUtil * user.allotment), 0);
     add({
       id: 'runaway',
       theme: 'cost',
       audience: ['management', 'admin', 'user'],
-      severity: tot.net > 0.005 ? 'high' : 'medium',
+      severity: totals.net > 0.005 ? 'high' : 'medium',
       title: tp(runaway.length, '{n} user used at least {multiple}× their included credits', '{n} users used at least {multiple}× their included credits', {
         n: fmtInt(runaway.length),
         multiple: Math.round(settings.tiers.power * 10) / 10,
       }),
       summary: t('They drew {amount} from the shared pool beyond their own allotment.', { amount: fmtUSD(taken, 0) }),
       evidence: [
-        ...runaway.slice(0, 5).map((p) =>
+        ...runaway.slice(0, 5).map((user) =>
           t('{name}: {usage} = {own} of allotment; top model {model}; Auto {auto}.', {
-            name: p.name,
-            usage: fmtUSD(p.gross, 0),
-            own: fmtPctAuto(p.utilization),
-            model: p.topModel || t('n/a'),
-            auto: fmtPct(p.autoShare, 0),
+            name: user.name,
+            usage: fmtUSD(user.gross, 0),
+            own: fmtPctAuto(user.utilization),
+            model: user.topModel || t('n/a'),
+            auto: fmtPct(user.autoShare, 0),
           }),
         ),
         t('Usage above {cap}× allotment: {above}. The plan assumes {share} of it can be avoided ({saving} over this period).', {
@@ -481,10 +481,10 @@ export function buildRecommendations(c: RecContext): Recommendation[] {
   }
 
   // 8. Model right-sizing ------------------------------------------------------
-  const powerfulShare = tot.tierGross[CATEGORIES.indexOf('Powerful')] / tot.gross;
+  const powerfulShare = totals.tierGross[CATEGORIES.indexOf('Powerful')] / totals.gross;
   if (step('modelShift') > 0 && powerfulShare >= 0.2) {
     const { impact, cash } = reduce(fractionOf(step('modelShift')));
-    const rows = levers.shiftRows.filter((r) => r.ratio < 1).slice(0, 3);
+    const rows = levers.shiftRows.filter((shiftRow) => shiftRow.ratio < 1).slice(0, 3);
     add({
       id: 'model-rightsizing',
       theme: 'efficiency',
@@ -493,12 +493,12 @@ export function buildRecommendations(c: RecContext): Recommendation[] {
       title: t('{share} of usage runs on Powerful models', { share: fmtPct(powerfulShare, 0) }),
       summary: t('Reasoning models are best for architecture and hard debugging. Routine edits, refactors and docs work well on mid-tier models at a fraction of the price.'),
       evidence: [
-        ...rows.map((r) =>
+        ...rows.map((shiftRow) =>
           t('{model} → {target}: {usage} of usage; the same tokens cost {ratio} as much on {target} (price card rates).', {
-            model: r.model,
-            target: r.target,
-            usage: fmtUSD(r.gross, 0),
-            ratio: fmtPct(r.ratio, 0),
+            model: shiftRow.model,
+            target: shiftRow.target,
+            usage: fmtUSD(shiftRow.gross, 0),
+            ratio: fmtPct(shiftRow.ratio, 0),
           }),
         ),
         t('Moving {share} of Powerful-tier usage to mid-tier models would reduce usage by about {amount} per month ({cash} as cash).', {
@@ -515,25 +515,25 @@ export function buildRecommendations(c: RecContext): Recommendation[] {
       impactUsd: impact,
       cashUsd: cash,
       caveat: t('Assumes {share} of Powerful-tier work can move to a mid-tier model without quality loss. Savings use price card ratios for the same token mix.', { share: fmtPct(DEFAULT_LEVERS.modelShift, 0) }),
-      affected: who([...ps].filter((p) => p.profile === 'frontier')),
-      affectedCount: ps.filter((p) => p.profile === 'frontier').length,
+      affected: who([...profiles].filter((user) => user.profile === 'frontier')),
+      affectedCount: profiles.filter((user) => user.profile === 'frontier').length,
       docs: [DOCS.comparison, DOCS.pricing, DOCS.optimize],
       jump: { page: 'models', label: t('Open Models'), filters: { categories: ['Powerful'] } },
     });
   }
 
   // 9. Auto model selection ----------------------------------------------------
-  const auto = c.auto;
+  const auto = context.auto;
   if (step('autoAdoption') > 0 && auto.share < 0.7) {
     const { impact, cash } = reduce(fractionOf(step('autoAdoption')));
-    const lowAuto = ps.filter((p) => p.traits.includes('lowAuto'));
+    const lowAuto = profiles.filter((user) => user.traits.includes('lowAuto'));
     // A rate counts as seen only when at least one plan has Auto usage that could be priced from token counts.
-    const seen = auto.plans.some((p) => p.source === 'measured' && p.rate > 0);
-    const measured = auto.plans.filter((p) => p.source === 'measured');
+    const seen = auto.plans.some((plan) => plan.source === 'measured' && plan.rate > 0);
+    const measured = auto.plans.filter((plan) => plan.source === 'measured');
     const assumed = t('{rate} (assumed, from Settings)', { rate: fmtPct(auto.assumedRate, 0) });
     const rateNote = measured.length
       ? t('Plan rates: {rates}. Plans without measured Auto usage use {assumed}.', {
-          rates: measured.map((p) => t('{plan} {rate} (measured)', { plan: p.label, rate: fmtPct(p.rate, 0) })).join(t(', ')),
+          rates: measured.map((plan) => t('{plan} {rate} (measured)', { plan: plan.label, rate: fmtPct(plan.rate, 0) })).join(t(', ')),
           assumed,
         })
       : t('No plan has measured Auto usage, so every plan uses {assumed}.', { assumed });
@@ -571,18 +571,18 @@ export function buildRecommendations(c: RecContext): Recommendation[] {
   }
 
   // 10. Cache reuse --------------------------------------------------------------
-  const promptTokens = tot.input + tot.cacheRead + tot.cacheWrite;
-  const estTotal = tot.est.input + tot.est.cacheRead + tot.est.cacheWrite + tot.est.output;
+  const promptTokens = totals.input + totals.cacheRead + totals.cacheWrite;
+  const estTotal = totals.est.input + totals.est.cacheRead + totals.est.cacheWrite + totals.est.output;
   if (store.hasTokens && promptTokens > 0 && estTotal > 0 && step('cacheDiscipline') > 0) {
-    const hit = tot.cacheRead / promptTokens;
-    const lowCache = ps.filter((p) => p.traits.includes('lowCache'));
+    const hit = totals.cacheRead / promptTokens;
+    const lowCache = profiles.filter((user) => user.traits.includes('lowCache'));
     if (hit < 0.8 || lowCache.length > 0) {
       const { impact, cash } = reduce(fractionOf(step('cacheDiscipline')));
       add({
         id: 'cache',
         theme: 'efficiency',
         audience: ['management', 'user'],
-        severity: hit >= 0.8 ? 'low' : step('cacheDiscipline') >= 0.02 * tot.gross ? 'medium' : 'low',
+        severity: hit >= 0.8 ? 'low' : step('cacheDiscipline') >= 0.02 * totals.gross ? 'medium' : 'low',
         title:
           hit < 0.8
             ? t('Only {share} of prompt tokens are cache hits', { share: fmtPct(hit, 0) })
@@ -590,7 +590,7 @@ export function buildRecommendations(c: RecContext): Recommendation[] {
         summary: t('Cached tokens cost about 10% of normal input. Every cache miss re-sends the whole context at full price.'),
         evidence: [
           t('Overall cache hit rate is {share} of prompt tokens.', { share: fmtPct(hit, 0) }),
-          t('Cache writes cost {writes} of priced usage; cache reads {reads}.', { writes: fmtPct(tot.est.cacheWrite / estTotal, 0), reads: fmtPct(tot.est.cacheRead / estTotal, 0) }),
+          t('Cache writes cost {writes} of priced usage; cache reads {reads}.', { writes: fmtPct(totals.est.cacheWrite / estTotal, 0), reads: fmtPct(totals.est.cacheRead / estTotal, 0) }),
           lowCache.length
             ? tp(lowCache.length, '{n} user is below {threshold} cache hit: {names}.', '{n} users are below {threshold} cache hit: {names}.', {
                 n: fmtInt(lowCache.length),
@@ -617,7 +617,7 @@ export function buildRecommendations(c: RecContext): Recommendation[] {
 
   // 11. Context hygiene ------------------------------------------------------------
   if (store.hasTokens && estTotal > 0 && step('contextHygiene') > 0) {
-    const inputSide = (tot.est.input + tot.est.cacheRead + tot.est.cacheWrite) / estTotal;
+    const inputSide = (totals.est.input + totals.est.cacheRead + totals.est.cacheWrite) / estTotal;
     if (inputSide >= 0.5) {
       const { impact, cash } = reduce(fractionOf(step('contextHygiene')));
       add({
@@ -643,32 +643,32 @@ export function buildRecommendations(c: RecContext): Recommendation[] {
   }
 
   // 12. Long-context surcharge -------------------------------------------------------
-  if (tot.longPremium > 0.005 && step('longContext') > 0) {
+  if (totals.longPremium > 0.005 && step('longContext') > 0) {
     const { impact, cash } = reduce(fractionOf(step('longContext')));
-    const lc = ps
-      .filter((p) => p.longShare > 0)
+    const longContextUsers = profiles
+      .filter((user) => user.longShare > 0)
       .sort((a, b) => b.longShare * b.gross - a.longShare * a.gross);
     // The link and the affected list both use the long-context trait, so they always select the same users.
-    const heavy = lc.filter((p) => p.traits.includes('longContext'));
+    const heavy = longContextUsers.filter((user) => user.traits.includes('longContext'));
     const modelNames = store.dicts.model.values;
     const topModels = [...Array(modelNames.length).keys()]
-      .filter((m) => agg.modelExtra.longPremium[m] > 0)
-      .sort((a, b) => agg.modelExtra.longPremium[b] - agg.modelExtra.longPremium[a])
+      .filter((modelId) => aggregates.modelExtra.longPremium[modelId] > 0)
+      .sort((a, b) => aggregates.modelExtra.longPremium[b] - aggregates.modelExtra.longPremium[a])
       .slice(0, 3);
-    const share = tot.longPremium / tot.gross;
+    const share = totals.longPremium / totals.gross;
     add({
       id: 'long-context',
       theme: 'efficiency',
       audience: ['management', 'user'],
       severity: share >= 0.05 ? 'medium' : 'low',
-      title: t('Long-context surcharges cost at least {amount}', { amount: fmtUSD(tot.longPremium, 0) }),
+      title: t('Long-context surcharges cost at least {amount}', { amount: fmtUSD(totals.longPremium, 0) }),
       summary: t("{share} of usage is the surcharge on requests whose prompts crossed a model's long-context threshold.", { share: fmtPct(share, 1) }),
       evidence: [
-        tp(tot.longPremiumRows, '{n} request was billed at the long-context rate.', '{n} requests were billed at the long-context rate.', { n: fmtInt(tot.longPremiumRows) }),
+        tp(totals.longPremiumRows, '{n} request was billed at the long-context rate.', '{n} requests were billed at the long-context rate.', { n: fmtInt(totals.longPremiumRows) }),
         topModels.length
-          ? t('Mostly on {models}.', { models: topModels.map((m) => `${modelNames[m]} (${fmtUSD(agg.modelExtra.longPremium[m], 0)})`).join(t(', ')) })
+          ? t('Mostly on {models}.', { models: topModels.map((modelId) => `${modelNames[modelId]} (${fmtUSD(aggregates.modelExtra.longPremium[modelId], 0)})`).join(t(', ')) })
           : '',
-        lc.length ? t('Most affected users: {names}.', { names: brief(lc, 4) }) : '',
+        longContextUsers.length ? t('Most affected users: {names}.', { names: brief(longContextUsers, 4) }) : '',
       ].filter(Boolean),
       actions: [
         t('Split work into smaller tasks or summarize earlier steps instead of carrying the whole history.'),
@@ -689,34 +689,34 @@ export function buildRecommendations(c: RecContext): Recommendation[] {
 
   // 13. Budgets and guardrails -----------------------------------------------------------
   {
-    const nM = agg.nMonths;
-    const scale = new Float64Array(nM).fill(1);
-    for (const m of pool.months) if (m.projection && m.projection.mtdGross > 0) scale[m.slot] = Math.min(8, m.projection.projGross / m.projection.mtdGross);
-    const vals: number[] = [];
-    const umg = agg.userMonthGross;
-    const nU = store.dicts.user.values.length;
-    for (let u = 1; u < nU; u++) for (let k = 0; k < nM; k++) if (umg[u * nM + k] > 0) vals.push(umg[u * nM + k] * scale[k]);
-    vals.sort((a, b) => a - b);
-    const poolRisk = poolWhole && (pool.monthsExhausted > 0 || pool.months.some((m) => m.projection && m.projection.projNet > 0.005));
-    const risky = tot.net > 0.005 || runaway.length > 0 || poolRisk;
-    if (vals.length >= 5 && risky && budgetOf(settings) === null) {
-      const cap = ceil5(quantile(vals, 0.9));
-      const above = vals.filter((v) => v > cap).length;
-      const excess = vals.reduce((a, v) => a + Math.max(0, v - cap), 0);
-      const monthlyNet = pool.months.length ? pool.months.reduce((a, m) => a + (m.projection ? m.projection.projNet : m.net), 0) / pool.months.length : 0;
+    const monthCount = aggregates.nMonths;
+    const scale = new Float64Array(monthCount).fill(1);
+    for (const month of pool.months) if (month.projection && month.projection.mtdGross > 0) scale[month.slot] = Math.min(8, month.projection.projGross / month.projection.mtdGross);
+    const userMonthUsage: number[] = [];
+    const userMonthGross = aggregates.userMonthGross;
+    const userCount = store.dicts.user.values.length;
+    for (let userId = 1; userId < userCount; userId++) for (let k = 0; k < monthCount; k++) if (userMonthGross[userId * monthCount + k] > 0) userMonthUsage.push(userMonthGross[userId * monthCount + k] * scale[k]);
+    userMonthUsage.sort((a, b) => a - b);
+    const poolRisk = poolWhole && (pool.monthsExhausted > 0 || pool.months.some((month) => month.projection && month.projection.projNet > 0.005));
+    const risky = totals.net > 0.005 || runaway.length > 0 || poolRisk;
+    if (userMonthUsage.length >= 5 && risky && budgetOf(settings) === null) {
+      const cap = ceil5(quantile(userMonthUsage, 0.9));
+      const above = userMonthUsage.filter((usage) => usage > cap).length;
+      const excess = userMonthUsage.reduce((total, usage) => total + Math.max(0, usage - cap), 0);
+      const monthlyNet = pool.months.length ? pool.months.reduce((total, month) => total + (month.projection ? month.projection.projNet : month.net), 0) / pool.months.length : 0;
       const entBudget = monthlyNet > 0.5 ? ceil5(monthlyNet * 1.25) : 100;
       add({
         id: 'budgets',
         theme: 'governance',
         audience: ['management', 'admin'],
-        severity: tot.net > 0.005 ? 'high' : 'medium',
+        severity: totals.net > 0.005 ? 'high' : 'medium',
         title: t('Put budgets in place before the next overage'),
         summary: t('User-level budgets protect the shared pool; enterprise, organization and cost-center budgets cap what you pay once the pool is empty.'),
         evidence: [
           t('A per-user monthly limit near the 90th percentile of monthly usage (about {cap}) would have touched {above} of {total} user-months and held back {excess} of usage.', {
             cap: fmtUSD(cap, 0),
             above: fmtInt(above),
-            total: fmtInt(vals.length),
+            total: fmtInt(userMonthUsage.length),
             excess: fmtUSD(excess, 0),
           }),
           monthlyNet > 0.5
@@ -737,49 +737,49 @@ export function buildRecommendations(c: RecContext): Recommendation[] {
 
   // 14. Attribution -------------------------------------------------------------------------
   if (users.hasCostCenters) {
-    const noCc = users.groups.trait.noCostCenter;
-    if (noCc.users > 0) {
-      const names = ps.filter((p) => p.traits.includes('noCostCenter'));
+    const noCostCenter = users.groups.trait.noCostCenter;
+    if (noCostCenter.users > 0) {
+      const names = profiles.filter((user) => user.traits.includes('noCostCenter'));
       add({
         id: 'cost-center-coverage',
         theme: 'governance',
         audience: ['admin', 'management'],
-        severity: noCc.gross / tot.gross >= 0.2 ? 'medium' : 'low',
-        title: tp(noCc.users, '{n} user is not assigned to a cost center', '{n} users are not assigned to a cost center', { n: fmtInt(noCc.users) }),
-        summary: t('{amount} ({share} of usage) cannot be charged back or budgeted by team.', { amount: fmtUSD(noCc.gross, 0), share: fmtPct(noCc.gross / tot.gross, 0) }),
+        severity: noCostCenter.gross / totals.gross >= 0.2 ? 'medium' : 'low',
+        title: tp(noCostCenter.users, '{n} user is not assigned to a cost center', '{n} users are not assigned to a cost center', { n: fmtInt(noCostCenter.users) }),
+        summary: t('{amount} ({share} of usage) cannot be charged back or budgeted by team.', { amount: fmtUSD(noCostCenter.gross, 0), share: fmtPct(noCostCenter.gross / totals.gross, 0) }),
         evidence: [t('Without a cost center: {names}.', { names: brief(names) })],
         actions: [
           t('Assign every licensed user to a cost center (directly, through an organization or an enterprise team).'),
           t('Then use cost-center budgets and included-usage controls to keep each team within its own credits.'),
         ],
         affected: who(names),
-        affectedCount: noCc.users,
+        affectedCount: noCostCenter.users,
         docs: [DOCS.budgets],
         jump: { page: 'organization', label: t('Show unassigned users'), filters: { traits: ['noCostCenter'] } },
       });
     }
   }
-  if (tot.unattributedGross >= 1 && tot.unattributedGross / tot.gross >= 0.01) {
+  if (totals.unattributedGross >= 1 && totals.unattributedGross / totals.gross >= 0.01) {
     const byProduct = new Map<number, number>();
     const byRepo = new Map<number, number>();
     for (let i = 0; i < store.n; i++) {
-      if (c.mask !== null && c.mask[i] === 0) continue;
+      if (context.mask !== null && context.mask[i] === 0) continue;
       if (store.user[i] !== BLANK_ID) continue;
       byProduct.set(store.product[i], (byProduct.get(store.product[i]) ?? 0) + store.gross[i]);
       byRepo.set(store.repo[i], (byRepo.get(store.repo[i]) ?? 0) + store.gross[i]);
     }
-    const top = (m: Map<number, number>, dim: 'product' | 'repo') =>
-      [...m.entries()]
+    const top = (grossById: Map<number, number>, dimension: 'product' | 'repo') =>
+      [...grossById.entries()]
         .sort((a, b) => b[1] - a[1])
         .slice(0, 3)
-        .map(([id, v]) => `${labelOf(dim, store.dicts[dim].values[id])} (${fmtUSD(v, 0)})`)
+        .map(([id, gross]) => `${labelOf(dimension, store.dicts[dimension].values[id])} (${fmtUSD(gross, 0)})`)
         .join(t(', '));
     add({
       id: 'unattributed',
       theme: 'governance',
       audience: ['admin', 'management'],
-      severity: tot.unattributedGross / tot.gross >= 0.15 ? 'medium' : 'low',
-      title: t('{amount} is not tied to a user', { amount: fmtUSD(tot.unattributedGross, 0) }),
+      severity: totals.unattributedGross / totals.gross >= 0.15 ? 'medium' : 'low',
+      title: t('{amount} is not tied to a user', { amount: fmtUSD(totals.unattributedGross, 0) }),
       summary: t('Repository-level products (such as code quality and security scanning) bill credits without a username, so per-user budgets cannot control them.'),
       evidence: [t('Products: {list}.', { list: top(byProduct, 'product') }), t('Repositories: {list}.', { list: top(byRepo, 'repo') })],
       actions: [t('Review whether those features are needed on every repository.'), t('Track them by repository or cost center and budget them separately from user activity.')],
@@ -787,7 +787,7 @@ export function buildRecommendations(c: RecContext): Recommendation[] {
       jump: { page: 'spend', label: t('Show unattributed usage'), filters: { attribution: 'unattributed' } },
     });
   }
-  const mixed = ps.filter((p) => p.orgMixed);
+  const mixed = profiles.filter((user) => user.orgMixed);
   if (mixed.length > 0) {
     add({
       id: 'multi-org',
@@ -806,7 +806,7 @@ export function buildRecommendations(c: RecContext): Recommendation[] {
 
   // 15. Adoption ----------------------------------------------------------------------------
   if (users.trendReliable) {
-    const lapsed = ps.filter((p) => p.lapsed);
+    const lapsed = profiles.filter((user) => user.lapsed);
     if (lapsed.length > 0) {
       add({
         id: 'lapsed',
@@ -816,7 +816,7 @@ export function buildRecommendations(c: RecContext): Recommendation[] {
         title: t('{users} stopped using AI credits', { users: pluralize(lapsed.length, 'user') }),
         summary: t('No usage for at least {days}, after earlier activity.', { days: pluralize(settings.lapsedDays, 'day') }),
         evidence: [
-          t('Together they generated {amount} of usage earlier in the period: {names}.', { amount: fmtUSD(lapsed.reduce((a, p) => a + p.gross, 0), 0), names: brief(lapsed) }),
+          t('Together they generated {amount} of usage earlier in the period: {names}.', { amount: fmtUSD(lapsed.reduce((total, user) => total + user.gross, 0), 0), names: brief(lapsed) }),
         ],
         actions: [
           t('Ask what stopped them: blockers, a budget hard stop, or a change of tasks.'),
@@ -828,7 +828,7 @@ export function buildRecommendations(c: RecContext): Recommendation[] {
         jump: { page: 'segments', label: t('Show lapsed users'), filters: { engagement: ['lapsed'] } },
       });
     }
-    const fresh = ps.filter((p) => p.isNew);
+    const fresh = profiles.filter((user) => user.isNew);
     if (fresh.length > 0) {
       add({
         id: 'new-users',
@@ -836,7 +836,7 @@ export function buildRecommendations(c: RecContext): Recommendation[] {
         audience: ['management', 'admin'],
         severity: 'positive',
         title: t('{users} started in the last {days}', { users: pluralize(fresh.length, 'new user'), days: pluralize(settings.newUserDays, 'day') }),
-        summary: t('They have generated {amount} of usage so far.', { amount: fmtUSD(fresh.reduce((a, p) => a + p.gross, 0), 0) }),
+        summary: t('They have generated {amount} of usage so far.', { amount: fmtUSD(fresh.reduce((total, user) => total + user.gross, 0), 0) }),
         evidence: [t('New users: {names}.', { names: brief(fresh) })],
         actions: [t('Share the playbook early: Auto by default, one model per session, fresh threads per task.')],
         affected: who(fresh),
@@ -846,16 +846,16 @@ export function buildRecommendations(c: RecContext): Recommendation[] {
       });
     }
   }
-  const champions = ps.filter((p) => p.persona === 'champion');
+  const champions = profiles.filter((user) => user.persona === 'champion');
   if (champions.length > 0) {
-    const g = champions.reduce((a, p) => a + p.gross, 0);
+    const championGross = champions.reduce((total, user) => total + user.gross, 0);
     add({
       id: 'champions',
       theme: 'adoption',
       audience: ['management'],
       severity: 'positive',
       title: tp(champions.length, '{n} champion uses GitHub Copilot often and heavily', '{n} champions use GitHub Copilot often and heavily', { n: fmtInt(champions.length) }),
-      summary: t('They account for {share} of attributed usage.', { share: fmtPct(g / Math.max(1e-9, users.totals.gross), 0) }),
+      summary: t('They account for {share} of attributed usage.', { share: fmtPct(championGross / Math.max(1e-9, users.totals.gross), 0) }),
       evidence: [t('Champions: {names}.', { names: brief(champions) })],
       actions: [
         t('Ask them to share workflows, prompts and custom instructions with their teams.'),
@@ -866,7 +866,7 @@ export function buildRecommendations(c: RecContext): Recommendation[] {
       jump: { page: 'segments', label: t('Show champions'), filters: { segments: ['champion'] } },
     });
   }
-  const spiky = ps.filter((p) => p.traits.includes('spiky'));
+  const spiky = profiles.filter((user) => user.traits.includes('spiky'));
   if (spiky.length > 0) {
     add({
       id: 'spiky',
@@ -875,7 +875,7 @@ export function buildRecommendations(c: RecContext): Recommendation[] {
       severity: 'low',
       title: tp(spiky.length, '{n} user concentrates their usage on a single day', '{n} users concentrate their usage on a single day', { n: fmtInt(spiky.length) }),
       summary: t("At least {share} of each user's usage happened on one day.", { share: fmtPct(settings.spikeShare, 0) }),
-      evidence: spiky.slice(0, 4).map((p) => t('{name}: {share} of {amount} on {day}.', { name: p.name, share: fmtPct(p.peakShare, 0), amount: fmtUSD(p.gross, 0), day: fmtDay(p.peakDayIdx) })),
+      evidence: spiky.slice(0, 4).map((user) => t('{name}: {share} of {amount} on {day}.', { name: user.name, share: fmtPct(user.peakShare, 0), amount: fmtUSD(user.gross, 0), day: fmtDay(user.peakDayIdx) })),
       actions: [t('Look at what ran on those days: a long agent session, a migration or a loop.'), t('Use AI credit session limits for open-ended agent tasks.')],
       affected: who(spiky),
       affectedCount: spiky.length,
@@ -886,21 +886,21 @@ export function buildRecommendations(c: RecContext): Recommendation[] {
 
   // 16. Trend and anomalies ----------------------------------------------------------------------
   // A change only matters when the weeks involved carry a meaningful share of the total.
-  const trendMaterial = Math.max(c.trend.recent, c.trend.prior) >= Math.max(5, 0.05 * tot.gross);
-  if (c.trend.reliable && Number.isFinite(c.trend.change) && trendMaterial) {
-    const ch = c.trend.change;
-    const accel = ps.filter((p) => p.traits.includes('accelerating')).sort((a, b) => b.recent - b.prior - (a.recent - a.prior));
-    if (ch >= 0.5) {
+  const trendMaterial = Math.max(context.trend.recent, context.trend.prior) >= Math.max(5, 0.05 * totals.gross);
+  if (context.trend.reliable && Number.isFinite(context.trend.change) && trendMaterial) {
+    const change = context.trend.change;
+    const accel = profiles.filter((user) => user.traits.includes('accelerating')).sort((a, b) => b.recent - b.prior - (a.recent - a.prior));
+    if (change >= 0.5) {
       add({
         id: 'trend-up',
         theme: 'cost',
         audience: ['management', 'admin'],
-        severity: ch >= 1 || tot.net > 0.005 ? 'high' : 'medium',
-        title: ch >= 2 ? t('Usage is accelerating: {multiple} the week before', { multiple: fmtMultiple(1 + ch) }) : t('Usage is accelerating: +{share} week over week', { share: fmtPct(ch, 0) }),
+        severity: change >= 1 || totals.net > 0.005 ? 'high' : 'medium',
+        title: change >= 2 ? t('Usage is accelerating: {multiple} the week before', { multiple: fmtMultiple(1 + change) }) : t('Usage is accelerating: +{share} week over week', { share: fmtPct(change, 0) }),
         summary: t('If this pace continues, the pool runs out sooner than the monthly average suggests.'),
         evidence: [
-          t('Last 7 days {recent} vs {prior} in the 7 days before.', { recent: fmtUSD(c.trend.recent, 0), prior: fmtUSD(c.trend.prior, 0) }),
-          accel.length ? t('Fastest growth: {list}.', { list: accel.slice(0, 3).map((p) => `${p.name} (${fmtUSD(p.prior, 0)} → ${fmtUSD(p.recent, 0)})`).join(t(', ')) }) : '',
+          t('Last 7 days {recent} vs {prior} in the 7 days before.', { recent: fmtUSD(context.trend.recent, 0), prior: fmtUSD(context.trend.prior, 0) }),
+          accel.length ? t('Fastest growth: {list}.', { list: accel.slice(0, 3).map((user) => `${user.name} (${fmtUSD(user.prior, 0)} → ${fmtUSD(user.recent, 0)})`).join(t(', ')) }) : '',
         ].filter(Boolean),
         actions: [t('Find out what changed: a new rollout, a new model or an automation.'), t('Put alerts on the pool before it is exhausted.')],
         affected: who(accel),
@@ -908,45 +908,45 @@ export function buildRecommendations(c: RecContext): Recommendation[] {
         docs: [DOCS.monitor],
         jump: { page: 'patterns', label: t('Open Patterns') },
       });
-    } else if (ch <= -0.4) {
+    } else if (change <= -0.4) {
       add({
         id: 'trend-down',
         theme: 'adoption',
         audience: ['management'],
         severity: 'info',
-        title: t('Usage dropped {share} week over week', { share: fmtPct(-ch, 0) }),
+        title: t('Usage dropped {share} week over week', { share: fmtPct(-change, 0) }),
         summary: t('A sharp fall can mean a holiday, a freeze, or users blocked by a budget limit.'),
-        evidence: [t('Last 7 days {recent} vs {prior} in the 7 days before.', { recent: fmtUSD(c.trend.recent, 0), prior: fmtUSD(c.trend.prior, 0) })],
+        evidence: [t('Last 7 days {recent} vs {prior} in the 7 days before.', { recent: fmtUSD(context.trend.recent, 0), prior: fmtUSD(context.trend.prior, 0) })],
         actions: [t('Check that user-level budgets are not blocking people unintentionally.')],
         jump: { page: 'patterns', label: t('Open Patterns') },
       });
     }
   }
-  if (c.anomalies.length > 0) {
-    const top = c.anomalies[0];
+  if (context.anomalies.length > 0) {
+    const top = context.anomalies[0];
     const nameOf = (id: number) => labelOf('user', store.dicts.user.values[id]);
     add({
       id: 'anomalies',
       theme: 'cost',
       audience: ['admin'],
-      severity: top.gross >= 0.1 * tot.gross ? 'medium' : 'low',
-      title: t('{days} with unusually high usage', { days: pluralize(c.anomalies.length, 'day') }),
+      severity: top.gross >= 0.1 * totals.gross ? 'medium' : 'low',
+      title: t('{days} with unusually high usage', { days: pluralize(context.anomalies.length, 'day') }),
       summary: t('The biggest, {day}, reached {multiple} a typical day.', { day: fmtDay(top.day, true), multiple: fmtMultiple(top.multiple) }),
-      evidence: c.anomalies.slice(0, 4).map((a) => {
-        const u = a.topUsers[0];
-        const modelName = a.topModels[0] ? store.dicts.model.values[a.topModels[0].id] : '';
-        const v = {
-          day: fmtDay(a.day, true),
-          amount: fmtUSD(a.gross, 0),
-          multiple: fmtMultiple(a.multiple),
-          user: u ? nameOf(u.id) : '',
-          userAmount: u ? fmtUSD(u.gross, 0) : '',
+      evidence: context.anomalies.slice(0, 4).map((anomaly) => {
+        const topUser = anomaly.topUsers[0];
+        const modelName = anomaly.topModels[0] ? store.dicts.model.values[anomaly.topModels[0].id] : '';
+        const values = {
+          day: fmtDay(anomaly.day, true),
+          amount: fmtUSD(anomaly.gross, 0),
+          multiple: fmtMultiple(anomaly.multiple),
+          user: topUser ? nameOf(topUser.id) : '',
+          userAmount: topUser ? fmtUSD(topUser.gross, 0) : '',
           model: modelName,
         };
-        if (u && modelName) return t('{day}: {amount} ({multiple} typical), mostly {user} ({userAmount}) on {model}.', v);
-        if (u) return t('{day}: {amount} ({multiple} typical), mostly {user} ({userAmount}).', v);
-        if (modelName) return t('{day}: {amount} ({multiple} typical) on {model}.', v);
-        return t('{day}: {amount} ({multiple} typical).', v);
+        if (topUser && modelName) return t('{day}: {amount} ({multiple} typical), mostly {user} ({userAmount}) on {model}.', values);
+        if (topUser) return t('{day}: {amount} ({multiple} typical), mostly {user} ({userAmount}).', values);
+        if (modelName) return t('{day}: {amount} ({multiple} typical) on {model}.', values);
+        return t('{day}: {amount} ({multiple} typical).', values);
       }),
       actions: [
         t('Open those days in Patterns and look at who and which model drove them.'),
@@ -962,33 +962,33 @@ export function buildRecommendations(c: RecContext): Recommendation[] {
     const lines: string[] = [];
     let flagged = 0;
     const groupBy = (key: 'org' | 'costCenter') => {
-      const g = new Map<string, { users: number; gross: number; allot: number }>();
-      for (const p of ps) {
-        const k = (key === 'org' ? p.org : p.costCenter) || '';
-        if (!k) continue;
-        const e = g.get(k) ?? { users: 0, gross: 0, allot: 0 };
-        e.users++;
-        e.gross += p.gross;
-        e.allot += p.allotment;
-        g.set(k, e);
+      const statsByGroup = new Map<string, { users: number; gross: number; allot: number }>();
+      for (const user of profiles) {
+        const groupName = (key === 'org' ? user.org : user.costCenter) || '';
+        if (!groupName) continue;
+        const stats = statsByGroup.get(groupName) ?? { users: 0, gross: 0, allot: 0 };
+        stats.users++;
+        stats.gross += user.gross;
+        stats.allot += user.allotment;
+        statsByGroup.set(groupName, stats);
       }
-      if (g.size < 2) return;
-      const rows = [...g.entries()].map(([name, e]) => ({ name, ...e, use: e.allot > 0 ? e.gross / e.allot : 0 }));
-      const over = rows.filter((r) => r.use >= 1.5 && r.gross - r.allot >= 20 && r.users >= 2).sort((a, b) => b.gross - b.allot - (a.gross - a.allot));
-      const under = rows.filter((r) => r.use < 0.25 && r.users >= 3).sort((a, b) => a.use - b.use);
-      for (const r of over.slice(0, 3)) {
+      if (statsByGroup.size < 2) return;
+      const rows = [...statsByGroup.entries()].map(([name, stats]) => ({ name, ...stats, use: stats.allot > 0 ? stats.gross / stats.allot : 0 }));
+      const over = rows.filter((group) => group.use >= 1.5 && group.gross - group.allot >= 20 && group.users >= 2).sort((a, b) => b.gross - b.allot - (a.gross - a.allot));
+      const under = rows.filter((group) => group.use < 0.25 && group.users >= 3).sort((a, b) => a.use - b.use);
+      for (const group of over.slice(0, 3)) {
         flagged++;
-        const v = { name: r.name, share: fmtPctAuto(r.use), usage: fmtUSD(r.gross, 0), funded: fmtUSD(r.allot, 0), drawn: fmtUSD(r.gross - r.allot, 0) };
+        const values = { name: group.name, share: fmtPctAuto(group.use), usage: fmtUSD(group.gross, 0), funded: fmtUSD(group.allot, 0), drawn: fmtUSD(group.gross - group.allot, 0) };
         lines.push(
           key === 'org'
-            ? t('Organization {name} used {share} of the credits its licenses fund ({usage} vs {funded}); it draws {drawn} from the pool.', v)
-            : t('Cost center {name} used {share} of the credits its licenses fund ({usage} vs {funded}); it draws {drawn} from the pool.', v),
+            ? t('Organization {name} used {share} of the credits its licenses fund ({usage} vs {funded}); it draws {drawn} from the pool.', values)
+            : t('Cost center {name} used {share} of the credits its licenses fund ({usage} vs {funded}); it draws {drawn} from the pool.', values),
         );
       }
-      for (const r of under.slice(0, 2)) {
+      for (const group of under.slice(0, 2)) {
         flagged++;
-        const v = { name: r.name, share: fmtPctAuto(r.use), users: pluralize(r.users, 'user') };
-        lines.push(key === 'org' ? t('Organization {name} used only {share} of its licensed credits ({users}).', v) : t('Cost center {name} used only {share} of its licensed credits ({users}).', v));
+        const values = { name: group.name, share: fmtPctAuto(group.use), users: pluralize(group.users, 'user') };
+        lines.push(key === 'org' ? t('Organization {name} used only {share} of its licensed credits ({users}).', values) : t('Cost center {name} used only {share} of its licensed credits ({users}).', values));
       }
     };
     groupBy('org');
@@ -1013,7 +1013,7 @@ export function buildRecommendations(c: RecContext): Recommendation[] {
   }
 
   // 18. Healthy ----------------------------------------------------------------------------------------------
-  if (poolWhole && !pool.capacityExceeded && tot.net <= 0.005 && poolUse >= 0.6 && out.every((r) => SEVERITY_ORDER[r.severity] > 1)) {
+  if (poolWhole && !pool.capacityExceeded && totals.net <= 0.005 && poolUse >= 0.6 && out.every((recommendation) => SEVERITY_ORDER[recommendation.severity] > 1)) {
     add({
       id: 'healthy',
       theme: 'pool',
@@ -1021,7 +1021,7 @@ export function buildRecommendations(c: RecContext): Recommendation[] {
       severity: 'positive',
       title: t('The pool is well used and fully covered'),
       summary: t('Utilization is about {share} with no billed overage.', { share: fmtPct(Math.min(1, poolUse), 0) }),
-      evidence: [t('Usage {usage} against {credits} of included credits.', { usage: fmtUSD(tot.gross, 0), credits: fmtUSD(capacityTotal, 0) })],
+      evidence: [t('Usage {usage} against {credits} of included credits.', { usage: fmtUSD(totals.gross, 0), credits: fmtUSD(capacityTotal, 0) })],
       actions: [t('Keep monitoring the trend and set alerts so a change shows up early.')],
       ...(pool.capacityIsLowerBound
         ? { caveat: t('Only users in this report fund the current estimate. Add a complete license list in Settings for a better estimate; past months may still differ.') }
@@ -1033,7 +1033,7 @@ export function buildRecommendations(c: RecContext): Recommendation[] {
 
   // 19. Missing columns --------------------------------------------------------------------------------------------
   {
-    const issues = coverageIssues(c.coverage, users.fallbackQuotaCredits).filter((i) => i.severity === 'warn');
+    const issues = coverageIssues(context.coverage, users.fallbackQuotaCredits).filter((issue) => issue.severity === 'warn');
     if (issues.length > 0) {
       add({
         id: 'data-coverage',
@@ -1042,7 +1042,7 @@ export function buildRecommendations(c: RecContext): Recommendation[] {
         severity: 'medium',
         title: issues.length === 1 ? issues[0].title : t('The file is missing columns the analysis relies on'),
         summary: t('Some figures are hidden or assumed because of what the file does not contain.'),
-        evidence: issues.map((i) => `${i.title}. ${i.detail}`),
+        evidence: issues.map((issue) => `${issue.title}. ${issue.detail}`),
         actions: [t('Export the AI usage report again from GitHub and load the complete file.')],
         confidence: 'high',
         jump: { page: 'data', label: t('Open Data') },
@@ -1055,7 +1055,7 @@ export function buildRecommendations(c: RecContext): Recommendation[] {
     const notes: string[] = [];
     if (!narrowed && pool.capacityExceeded) {
       notes.push(
-        c.coverage.billing && c.coverage.quota
+        context.coverage.billing && context.coverage.quota
           ? t(
               'The pool covered {covered}, more than the {capacity} that the seats in this file fund. Other seats share the pool (a partial export, or files from different billing entities), so pool size, utilization and seat recommendations are not shown. Add your seat roster or extra seats in Settings to complete the picture.',
               { covered: fmtUSD(pool.covered, 0), capacity: fmtUSD(pool.capacity, 0) },
@@ -1066,20 +1066,20 @@ export function buildRecommendations(c: RecContext): Recommendation[] {
       notes.push(t('The current estimate only includes users in this report. Add a complete license list in Settings to improve included-credit and seat-activity estimates.'));
     }
     if (scopeDays < 14) notes.push(tp(scopeDays, 'Only {n} day of data: projections and trends are indicative.', 'Only {n} days of data: projections and trends are indicative.', { n: fmtInt(scopeDays) }));
-    if (store.hasTokens && tot.unpricedGross > 0.005) {
+    if (store.hasTokens && totals.unpricedGross > 0.005) {
       // Usage with no price card estimate is on models without a price, or on lines without a model name or token counts.
       const names = store.dicts.model.values;
       let noPrice = 0;
-      for (let id = 0; id < names.length; id++) if (names[id] !== '' && c.models.priced[id] === 0) noPrice += agg.model.gross[id];
-      const noEstimate = Math.max(0, tot.unpricedGross - noPrice);
+      for (let id = 0; id < names.length; id++) if (names[id] !== '' && context.models.priced[id] === 0) noPrice += aggregates.model.gross[id];
+      const noEstimate = Math.max(0, totals.unpricedGross - noPrice);
       if (noPrice > 0.005) notes.push(t('{amount} is on models that are not in the built-in price card. What-if savings exclude them; add overrides in Settings.', { amount: fmtUSD(noPrice, 0) }));
       if (noEstimate > 0.005) notes.push(t('{amount} is on usage lines without token counts or a model name, so price card estimates and what-if savings exclude it.', { amount: fmtUSD(noEstimate, 0) }));
     }
-    for (const issue of coverageIssues(c.coverage, users.fallbackQuotaCredits)) notes.push(`${issue.title}. ${issue.detail}`);
+    for (const issue of coverageIssues(context.coverage, users.fallbackQuotaCredits)) notes.push(`${issue.title}. ${issue.detail}`);
     notes.push(t('The report covers AI-credit usage only. Code completions and next edit suggestions are not included.'));
-    const dup = store.files.reduce((a, f) => a + f.duplicatesDropped, 0);
-    const bad = store.files.reduce((a, f) => a + f.badDateRows + f.badNumberCells + f.negativeRows + f.balanceMismatchRows, 0);
-    if (dup > 0) notes.push(tp(dup, '{n} duplicate row was dropped while merging files.', '{n} duplicate rows were dropped while merging files.', { n: fmtInt(dup) }));
+    const duplicateCount = store.files.reduce((total, file) => total + file.duplicatesDropped, 0);
+    const bad = store.files.reduce((total, file) => total + file.badDateRows + file.badNumberCells + file.negativeRows + file.balanceMismatchRows, 0);
+    if (duplicateCount > 0) notes.push(tp(duplicateCount, '{n} duplicate row was dropped while merging files.', '{n} duplicate rows were dropped while merging files.', { n: fmtInt(duplicateCount) }));
     if (bad > 0) notes.push(t('{count} failed validation (see Data).', { count: pluralize(bad, 'row or cell', 'rows or cells') }));
     add({
       id: 'data-notes',
@@ -1100,29 +1100,29 @@ export function buildRecommendations(c: RecContext): Recommendation[] {
   return out;
 }
 
-export function buildHeadline(c: RecContext, recs: Recommendation[]): Headline {
-  const tot = c.agg.totals;
-  if (!c.coverage.billing) {
+export function buildHeadline(context: RecContext, recommendations: Recommendation[]): Headline {
+  const totals = context.agg.totals;
+  if (!context.coverage.billing) {
     return {
       status: 'watch',
       title: t('This file does not say what was billed'),
       detail: t('Overage, pool and seat findings need the discount_amount, net_amount and total_monthly_quota columns.'),
     };
   }
-  const urgent = recs.filter((r) => r.severity === 'critical' || r.severity === 'high').length;
-  const watch = recs.filter((r) => r.severity === 'medium').length;
-  const util = c.narrowed || c.pool.capacityExceeded ? null : c.pool.utilization;
+  const urgent = recommendations.filter((recommendation) => recommendation.severity === 'critical' || recommendation.severity === 'high').length;
+  const watch = recommendations.filter((recommendation) => recommendation.severity === 'medium').length;
+  const utilization = context.narrowed || context.pool.capacityExceeded ? null : context.pool.utilization;
   const detail = [
-    util !== null && Number.isFinite(util) ? t('Pool utilization {share}', { share: fmtPct(Math.min(1, util), 0) }) : null,
-    c.coverage.models ? t('Auto {share} of usage', { share: fmtPct(c.auto.share, 0) }) : null,
-    pluralize(c.users.profiles.length, 'active user'),
+    utilization !== null && Number.isFinite(utilization) ? t('Pool utilization {share}', { share: fmtPct(Math.min(1, utilization), 0) }) : null,
+    context.coverage.models ? t('Auto {share} of usage', { share: fmtPct(context.auto.share, 0) }) : null,
+    pluralize(context.users.profiles.length, 'active user'),
   ]
     .filter(Boolean)
     .join(' · ');
   if (urgent > 0) {
     return {
       status: 'action',
-      title: tot.net > 0.005 ? t('{amount} billed overage and {actions}', { amount: fmtUSD(tot.net, 0), actions: pluralize(urgent, 'high-priority action') }) : pluralize(urgent, 'high-priority action'),
+      title: totals.net > 0.005 ? t('{amount} billed overage and {actions}', { amount: fmtUSD(totals.net, 0), actions: pluralize(urgent, 'high-priority action') }) : pluralize(urgent, 'high-priority action'),
       detail,
     };
   }

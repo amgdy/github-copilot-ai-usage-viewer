@@ -14,30 +14,30 @@ interface CopyResult {
 }
 
 /** Filter, copy and step through the users of the current ranking. */
-export function UserFooter({ p }: { p: UserProfile }) {
+export function UserFooter({ p: user }: { p: UserProfile }) {
   const { analysis, settings, taxonomy } = useAnalysis();
   const [copied, setCopied] = useState<CopyResult | null>(null);
   const timer = useRef<number | undefined>(undefined);
 
   useEffect(() => () => window.clearTimeout(timer.current), []);
 
-  const order = useMemo(() => (analysis.users.profiles.includes(p) ? analysis.users.profiles : analysis.population.profiles), [analysis, p]);
-  const index = order.indexOf(p);
+  const order = useMemo(() => (analysis.users.profiles.includes(user) ? analysis.users.profiles : analysis.population.profiles), [analysis, user]);
+  const index = order.indexOf(user);
   const previous = index > 0 ? order[index - 1] : undefined;
   const next = index >= 0 && index < order.length - 1 ? order[index + 1] : undefined;
 
-  const status = copied && copied.id === p.id ? (copied.ok ? 'done' : 'failed') : 'idle';
+  const status = copied && copied.id === user.id ? (copied.ok ? 'done' : 'failed') : 'idle';
   const copyLabel = status === 'done' ? t('Copied') : status === 'failed' ? t('Copy failed') : t('Copy summary');
 
   const onCopy = async () => {
-    const ok = await copyText(buildUserSummary({ p, analysis, settings, taxonomy }));
-    setCopied({ id: p.id, ok });
+    const ok = await copyText(buildUserSummary({ p: user, analysis, settings, taxonomy }));
+    setCopied({ id: user.id, ok });
     window.clearTimeout(timer.current);
     timer.current = window.setTimeout(() => setCopied(null), 2500);
   };
 
   const filterToUser = () => {
-    drill({ users: [p.name] }, { merge: true });
+    drill({ users: [user.name] }, { merge: true });
     useApp.getState().selectUser(null);
   };
 

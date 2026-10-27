@@ -67,10 +67,10 @@ export function parseSeatsCsv(text: string): CsvSeats {
       return;
     }
     const get = (field: SeatField): string | undefined => {
-      const i = cols[field];
-      if (i === undefined) return undefined;
-      const v = row[i];
-      return v === undefined || v === '' ? undefined : v;
+      const columnIndex = cols[field];
+      if (columnIndex === undefined) return undefined;
+      const value = row[columnIndex];
+      return value === undefined || value === '' ? undefined : value;
     };
     const seat = seatFromFields(get, source, out.stats);
     if (seat === null) {

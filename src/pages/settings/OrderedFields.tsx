@@ -29,12 +29,12 @@ interface OrderedFieldsProps<K extends string> {
   after?: ReactNode;
 }
 
-const fmt = (n: number) => `${numText(n, 2)}%`;
+const formatPercent = (percent: number) => `${numText(percent, 2)}%`;
 
 /** Percent inputs that must stay in ascending order. An invalid value is explained and never saved. */
 export function OrderedFields<K extends string>({ fields, values, onSave, before, after }: OrderedFieldsProps<K>) {
   const commit = (key: K, next: number): string | null => {
-    const error = orderError(fields, values, key, next, fmt);
+    const error = orderError(fields, values, key, next, formatPercent);
     if (error) return error;
     onSave(key, next);
     return null;
@@ -43,19 +43,19 @@ export function OrderedFields<K extends string>({ fields, values, onSave, before
   return (
     <div className="divide-y divide-border-muted">
       {before}
-      {fields.map((f) => (
+      {fields.map((field) => (
         <ThresholdRow
-          key={f.key}
+          key={field.key}
           label={
             <>
-              {f.color ? <Swatch color={f.color} /> : null}
-              {t(f.name)}
+              {field.color ? <Swatch color={field.color} /> : null}
+              {t(field.name)}
             </>
           }
-          description={t(f.help)}
-          hint={t('Default {value}', { value: fmt(f.defaultValue) })}
+          description={t(field.help)}
+          hint={t('Default {value}', { value: formatPercent(field.defaultValue) })}
         >
-          <NumInput label={t('{name}, in percent', { name: t(f.label) })} value={values[f.key]} min={f.min} max={f.max} suffix="%" digits={2} onCommit={(v) => (v === null ? null : commit(f.key, v))} />
+          <NumInput label={t('{name}, in percent', { name: t(field.label) })} value={values[field.key]} min={field.min} max={field.max} suffix="%" digits={2} onCommit={(percent) => (percent === null ? null : commit(field.key, percent))} />
         </ThresholdRow>
       ))}
       {after}

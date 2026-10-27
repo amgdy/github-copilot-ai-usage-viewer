@@ -2,9 +2,9 @@ import { makeCsv, weekdayOf, type RowSpec } from './helpers';
 
 /** Synthetic September 2026 datasets (a complete month; the 1st is a Tuesday) used to exercise wording and edge cases. */
 
-export const sep = (d: number): string => `2026-09-${String(d).padStart(2, '0')}`;
-export const SEPTEMBER: string[] = Array.from({ length: 30 }, (_, i) => sep(i + 1));
-export const SEP_WEEKDAYS: string[] = SEPTEMBER.filter((d) => weekdayOf(d) < 5);
+export const septemberDate = (dayOfMonth: number): string => `2026-09-${String(dayOfMonth).padStart(2, '0')}`;
+export const SEPTEMBER: string[] = Array.from({ length: 30 }, (_, index) => septemberDate(index + 1));
+export const SEP_WEEKDAYS: string[] = SEPTEMBER.filter((date) => weekdayOf(date) < 5);
 
 /**
  * Token counts that make a GPT-5.6 Terra row cost exactly its list price ($2 input, $0.2 cache read, $2.5 cache write per 1M).
@@ -41,9 +41,9 @@ export const AUTO_BILLED_FACTOR = 0.9;
  * The tokens are scaled up, the billed amount stays the same.
  */
 export function autoDiscounted(rows: RowSpec[], factor = AUTO_BILLED_FACTOR): RowSpec[] {
-  const scale = (n: number | undefined): number | undefined => (n === undefined ? undefined : Math.round(n / factor));
-  return rows.map((r) =>
-    r.model && /^auto/i.test(r.model) ? { ...r, input: scale(r.input), output: scale(r.output), cacheRead: scale(r.cacheRead), cacheWrite: scale(r.cacheWrite) } : r,
+  const scale = (tokens: number | undefined): number | undefined => (tokens === undefined ? undefined : Math.round(tokens / factor));
+  return rows.map((row) =>
+    row.model && /^auto/i.test(row.model) ? { ...row, input: scale(row.input), output: scale(row.output), cacheRead: scale(row.cacheRead), cacheWrite: scale(row.cacheWrite) } : row,
   );
 }
 
@@ -56,50 +56,50 @@ export function spread(user: string, total: number, dates: string[], extra: Part
  * One user per behaviour, `n` users each, so that every counted recommendation can be checked for n = 1, 2, 3.
  * No user is billed (the pool is far from exhausted), all rows are Auto with a healthy cache.
  */
-export function agreementCsv(n: number): string {
+export function agreementCsv(usersPerBehavior: number): string {
   const rows: RowSpec[] = [];
-  const cc = { costCenter: 'eng' };
-  for (let i = 1; i <= n; i++) {
-    for (const date of SEP_WEEKDAYS.slice(-15)) rows.push(terra({ date, user: `champ-${i}`, gross: 1, ...cc }));
-    rows.push(terra({ date: sep(3), user: `spike-${i}`, gross: 8, ...cc }));
-    for (const d of [10, 17, 28]) rows.push(terra({ date: sep(d), user: `spike-${i}`, gross: 0.5, ...cc }));
-    rows.push(terra({ date: sep(8), user: `multi-${i}`, gross: 2, org: 'acme', ...cc }));
-    rows.push(terra({ date: sep(9), user: `multi-${i}`, gross: 2, org: 'beta', ...cc }));
-    rows.push(terra({ date: sep(29), user: `multi-${i}`, gross: 0.5, org: 'beta', ...cc }));
-    rows.push(terra({ date: sep(14), user: `nocc-${i}`, gross: 1 }), terra({ date: sep(28), user: `nocc-${i}`, gross: 1 }));
-    rows.push(terra({ date: sep(1), user: `ghost-${i}`, gross: 0.1, ...cc }), terra({ date: sep(2), user: `ghost-${i}`, gross: 0.1, ...cc }));
-    rows.push(terra({ date: sep(8), user: `ent-${i}`, gross: 3, quota: 3900, ...cc }), terra({ date: sep(28), user: `ent-${i}`, gross: 2, quota: 3900, ...cc }));
-    for (const d of [10, 17, 24, 29]) rows.push(terra({ date: sep(d), user: `run-${i}`, gross: 15, ...cc }));
-    rows.push(terra({ date: sep(24), user: `newbie-${i}`, gross: 1, ...cc }), terra({ date: sep(28), user: `newbie-${i}`, gross: 1, ...cc }));
+  const costCenterFields = { costCenter: 'eng' };
+  for (let i = 1; i <= usersPerBehavior; i++) {
+    for (const date of SEP_WEEKDAYS.slice(-15)) rows.push(terra({ date, user: `champ-${i}`, gross: 1, ...costCenterFields }));
+    rows.push(terra({ date: septemberDate(3), user: `spike-${i}`, gross: 8, ...costCenterFields }));
+    for (const dayOfMonth of [10, 17, 28]) rows.push(terra({ date: septemberDate(dayOfMonth), user: `spike-${i}`, gross: 0.5, ...costCenterFields }));
+    rows.push(terra({ date: septemberDate(8), user: `multi-${i}`, gross: 2, org: 'acme', ...costCenterFields }));
+    rows.push(terra({ date: septemberDate(9), user: `multi-${i}`, gross: 2, org: 'beta', ...costCenterFields }));
+    rows.push(terra({ date: septemberDate(29), user: `multi-${i}`, gross: 0.5, org: 'beta', ...costCenterFields }));
+    rows.push(terra({ date: septemberDate(14), user: `nocc-${i}`, gross: 1 }), terra({ date: septemberDate(28), user: `nocc-${i}`, gross: 1 }));
+    rows.push(terra({ date: septemberDate(1), user: `ghost-${i}`, gross: 0.1, ...costCenterFields }), terra({ date: septemberDate(2), user: `ghost-${i}`, gross: 0.1, ...costCenterFields }));
+    rows.push(terra({ date: septemberDate(8), user: `ent-${i}`, gross: 3, quota: 3900, ...costCenterFields }), terra({ date: septemberDate(28), user: `ent-${i}`, gross: 2, quota: 3900, ...costCenterFields }));
+    for (const dayOfMonth of [10, 17, 24, 29]) rows.push(terra({ date: septemberDate(dayOfMonth), user: `run-${i}`, gross: 15, ...costCenterFields }));
+    rows.push(terra({ date: septemberDate(24), user: `newbie-${i}`, gross: 1, ...costCenterFields }), terra({ date: septemberDate(28), user: `newbie-${i}`, gross: 1, ...costCenterFields }));
   }
   return makeCsv(rows, { pool: true });
 }
 
 /** Three users in September with one idle seat; the other two split `heavy` and `light` dollars. */
 export function idleSeatCsv(heavy: number, light: number): string {
-  const cc = { costCenter: 'eng' };
+  const costCenterFields = { costCenter: 'eng' };
   const rows = [
-    ...spread('heavy', heavy, SEP_WEEKDAYS.slice(0, 20), cc),
-    ...spread('light', light - 0.5, SEP_WEEKDAYS.slice(0, 10), cc),
-    terra({ date: sep(30), user: 'light', gross: 0.5, ...cc }),
-    terra({ date: sep(1), user: 'ghost', gross: 0.4, ...cc }),
+    ...spread('heavy', heavy, SEP_WEEKDAYS.slice(0, 20), costCenterFields),
+    ...spread('light', light - 0.5, SEP_WEEKDAYS.slice(0, 10), costCenterFields),
+    terra({ date: septemberDate(30), user: 'light', gross: 0.5, ...costCenterFields }),
+    terra({ date: septemberDate(1), user: 'ghost', gross: 0.4, ...costCenterFields }),
   ];
   return makeCsv(rows, { pool: true });
 }
 
 /** `n` long-context requests by one regular user; everyone else has a healthy cache. */
-export function longContextCsv(n: number): string {
-  const cc = { costCenter: 'eng' };
-  const rows = [...spread('lc', 15, SEP_WEEKDAYS.slice(-15), cc)];
-  for (let i = 0; i < n; i++) rows.push(longRow(SEP_WEEKDAYS[i], 'lc', cc));
+export function longContextCsv(requestCount: number): string {
+  const costCenterFields = { costCenter: 'eng' };
+  const rows = [...spread('lc', 15, SEP_WEEKDAYS.slice(-15), costCenterFields)];
+  for (let i = 0; i < requestCount; i++) rows.push(longRow(SEP_WEEKDAYS[i], 'lc', costCenterFields));
   return makeCsv(rows, { pool: true });
 }
 
 /** `n` users with a poor cache hit rate next to one heavy cached user, so the overall hit rate stays high. */
-export function lowCacheCsv(n: number): string {
-  const cc = { costCenter: 'eng' };
-  const rows = [...spread('good', 100, SEP_WEEKDAYS, cc)];
-  for (let i = 1; i <= n; i++) rows.push(...spread(`bad-${i}`, 6, SEP_WEEKDAYS.slice(0, 6), cc, 'fresh'));
+export function lowCacheCsv(userCount: number): string {
+  const costCenterFields = { costCenter: 'eng' };
+  const rows = [...spread('good', 100, SEP_WEEKDAYS, costCenterFields)];
+  for (let i = 1; i <= userCount; i++) rows.push(...spread(`bad-${i}`, 6, SEP_WEEKDAYS.slice(0, 6), costCenterFields, 'fresh'));
   return makeCsv(rows, { pool: true });
 }
 
@@ -107,9 +107,9 @@ export function lowCacheCsv(n: number): string {
 export function healthyCsv(): string {
   const rows: RowSpec[] = [];
   // 17 weekdays spread over the whole month so that it is complete (the last day of data is Sep 30).
-  const days = SEP_WEEKDAYS.filter((_, i) => i % 4 !== 3);
-  for (let u = 1; u <= 4; u++) {
-    for (const date of days) rows.push({ date, user: `steady-${u}`, gross: 1, model: 'Auto: GPT-5.6 Terra', costCenter: 'eng' });
+  const days = SEP_WEEKDAYS.filter((_, index) => index % 4 !== 3);
+  for (let userNumber = 1; userNumber <= 4; userNumber++) {
+    for (const date of days) rows.push({ date, user: `steady-${userNumber}`, gross: 1, model: 'Auto: GPT-5.6 Terra', costCenter: 'eng' });
   }
   return makeCsv(rows, { pool: true });
 }

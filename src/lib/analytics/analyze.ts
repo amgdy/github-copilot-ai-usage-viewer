@@ -73,36 +73,36 @@ export interface Analysis {
 }
 
 export function analyze(input: AnalysisInput): Analysis {
-  const { store, prep, models, filters: f, settings } = input;
-  const t0 = performance.now();
+  const { store, prep: prepared, models, filters: filters, settings } = input;
+  const startMs = performance.now();
   const nUsers = store.dicts.user.values.length;
-  const start = Math.max(f.dateFrom ?? store.minDay, store.minDay);
-  const end = Math.min(f.dateTo ?? store.maxDay, store.maxDay);
+  const start = Math.max(filters.dateFrom ?? store.minDay, store.minDay);
+  const end = Math.min(filters.dateTo ?? store.maxDay, store.maxDay);
   const range = { start, end };
-  const dateFilter = f.dateFrom !== null || f.dateTo !== null;
-  const segmentFiltered = hasPostFilters(f);
-  const rowFiltered = activeBaseFilterCount(f) - (dateFilter ? 1 : 0) > 0;
+  const dateFilter = filters.dateFrom !== null || filters.dateTo !== null;
+  const segmentFiltered = hasPostFilters(filters);
+  const rowFiltered = activeBaseFilterCount(filters) - (dateFilter ? 1 : 0) > 0;
   const narrowed = rowFiltered || segmentFiltered;
   const aggOpts = { activeThreshold: settings.activeThreshold };
   const coverage = dataCoverage(store);
 
-  const baseMask = buildMask(store, prep, models, f);
-  const baseAgg = aggregate(store, prep, models, baseMask, range, aggOpts);
-  const population = buildProfiles(store, prep, models, baseAgg, settings);
+  const baseMask = buildMask(store, prepared, models, filters);
+  const baseAgg = aggregate(store, prepared, models, baseMask, range, aggOpts);
+  const population = buildProfiles(store, prepared, models, baseAgg, settings);
 
   let mask = baseMask;
-  let agg = baseAgg;
+  let aggregates = baseAgg;
   let users = population;
   let allowed: Uint8Array | null = null;
   if (segmentFiltered) {
-    allowed = allowedUsers(population, f, nUsers);
+    allowed = allowedUsers(population, filters, nUsers);
     mask = andMasks(baseMask, allowed, store.user);
-    agg = aggregate(store, prep, models, mask, range, aggOpts);
-    const visible = population.profiles.filter((p) => allowed![p.id] === 1);
+    aggregates = aggregate(store, prepared, models, mask, range, aggOpts);
+    const visible = population.profiles.filter((profile) => allowed![profile.id] === 1);
     users = { ...population, profiles: visible, ...summarizeProfiles(visible) };
   }
 
-  const pool = buildPool(store, prep, agg, settings, range, !narrowed);
+  const pool = buildPool(store, prepared, aggregates, settings, range, !narrowed);
   // Seat actions need the real pool size: not for a filtered view, and not when the pool size is unknown (partial export, no seat sizes).
   const seatScope = !narrowed && !pool.capacityExceeded;
   // Unused roster seats are an organization-wide fact: they cannot be attributed to a filtered scope.
@@ -112,14 +112,14 @@ export function analyze(input: AnalysisInput): Analysis {
     settings,
     store,
     rowFiltered,
-    settings.roster.length > 0 ? lastUsageDays(store, prep) : undefined,
+    settings.roster.length > 0 ? lastUsageDays(store, prepared) : undefined,
   );
   const autoRates = buildAutoRates(baseAgg, settings.autoDiscount);
-  const ctx: LeverContext = { agg, models, settings, autoRates };
-  const levers = computeLevers(ctx, DEFAULT_LEVERS, allotmentArray(users, nUsers));
-  const anomalies = findAnomalyDays(store, mask, agg);
-  const trend = weekOverWeek(agg);
-  const plan = runScenario(ctx, pool, users, seats, {
+  const leverContext: LeverContext = { agg: aggregates, models, settings, autoRates };
+  const levers = computeLevers(leverContext, DEFAULT_LEVERS, allotmentArray(users, nUsers));
+  const anomalies = findAnomalyDays(store, mask, aggregates);
+  const trend = weekOverWeek(aggregates);
+  const plan = runScenario(leverContext, pool, users, seats, {
     levers: DEFAULT_LEVERS,
     reclaimIdle: seatScope,
     downgrade: seatScope,
@@ -129,27 +129,27 @@ export function analyze(input: AnalysisInput): Analysis {
   const length = end - start + 1;
   let previous: PreviousPeriod | null = null;
   if (length > 0 && start - length >= store.minDay) {
-    const noDate = buildMask(store, prep, models, { ...f, dateFrom: null, dateTo: null });
+    const noDate = buildMask(store, prepared, models, { ...filters, dateFrom: null, dateTo: null });
     const prevMask = allowed ? andMasks(noDate, allowed, store.user) : noDate;
     previous = { from: start - length, to: start - 1, totals: quickTotals(store, prevMask, start - length, start - 1) };
   }
 
-  const auto = summarizeAuto(agg, settings, coverage.models, autoRates);
-  const rc = { store, models, agg, mask, users, pool, seats, levers, anomalies, trend, settings, narrowed, coverage, auto };
-  const recs = agg.totals.rows > 0 ? buildRecommendations(rc) : [];
+  const auto = summarizeAuto(aggregates, settings, coverage.models, autoRates);
+  const recommendationContext = { store, models, agg: aggregates, mask, users, pool, seats, levers, anomalies, trend, settings, narrowed, coverage, auto };
+  const recommendations = aggregates.totals.rows > 0 ? buildRecommendations(recommendationContext) : [];
   const headline: Headline =
-    agg.totals.rows > 0
-      ? buildHeadline(rc, recs)
+    aggregates.totals.rows > 0
+      ? buildHeadline(recommendationContext, recommendations)
       : { status: 'watch', title: t('No rows match the current filters'), detail: t('Widen the date range or clear some filters.') };
 
   return {
-    range: agg.range,
+    range: aggregates.range,
     narrowed,
     segmentFiltered,
     coverage,
     baseMask,
     mask,
-    agg,
+    agg: aggregates,
     auto,
     autoRates,
     population,
@@ -162,8 +162,8 @@ export function analyze(input: AnalysisInput): Analysis {
     anomalies,
     trend,
     previous,
-    recs,
+    recs: recommendations,
     headline,
-    ms: performance.now() - t0,
+    ms: performance.now() - startMs,
   };
 }

@@ -37,8 +37,8 @@ export function DownloadButton({ store, rows, reverse, label, fileName, primary,
     try {
       const blob = await buildCsv({ store, rows, reverse, signal: control.signal, onProgress: (done, total) => setProgress({ done, total }) });
       if (blob) downloadBlob(fileName, blob);
-    } catch (err) {
-      setFailure(err instanceof Error ? err.message : String(err));
+    } catch (error) {
+      setFailure(error instanceof Error ? error.message : String(error));
     } finally {
       if (abort.current === control) {
         abort.current = null;

@@ -1,7 +1,7 @@
 /** Arabic text for the explanations of the Models metrics (src/lib/metrics/docs/models.ts). */
 import type { Dict } from '../core';
 
-const ar: Dict = {
+const arabic: Dict = {
   // Models used
   'How many different models the usage in the current rows ran on. The line under the number shows how concentrated the usage is.':
     'عدد النماذج المختلفة التي جرى عليها الاستخدام في الصفوف الحالية. يوضح السطر أسفل الرقم مدى تركّز الاستخدام.',
@@ -564,4 +564,4 @@ const ar: Dict = {
     'النموذج الذي سعره الأصلي لاستخدامه المقيس 1,000 دولار وخصمه 100 دولار نسبته 100 ÷ 1,000 دولار = 10%.',
 };
 
-export default ar;
+export default arabic;

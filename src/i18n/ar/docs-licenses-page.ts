@@ -1,7 +1,7 @@
 import type { Dict } from '../core';
 
 /** Arabic for the docs that only the Licenses page uses (`lib/metrics/docs/licenses-page.ts`). */
-const ar: Dict = {
+const arabic: Dict = {
   // license-status-breakdown (the title 'Seats by activity' is in ./licenses.ts)
   'Every seat in the license list, grouped by what the list says about its last activity. The groups add up to all seats.':
     'كل ترخيص في قائمة التراخيص، مجمّعًا حسب ما تقوله القائمة عن آخر نشاط له. مجموع المجموعات يساوي كل التراخيص.',
@@ -61,4 +61,4 @@ const ar: Dict = {
     '250 ترخيصًا، منها 200 لها استخدام في هذا العرض و30 لها استخدام خارجه فقط: 250 − 200 − 30 = 20 ترخيصًا لم تظهر في التقرير قط.',
 };
 
-export default ar;
+export default arabic;

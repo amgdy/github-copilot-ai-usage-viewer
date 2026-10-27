@@ -25,9 +25,9 @@ interface Props {
 }
 
 export function DataSection({ onReplaced }: Props) {
-  const settings = useApp((s) => s.settings);
-  const update = useApp((s) => s.updateSettings);
-  const resetAll = useApp((s) => s.resetSettings);
+  const settings = useApp((state) => state.settings);
+  const update = useApp((state) => state.updateSettings);
+  const resetAll = useApp((state) => state.resetSettings);
   const works = useStorageWorks(settings);
   const picker = useRef<HTMLInputElement>(null);
   // Kept here, not in the section body, because the body is rebuilt whenever the settings are replaced.
@@ -37,8 +37,8 @@ export function DataSection({ onReplaced }: Props) {
 
   const exportFile = () => downloadText(settingsFileName(), settingsJson(settings), 'application/json');
 
-  async function importFile(e: ChangeEvent<HTMLInputElement>) {
-    const input = e.currentTarget;
+  async function importFile(event: ChangeEvent<HTMLInputElement>) {
+    const input = event.currentTarget;
     const file = input.files?.[0];
     if (!file) return;
     const fail = (error: string) => setOutcome({ kind: 'failed', fileName: file.name, error });

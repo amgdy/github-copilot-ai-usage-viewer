@@ -38,7 +38,7 @@ function bigSeat(login: string): Record<string, unknown> {
   };
 }
 
-const seats = (n: number): Record<string, unknown>[] => Array.from({ length: n }, (_, i) => bigSeat(`user${String(i).padStart(3, '0')}`));
+const seats = (seatCount: number): Record<string, unknown>[] => Array.from({ length: seatCount }, (_, seatIndex) => bigSeat(`user${String(seatIndex).padStart(3, '0')}`));
 
 const ACTIVITY = [
   '"Report_Time","Login","Last Authenticated At","Last Activity At","Last Surface Used"',
@@ -46,8 +46,8 @@ const ACTIVITY = [
   '"2026-03-31 06:00:00 UTC","user002","","",""',
 ].join('\n');
 
-const usageRows = (n: number): RowSpec[] =>
-  Array.from({ length: n }, (_, i) => ({ date: `2026-03-${String((i % 28) + 1).padStart(2, '0')}`, user: `user${String(i % 17).padStart(3, '0')}`, gross: 1 + (i % 5) }));
+const usageRows = (rowCount: number): RowSpec[] =>
+  Array.from({ length: rowCount }, (_, rowIndex) => ({ date: `2026-03-${String((rowIndex % 28) + 1).padStart(2, '0')}`, user: `user${String(rowIndex % 17).padStart(3, '0')}`, gross: 1 + (rowIndex % 5) }));
 
 const LICENSE_SAMPLES: Record<string, string> = {
   'REST object': JSON.stringify({ total_seats: 2, seats: seats(2) }),
@@ -57,7 +57,7 @@ const LICENSE_SAMPLES: Record<string, string> = {
   'pretty bare array': JSON.stringify(seats(3), null, 2),
   'slurped pages': JSON.stringify([{ total_seats: 3, seats: seats(2) }, { total_seats: 3, seats: seats(1) }]),
   'paginated pages': JSON.stringify({ total_seats: 4, seats: seats(2) }) + '\n' + JSON.stringify({ total_seats: 4, seats: seats(2) }),
-  'NDJSON': seats(3).map((s) => JSON.stringify(s)).join('\n'),
+  'NDJSON': seats(3).map((seat) => JSON.stringify(seat)).join('\n'),
   'one seat': JSON.stringify(seats(1)[0]),
   'empty answer': '{"total_seats":0,"seats":[]}',
   'Activity report': ACTIVITY,
@@ -86,9 +86,9 @@ describe('classifyUpload: usage reports are never license files', () => {
 
   it('knows the real usage header, with and without a BOM, for every set of columns', () => {
     for (const columns of COLUMN_SETS) {
-      for (const bom of [true, false]) {
-        const text = makeCsv(usageRows(6), { columns, bom });
-        const label = `${columns.join(',')} bom=${bom}`;
+      for (const withByteOrderMark of [true, false]) {
+        const text = makeCsv(usageRows(6), { columns, bom: withByteOrderMark });
+        const label = `${columns.join(',')} bom=${withByteOrderMark}`;
         expect(classifyUpload(text), label).toBe('usage');
         expect(looksLikeLicenseFile(text), label).toBe(false);
         expect(classifyUpload(text, 'AIUsageReport_1_abc.csv'), label).toBe('usage');
@@ -134,18 +134,18 @@ describe('classifyUpload: usage reports are never license files', () => {
 
   it('never calls a part of a usage report a license file', () => {
     const text = makeCsv(usageRows(40));
-    for (let n = 0; n <= 600; n++) {
-      const part = text.slice(0, n);
-      expect(classifyUpload(part), `prefix ${n}`).not.toBe('license');
-      expect(classifyUpload(part, 'x.csv'), `prefix ${n} .csv`).not.toBe('license');
+    for (let prefixLength = 0; prefixLength <= 600; prefixLength++) {
+      const part = text.slice(0, prefixLength);
+      expect(classifyUpload(part), `prefix ${prefixLength}`).not.toBe('license');
+      expect(classifyUpload(part, 'x.csv'), `prefix ${prefixLength} .csv`).not.toBe('license');
     }
-    for (let n = 600; n < text.length; n += 97) expect(classifyUpload(text.slice(0, n)), `prefix ${n}`).toBe('usage');
+    for (let prefixLength = 600; prefixLength < text.length; prefixLength += 97) expect(classifyUpload(text.slice(0, prefixLength)), `prefix ${prefixLength}`).toBe('usage');
   });
 
   it('never calls a usage report with any of its rows removed a license file', () => {
     const lines = makeCsv(usageRows(8)).split('\n');
     for (let drop = 1; drop < lines.length; drop++) {
-      const text = lines.filter((_, i) => i !== drop).join('\n');
+      const text = lines.filter((_, lineIndex) => lineIndex !== drop).join('\n');
       expect(classifyUpload(text), `drop ${drop}`).toBe('usage');
     }
   });
@@ -172,17 +172,17 @@ describe('classifyUpload: license files are never usage reports', () => {
     const text = JSON.stringify({ total_seats: 5000, seats: seats(5000) });
     expect(text.length).toBeGreaterThan(SNIFF_CHARS * 100);
     expect(classifyUpload(text)).toBe('license');
-    for (const cut of [60, 200, 1500, SNIFF_CHARS - 1, SNIFF_CHARS + 1, 6000]) {
-      expect(classifyUpload(text.slice(0, cut)), `cut ${cut}`).toBe('license');
+    for (const cutPosition of [60, 200, 1500, SNIFF_CHARS - 1, SNIFF_CHARS + 1, 6000]) {
+      expect(classifyUpload(text.slice(0, cutPosition)), `cut ${cutPosition}`).toBe('license');
     }
-    const flat = [seats(60)[59]].concat(seats(60)).map((s) => JSON.stringify(s)).join('\n');
+    const flat = [seats(60)[59]].concat(seats(60)).map((seat) => JSON.stringify(seat)).join('\n');
     expect(classifyUpload(flat.slice(0, 5000))).toBe('license');
   });
 
   it('knows a large Activity report and a large login list', () => {
-    const rows = Array.from({ length: 5000 }, (_, i) => `"2026-03-31 06:00:00 UTC","user${i}","2026-03-30T08:00:00Z","2026-03-29T10:15:00Z","vscode/1.97.1/copilot-chat/0.24.1"`);
+    const rows = Array.from({ length: 5000 }, (_, rowIndex) => `"2026-03-31 06:00:00 UTC","user${rowIndex}","2026-03-30T08:00:00Z","2026-03-29T10:15:00Z","vscode/1.97.1/copilot-chat/0.24.1"`);
     expect(classifyUpload([ACTIVITY.split('\n')[0], ...rows].join('\n'))).toBe('license');
-    const list = Array.from({ length: 50_000 }, (_, i) => `user${i}`).join('\n');
+    const list = Array.from({ length: 50_000 }, (_, loginIndex) => `user${loginIndex}`).join('\n');
     expect(classifyUpload(list)).toBe('license');
     expect(classifyUpload(list, 'logins.txt')).toBe('license');
   });
@@ -246,9 +246,9 @@ describe('classifyUpload: other files', () => {
     for (const text of samples) {
       let best = Infinity;
       for (let i = 0; i < 3; i++) {
-        const t0 = performance.now();
+        const startMs = performance.now();
         classifyUpload(text);
-        best = Math.min(best, performance.now() - t0);
+        best = Math.min(best, performance.now() - startMs);
       }
       expect(best).toBeLessThan(100);
     }

@@ -40,9 +40,9 @@ function PageFallback() {
 }
 
 function MobileNav() {
-  const open = useApp((s) => s.navOpen);
-  const setOpen = useApp((s) => s.setNavOpen);
-  const setPickingData = useApp((s) => s.setPickingData);
+  const open = useApp((state) => state.navOpen);
+  const setOpen = useApp((state) => state.setNavOpen);
+  const setPickingData = useApp((state) => state.setPickingData);
   return (
     <Drawer
       open={open}

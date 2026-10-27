@@ -17,11 +17,11 @@ interface PriceEditorProps {
   onCancel: () => void;
 }
 
-const fieldValues = (r: Rates | null): Record<RateKey, string> => ({
-  input: numText(r?.input),
-  cachedInput: numText(r?.cachedInput),
-  cacheWrite: numText(r?.cacheWrite),
-  output: numText(r?.output),
+const fieldValues = (rates: Rates | null): Record<RateKey, string> => ({
+  input: numText(rates?.input),
+  cachedInput: numText(rates?.cachedInput),
+  cacheWrite: numText(rates?.cacheWrite),
+  output: numText(rates?.output),
 });
 
 /** Four price fields saved together, so a half-filled set is never stored. */
@@ -41,8 +41,8 @@ export function PriceEditor({ model, initial, builtIn, canUseBuiltIn, onSave, on
       className="mt-3 rounded-md border border-border-muted bg-surface-2 p-3"
       aria-label={t('Prices for {model}', { model })}
       noValidate
-      onSubmit={(e) => {
-        e.preventDefault();
+      onSubmit={(event) => {
+        event.preventDefault();
         submit();
       }}
     >
@@ -50,30 +50,30 @@ export function PriceEditor({ model, initial, builtIn, canUseBuiltIn, onSave, on
         {t('Prices are in US dollars per 1 million tokens. They are used to price the tokens of this model in the estimates that work from token counts.')}
       </p>
       <div className="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {RATE_FIELDS.map((f) => {
-          const error = tried ? parsed.errors[f.key] : undefined;
-          const note = error ?? (f.hint ? t(f.hint) : undefined);
+        {RATE_FIELDS.map((field) => {
+          const error = tried ? parsed.errors[field.key] : undefined;
+          const note = error ?? (field.hint ? t(field.hint) : undefined);
           return (
-            <div key={f.key} className="min-w-0">
-              <label className="label" htmlFor={`${id}-${f.key}`}>
-                {f.optional ? t('{name} (optional)', { name: t(f.label) }) : t(f.label)}
+            <div key={field.key} className="min-w-0">
+              <label className="label" htmlFor={`${id}-${field.key}`}>
+                {field.optional ? t('{name} (optional)', { name: t(field.label) }) : t(field.label)}
               </label>
               <div className="relative">
                 <span className="pointer-events-none absolute inset-y-0 start-2.5 flex items-center text-sm text-fg-subtle">$</span>
                 <input
-                  id={`${id}-${f.key}`}
+                  id={`${id}-${field.key}`}
                   className={cx('input num ps-6', error && 'border-bad focus:border-bad focus:ring-bad/30')}
                   inputMode="decimal"
                   autoComplete="off"
                   spellCheck={false}
-                  value={values[f.key]}
+                  value={values[field.key]}
                   aria-invalid={error ? true : undefined}
-                  aria-describedby={note ? `${id}-${f.key}-note` : undefined}
-                  onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
+                  aria-describedby={note ? `${id}-${field.key}-note` : undefined}
+                  onChange={(event) => setValues((previous) => ({ ...previous, [field.key]: event.target.value }))}
                 />
               </div>
               {note ? (
-                <p id={`${id}-${f.key}-note`} role={error ? 'alert' : undefined} className={cx('mt-1 text-[11px]', error ? 'text-bad' : 'text-fg-subtle')}>
+                <p id={`${id}-${field.key}-note`} role={error ? 'alert' : undefined} className={cx('mt-1 text-[11px]', error ? 'text-bad' : 'text-fg-subtle')}>
                   {note}
                 </p>
               ) : null}

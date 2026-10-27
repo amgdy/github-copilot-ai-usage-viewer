@@ -21,12 +21,12 @@ function compareText(a: string, b: string): number {
 /** Orders options A to Z by `labelOf`, keeping pinned values first. Stable, and returns a new array. */
 export function sortOptions<O extends { value: string | number }>(
   options: readonly O[],
-  labelOf: (o: O) => string,
+  labelOf: (option: O) => string,
   order: OptionOrder = 'alpha',
   pinned: readonly (string | number)[] = PINNED_VALUES,
 ): O[] {
   if (order === 'given') return [...options];
-  const top = options.filter((o) => pinned.includes(o.value));
-  const rest = options.filter((o) => !pinned.includes(o.value));
+  const top = options.filter((option) => pinned.includes(option.value));
+  const rest = options.filter((option) => !pinned.includes(option.value));
   return [...top, ...rest.sort((a, b) => compareText(labelOf(a), labelOf(b)))];
 }

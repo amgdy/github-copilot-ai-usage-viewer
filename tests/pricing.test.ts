@@ -7,60 +7,60 @@ import { mulberry32 } from './helpers';
 import { FIXTURE_A, loadFixtureStore } from './fixtures';
 
 const byName = (name: string): CardEntry => {
-  const e = PRICE_CARD.find((c) => c.name === name);
-  if (!e) throw new Error(`not on the card: ${name}`);
-  return e;
+  const cardEntry = PRICE_CARD.find((candidate) => candidate.name === name);
+  if (!cardEntry) throw new Error(`not on the card: ${name}`);
+  return cardEntry;
 };
 
 const RATE_KEYS = ['input', 'cachedInput', 'cacheWrite', 'output'] as const;
 
 const storeOf = (names: string[]): Pick<DataStore, 'dicts'> =>
-  ({ dicts: { model: { values: names, index: new Map(names.map((n, i) => [n, i])) } } }) as unknown as Pick<DataStore, 'dicts'>;
+  ({ dicts: { model: { values: names, index: new Map(names.map((name, index) => [name, index])) } } }) as unknown as Pick<DataStore, 'dicts'>;
 
 describe('PRICE_CARD', () => {
   it('has unique model names and unique lookup keys', () => {
-    expect(new Set(PRICE_CARD.map((e) => e.name)).size).toBe(PRICE_CARD.length);
-    expect(new Set(PRICE_CARD.map((e) => cardKey(e.name))).size).toBe(PRICE_CARD.length);
+    expect(new Set(PRICE_CARD.map((cardEntry) => cardEntry.name)).size).toBe(PRICE_CARD.length);
+    expect(new Set(PRICE_CARD.map((cardEntry) => cardKey(cardEntry.name))).size).toBe(PRICE_CARD.length);
   });
 
   it('uses known vendors and categories, and the vendor agrees with the name-based inference', () => {
-    const categories = CATEGORIES.filter((c) => c !== 'Unknown');
-    for (const e of PRICE_CARD) {
-      expect(VENDORS, e.name).toContain(e.vendor);
-      expect(categories, e.name).toContain(e.category);
-      expect(inferVendor(e.name), e.name).toBe(e.vendor);
+    const categories = CATEGORIES.filter((category) => category !== 'Unknown');
+    for (const cardEntry of PRICE_CARD) {
+      expect(VENDORS, cardEntry.name).toContain(cardEntry.vendor);
+      expect(categories, cardEntry.name).toContain(cardEntry.category);
+      expect(inferVendor(cardEntry.name), cardEntry.name).toBe(cardEntry.vendor);
     }
   });
 
   it('has finite, ordered base rates: cached < input < output, and a cache write that is free or at least the input rate', () => {
-    for (const e of PRICE_CARD) {
-      for (const k of RATE_KEYS) {
-        expect(Number.isFinite(e.base[k]), `${e.name}.${k}`).toBe(true);
-        expect(e.base[k], `${e.name}.${k}`).toBeGreaterThanOrEqual(0);
+    for (const cardEntry of PRICE_CARD) {
+      for (const rateKey of RATE_KEYS) {
+        expect(Number.isFinite(cardEntry.base[rateKey]), `${cardEntry.name}.${rateKey}`).toBe(true);
+        expect(cardEntry.base[rateKey], `${cardEntry.name}.${rateKey}`).toBeGreaterThanOrEqual(0);
       }
-      expect(e.base.cachedInput, e.name).toBeGreaterThan(0);
-      expect(e.base.cachedInput, e.name).toBeLessThan(e.base.input);
-      expect(e.base.output, e.name).toBeGreaterThan(e.base.input);
-      if (e.base.cacheWrite !== 0) expect(e.base.cacheWrite, e.name).toBeGreaterThanOrEqual(e.base.input);
+      expect(cardEntry.base.cachedInput, cardEntry.name).toBeGreaterThan(0);
+      expect(cardEntry.base.cachedInput, cardEntry.name).toBeLessThan(cardEntry.base.input);
+      expect(cardEntry.base.output, cardEntry.name).toBeGreaterThan(cardEntry.base.input);
+      if (cardEntry.base.cacheWrite !== 0) expect(cardEntry.base.cacheWrite, cardEntry.name).toBeGreaterThanOrEqual(cardEntry.base.input);
     }
   });
 
   it('has a long tier only together with its threshold, and long rates never below the base rates', () => {
-    for (const e of PRICE_CARD) {
-      if (!e.long) {
-        expect(e.longThreshold, e.name).toBeUndefined();
+    for (const cardEntry of PRICE_CARD) {
+      if (!cardEntry.long) {
+        expect(cardEntry.longThreshold, cardEntry.name).toBeUndefined();
         continue;
       }
-      expect(Number.isInteger(e.longThreshold) && (e.longThreshold ?? 0) > 0, `${e.name} threshold`).toBe(true);
-      for (const k of RATE_KEYS) expect(e.long[k], `${e.name}.${k}`).toBeGreaterThanOrEqual(e.base[k]);
-      expect(e.long.cacheWrite === 0, `${e.name}: cache write is free in both tiers or in neither`).toBe(e.base.cacheWrite === 0);
+      expect(Number.isInteger(cardEntry.longThreshold) && (cardEntry.longThreshold ?? 0) > 0, `${cardEntry.name} threshold`).toBe(true);
+      for (const rateKey of RATE_KEYS) expect(cardEntry.long[rateKey], `${cardEntry.name}.${rateKey}`).toBeGreaterThanOrEqual(cardEntry.base[rateKey]);
+      expect(cardEntry.long.cacheWrite === 0, `${cardEntry.name}: cache write is free in both tiers or in neither`).toBe(cardEntry.base.cacheWrite === 0);
     }
   });
 
   it('says where and when the card was taken from; notes are never empty', () => {
     expect(CARD_SOURCE).toMatch(/^https:\/\/docs\.github\.com\//);
     expect(CARD_AS_OF).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    for (const e of PRICE_CARD) if (e.note !== undefined) expect(e.note.trim().length, e.name).toBeGreaterThan(0);
+    for (const cardEntry of PRICE_CARD) if (cardEntry.note !== undefined) expect(cardEntry.note.trim().length, cardEntry.name).toBeGreaterThan(0);
   });
 
   it('uses the documented Auto discount as the default for the simulator', () => {
@@ -84,12 +84,12 @@ describe('cardKey', () => {
 
 describe('lookupCard', () => {
   it('finds every card entry by its own name, in other cases and with hyphens instead of spaces', () => {
-    for (const e of PRICE_CARD) {
-      expect(lookupCard(e.name), e.name).toBe(e);
-      expect(lookupCard(e.name.toUpperCase()), e.name).toBe(e);
-      expect(lookupCard(e.name.toLowerCase()), e.name).toBe(e);
-      expect(lookupCard(e.name.replace(/ /g, '-')), e.name).toBe(e);
-      expect(lookupCard(`  ${e.name.replace(/ /g, '  ')} `), e.name).toBe(e);
+    for (const cardEntry of PRICE_CARD) {
+      expect(lookupCard(cardEntry.name), cardEntry.name).toBe(cardEntry);
+      expect(lookupCard(cardEntry.name.toUpperCase()), cardEntry.name).toBe(cardEntry);
+      expect(lookupCard(cardEntry.name.toLowerCase()), cardEntry.name).toBe(cardEntry);
+      expect(lookupCard(cardEntry.name.replace(/ /g, '-')), cardEntry.name).toBe(cardEntry);
+      expect(lookupCard(`  ${cardEntry.name.replace(/ /g, '  ')} `), cardEntry.name).toBe(cardEntry);
     }
   });
 
@@ -110,8 +110,8 @@ describe('lookupCard', () => {
   });
 
   it('returns undefined for unknown, empty or partial names', () => {
-    for (const n of ['', ' ', '()', 'Llama 3', 'GPT-4', 'Auto', 'gpt-5.6', 'Claude Opus', 'Claude Opus 4.8 Turbo', 'Opus 4']) {
-      expect(lookupCard(n), JSON.stringify(n)).toBeUndefined();
+    for (const name of ['', ' ', '()', 'Llama 3', 'GPT-4', 'Auto', 'gpt-5.6', 'Claude Opus', 'Claude Opus 4.8 Turbo', 'Opus 4']) {
+      expect(lookupCard(name), JSON.stringify(name)).toBeUndefined();
     }
   });
 });
@@ -141,11 +141,11 @@ describe('resolveModelMeta', () => {
   const rates: Rates = { input: 1, cachedInput: 0.1, cacheWrite: 0, output: 5 };
 
   it('takes everything from the card for a known model', () => {
-    const e = byName('GPT-6 Astra');
-    const m = resolveModelMeta(3, 'GPT-6 Astra');
-    expect(m).toMatchObject({ id: 3, name: 'GPT-6 Astra', vendor: 'OpenAI', category: 'Powerful', priced: true, fromCard: true, overridden: false, longThreshold: 272_000 });
-    expect(m.base).toEqual(e.base);
-    expect(m.long).toEqual(e.long);
+    const cardEntry = byName('GPT-6 Astra');
+    const meta = resolveModelMeta(3, 'GPT-6 Astra');
+    expect(meta).toMatchObject({ id: 3, name: 'GPT-6 Astra', vendor: 'OpenAI', category: 'Powerful', priced: true, fromCard: true, overridden: false, longThreshold: 272_000 });
+    expect(meta.base).toEqual(cardEntry.base);
+    expect(meta.long).toEqual(cardEntry.long);
     expect(resolveModelMeta(0, 'Gemini 3.8 Flash').note).toBe(byName('Gemini 3.8 Flash').note);
   });
 
@@ -160,17 +160,17 @@ describe('resolveModelMeta', () => {
   });
 
   it('lets an override price a model the card does not know', () => {
-    const m = resolveModelMeta(2, 'Llama 4', { 'Llama 4': { base: rates, category: 'Versatile', vendor: 'Other' } });
-    expect(m).toMatchObject({ priced: true, overridden: true, fromCard: false, category: 'Versatile', long: null, longThreshold: 0 });
-    expect(m.base).toEqual(rates);
+    const meta = resolveModelMeta(2, 'Llama 4', { 'Llama 4': { base: rates, category: 'Versatile', vendor: 'Other' } });
+    expect(meta).toMatchObject({ priced: true, overridden: true, fromCard: false, category: 'Versatile', long: null, longThreshold: 0 });
+    expect(meta.base).toEqual(rates);
   });
 
   it('lets an override replace the rates of a card model while keeping its long tier', () => {
-    const e = byName('GPT-6 Astra');
-    const m = resolveModelMeta(0, 'GPT-6 Astra', { 'GPT-6 Astra': { base: rates } });
-    expect(m.base).toEqual(rates);
-    expect(m.long).toEqual(e.long);
-    expect(m).toMatchObject({ overridden: true, fromCard: true, longThreshold: 272_000 });
+    const cardEntry = byName('GPT-6 Astra');
+    const meta = resolveModelMeta(0, 'GPT-6 Astra', { 'GPT-6 Astra': { base: rates } });
+    expect(meta.base).toEqual(rates);
+    expect(meta.long).toEqual(cardEntry.long);
+    expect(meta).toMatchObject({ overridden: true, fromCard: true, longThreshold: 272_000 });
   });
 
   it('lets an override drop the long tier (null), change its threshold, or supply one with the default threshold', () => {
@@ -181,15 +181,15 @@ describe('resolveModelMeta', () => {
   });
 
   it('ignores an override stored under another name', () => {
-    const m = resolveModelMeta(0, 'GPT-6 Astra', { 'Some other model': { base: rates } });
-    expect(m.overridden).toBe(false);
-    expect(m.base).toEqual(byName('GPT-6 Astra').base);
+    const meta = resolveModelMeta(0, 'GPT-6 Astra', { 'Some other model': { base: rates } });
+    expect(meta.overridden).toBe(false);
+    expect(meta.base).toEqual(byName('GPT-6 Astra').base);
   });
 
   it('does not take a model name such as "constructor" or "__proto__" for an override', () => {
     for (const name of ['constructor', 'toString', 'hasOwnProperty', '__proto__', 'valueOf']) {
-      const m = resolveModelMeta(0, name, {});
-      expect(m, name).toMatchObject({ overridden: false, priced: false, base: null, fromCard: false });
+      const meta = resolveModelMeta(0, name, {});
+      expect(meta, name).toMatchObject({ overridden: false, priced: false, base: null, fromCard: false });
     }
     expect(resolveModelMeta(0, 'constructor', { constructor: { base: rates } })).toMatchObject({ overridden: true, priced: true });
   });
@@ -199,100 +199,100 @@ describe('buildModelTable', () => {
   const names = ['', 'GPT-6 Astra', 'Claude Opus 5', 'Llama 4', 'Kimi K3'];
 
   it('builds one row per dictionary entry, with rates converted to USD per token', () => {
-    const t = buildModelTable(storeOf(names));
-    for (const arr of [t.priced, t.cat, t.vendor, t.rIn, t.rCr, t.rCw, t.rOut, t.hasLong, t.longThr, t.lIn, t.lCr, t.lCw, t.lOut]) expect(arr).toHaveLength(names.length);
-    expect(t.meta.map((m) => m.id)).toEqual([0, 1, 2, 3, 4]);
-    expect(t.meta.map((m) => m.name)).toEqual(names);
+    const modelTable = buildModelTable(storeOf(names));
+    for (const column of [modelTable.priced, modelTable.cat, modelTable.vendor, modelTable.rIn, modelTable.rCr, modelTable.rCw, modelTable.rOut, modelTable.hasLong, modelTable.longThr, modelTable.lIn, modelTable.lCr, modelTable.lCw, modelTable.lOut]) expect(column).toHaveLength(names.length);
+    expect(modelTable.meta.map((meta) => meta.id)).toEqual([0, 1, 2, 3, 4]);
+    expect(modelTable.meta.map((meta) => meta.name)).toEqual(names);
 
     const astra = byName('GPT-6 Astra');
-    expect(t.priced[1]).toBe(1);
-    expect(t.rIn[1]).toBeCloseTo(astra.base.input / 1e6, 15);
-    expect(t.rCr[1]).toBeCloseTo(astra.base.cachedInput / 1e6, 15);
-    expect(t.rCw[1]).toBeCloseTo(astra.base.cacheWrite / 1e6, 15);
-    expect(t.rOut[1]).toBeCloseTo(astra.base.output / 1e6, 15);
-    expect(t.hasLong[1]).toBe(1);
-    expect(t.longThr[1]).toBe(astra.longThreshold);
-    expect(t.lIn[1]).toBeCloseTo((astra.long as Rates).input / 1e6, 15);
-    expect(t.lOut[1]).toBeCloseTo((astra.long as Rates).output / 1e6, 15);
+    expect(modelTable.priced[1]).toBe(1);
+    expect(modelTable.rIn[1]).toBeCloseTo(astra.base.input / 1e6, 15);
+    expect(modelTable.rCr[1]).toBeCloseTo(astra.base.cachedInput / 1e6, 15);
+    expect(modelTable.rCw[1]).toBeCloseTo(astra.base.cacheWrite / 1e6, 15);
+    expect(modelTable.rOut[1]).toBeCloseTo(astra.base.output / 1e6, 15);
+    expect(modelTable.hasLong[1]).toBe(1);
+    expect(modelTable.longThr[1]).toBe(astra.longThreshold);
+    expect(modelTable.lIn[1]).toBeCloseTo((astra.long as Rates).input / 1e6, 15);
+    expect(modelTable.lOut[1]).toBeCloseTo((astra.long as Rates).output / 1e6, 15);
   });
 
   it('indexes categories and vendors into CATEGORIES and VENDORS, with Unknown / Other for unpriced models', () => {
-    const t = buildModelTable(storeOf(names));
-    for (const [i, n] of names.entries()) {
-      const card = lookupCard(n);
-      expect(CATEGORIES[t.cat[i]], n).toBe(card?.category ?? 'Unknown');
-      expect(VENDORS[t.vendor[i]], n).toBe(card?.vendor ?? 'Other');
+    const modelTable = buildModelTable(storeOf(names));
+    for (const [index, name] of names.entries()) {
+      const card = lookupCard(name);
+      expect(CATEGORIES[modelTable.cat[index]], name).toBe(card?.category ?? 'Unknown');
+      expect(VENDORS[modelTable.vendor[index]], name).toBe(card?.vendor ?? 'Other');
     }
-    expect([t.priced[0], t.priced[3]]).toEqual([0, 0]);
-    expect([t.rIn[3], t.rOut[3], t.lIn[3], t.hasLong[3]]).toEqual([0, 0, 0, 0]);
+    expect([modelTable.priced[0], modelTable.priced[3]]).toEqual([0, 0]);
+    expect([modelTable.rIn[3], modelTable.rOut[3], modelTable.lIn[3], modelTable.hasLong[3]]).toEqual([0, 0, 0, 0]);
   });
 
   it('has no long tier for a model that does not have one', () => {
-    const t = buildModelTable(storeOf(names));
-    expect([t.hasLong[2], t.longThr[2], t.lIn[2], t.lCr[2], t.lCw[2], t.lOut[2]]).toEqual([0, 0, 0, 0, 0, 0]);
+    const modelTable = buildModelTable(storeOf(names));
+    expect([modelTable.hasLong[2], modelTable.longThr[2], modelTable.lIn[2], modelTable.lCr[2], modelTable.lCw[2], modelTable.lOut[2]]).toEqual([0, 0, 0, 0, 0, 0]);
   });
 
   it('applies overrides: an override prices an unknown model and replaces a long tier', () => {
     const rates: Rates = { input: 1, cachedInput: 0.1, cacheWrite: 0, output: 5 };
-    const t = buildModelTable(storeOf(names), { 'Llama 4': { base: rates, long: { ...rates, input: 2 }, longThreshold: 1000 }, 'GPT-6 Astra': { long: null } });
-    expect(t.priced[3]).toBe(1);
-    expect(t.rIn[3]).toBeCloseTo(1e-6, 15);
-    expect(t.rOut[3]).toBeCloseTo(5e-6, 15);
-    expect([t.hasLong[3], t.longThr[3]]).toEqual([1, 1000]);
-    expect(t.lIn[3]).toBeCloseTo(2e-6, 15);
-    expect(t.hasLong[1]).toBe(0);
-    expect(t.meta[1].overridden).toBe(true);
+    const modelTable = buildModelTable(storeOf(names), { 'Llama 4': { base: rates, long: { ...rates, input: 2 }, longThreshold: 1000 }, 'GPT-6 Astra': { long: null } });
+    expect(modelTable.priced[3]).toBe(1);
+    expect(modelTable.rIn[3]).toBeCloseTo(1e-6, 15);
+    expect(modelTable.rOut[3]).toBeCloseTo(5e-6, 15);
+    expect([modelTable.hasLong[3], modelTable.longThr[3]]).toEqual([1, 1000]);
+    expect(modelTable.lIn[3]).toBeCloseTo(2e-6, 15);
+    expect(modelTable.hasLong[1]).toBe(0);
+    expect(modelTable.meta[1].overridden).toBe(true);
   });
 
   it('copes with an empty dictionary', () => {
-    const t = buildModelTable(storeOf([]));
-    expect(t.meta).toEqual([]);
-    expect(t.priced).toHaveLength(0);
+    const modelTable = buildModelTable(storeOf([]));
+    expect(modelTable.meta).toEqual([]);
+    expect(modelTable.priced).toHaveLength(0);
   });
 });
 
 describe('listCost / listCostLong', () => {
-  const names = PRICE_CARD.map((e) => e.name);
-  const t = buildModelTable(storeOf(['', ...names, 'Llama 4']));
+  const names = PRICE_CARD.map((cardEntry) => cardEntry.name);
+  const modelTable = buildModelTable(storeOf(['', ...names, 'Llama 4']));
   const idOf = (name: string): number => names.indexOf(name) + 1;
   const unpriced = [0, names.length + 1];
 
   it('multiplies the token mix by the per-million rates (hand-computed for GPT-6 Astra and Claude Opus 5)', () => {
     // 1M input at $10, 2M cached at $1, 3M cache writes at $12.50, 4M output at $50.
-    expect(listCost(t, idOf('GPT-6 Astra'), 1e6, 2e6, 3e6, 4e6)).toBeCloseTo(10 + 2 + 37.5 + 200, 9);
-    expect(listCostLong(t, idOf('GPT-6 Astra'), 1e6, 2e6, 3e6, 4e6)).toBeCloseTo(20 + 4 + 75 + 300, 9);
-    expect(listCost(t, idOf('Claude Opus 5'), 1e6, 2e6, 3e6, 4e6)).toBeCloseTo(5 + 1 + 18.75 + 100, 9);
+    expect(listCost(modelTable, idOf('GPT-6 Astra'), 1e6, 2e6, 3e6, 4e6)).toBeCloseTo(10 + 2 + 37.5 + 200, 9);
+    expect(listCostLong(modelTable, idOf('GPT-6 Astra'), 1e6, 2e6, 3e6, 4e6)).toBeCloseTo(20 + 4 + 75 + 300, 9);
+    expect(listCost(modelTable, idOf('Claude Opus 5'), 1e6, 2e6, 3e6, 4e6)).toBeCloseTo(5 + 1 + 18.75 + 100, 9);
   });
 
   it('prices one million tokens of each kind at the sum of the card rates, for every model and both tiers', () => {
-    for (const e of PRICE_CARD) {
-      const m = idOf(e.name);
-      const sum = (r: Rates): number => r.input + r.cachedInput + r.cacheWrite + r.output;
-      expect(listCost(t, m, 1e6, 1e6, 1e6, 1e6), e.name).toBeCloseTo(sum(e.base), 9);
-      expect(listCostLong(t, m, 1e6, 1e6, 1e6, 1e6), e.name).toBeCloseTo(sum(e.long ?? e.base), 9);
+    for (const cardEntry of PRICE_CARD) {
+      const modelId = idOf(cardEntry.name);
+      const sum = (rates: Rates): number => rates.input + rates.cachedInput + rates.cacheWrite + rates.output;
+      expect(listCost(modelTable, modelId, 1e6, 1e6, 1e6, 1e6), cardEntry.name).toBeCloseTo(sum(cardEntry.base), 9);
+      expect(listCostLong(modelTable, modelId, 1e6, 1e6, 1e6, 1e6), cardEntry.name).toBeCloseTo(sum(cardEntry.long ?? cardEntry.base), 9);
     }
   });
 
   it('falls back to the default tier when a model has no long tier, and is zero for unpriced models and for no tokens', () => {
     const opus = idOf('Claude Opus 5');
-    expect(listCostLong(t, opus, 123_456, 7, 89, 1_000)).toBe(listCost(t, opus, 123_456, 7, 89, 1_000));
-    for (const m of unpriced) {
-      expect(listCost(t, m, 1e6, 1e6, 1e6, 1e6)).toBe(0);
-      expect(listCostLong(t, m, 1e6, 1e6, 1e6, 1e6)).toBe(0);
+    expect(listCostLong(modelTable, opus, 123_456, 7, 89, 1_000)).toBe(listCost(modelTable, opus, 123_456, 7, 89, 1_000));
+    for (const modelId of unpriced) {
+      expect(listCost(modelTable, modelId, 1e6, 1e6, 1e6, 1e6)).toBe(0);
+      expect(listCostLong(modelTable, modelId, 1e6, 1e6, 1e6, 1e6)).toBe(0);
     }
-    for (const m of [1, 5, 9]) expect(listCost(t, m, 0, 0, 0, 0)).toBe(0);
+    for (const modelId of [1, 5, 9]) expect(listCost(modelTable, modelId, 0, 0, 0, 0)).toBe(0);
   });
 
   it('is linear in the token counts and never smaller with a longer tier', () => {
-    const rnd = mulberry32(2026);
+    const random = mulberry32(2026);
     for (let k = 0; k < 200; k++) {
-      const m = 1 + Math.floor(rnd() * names.length);
-      const a = [0, 0, 0, 0].map(() => Math.floor(rnd() * 5e6));
-      const b = [0, 0, 0, 0].map(() => Math.floor(rnd() * 5e6));
-      const cost = (x: number[]): number => listCost(t, m, x[0], x[1], x[2], x[3]);
-      expect(cost(a.map((v, i) => v + b[i]))).toBeCloseTo(cost(a) + cost(b), 6);
-      expect(cost(a.map((v) => v * 3))).toBeCloseTo(3 * cost(a), 6);
-      expect(listCostLong(t, m, a[0], a[1], a[2], a[3])).toBeGreaterThanOrEqual(cost(a) - 1e-12);
+      const modelId = 1 + Math.floor(random() * names.length);
+      const firstMix = [0, 0, 0, 0].map(() => Math.floor(random() * 5e6));
+      const secondMix = [0, 0, 0, 0].map(() => Math.floor(random() * 5e6));
+      const cost = (mix: number[]): number => listCost(modelTable, modelId, mix[0], mix[1], mix[2], mix[3]);
+      expect(cost(firstMix.map((tokenCount, index) => tokenCount + secondMix[index]))).toBeCloseTo(cost(firstMix) + cost(secondMix), 6);
+      expect(cost(firstMix.map((tokenCount) => tokenCount * 3))).toBeCloseTo(3 * cost(firstMix), 6);
+      expect(listCostLong(modelTable, modelId, firstMix[0], firstMix[1], firstMix[2], firstMix[3])).toBeGreaterThanOrEqual(cost(firstMix) - 1e-12);
     }
   });
 });
@@ -300,11 +300,11 @@ describe('listCost / listCostLong', () => {
 describe('the card against billing', () => {
   it('reproduces the pool-used fixture: gross equals the list cost, or 90% of it on the Auto GPT-5.3-Codex rows', async () => {
     const store = await loadFixtureStore([FIXTURE_A]);
-    const t = buildModelTable(store);
+    const modelTable = buildModelTable(store);
     let discounted = 0;
     for (let i = 0; i < store.n; i++) {
       const model = store.dicts.model.values[store.model[i]];
-      const cost = listCost(t, store.model[i], store.input[i], store.cacheRead[i], store.cacheWrite[i], store.output[i]);
+      const cost = listCost(modelTable, store.model[i], store.input[i], store.cacheRead[i], store.cacheWrite[i], store.output[i]);
       expect(cost, model).toBeGreaterThan(0);
       const ratio = store.gross[i] / cost;
       if (Math.abs(ratio - 1) < 1e-3) continue;

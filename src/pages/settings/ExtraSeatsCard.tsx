@@ -16,10 +16,10 @@ const PLANS: { key: Plan; name: string; input: string; plan: 'Business' | 'Enter
 ];
 
 export function ExtraSeatsCard() {
-  const extra = useApp((s) => s.settings.extraSeats);
-  const update = useApp((s) => s.updateSettings);
+  const extra = useApp((state) => state.settings.extraSeats);
+  const update = useApp((state) => state.updateSettings);
 
-  const credits = PLANS.reduce((sum, p) => sum + extra[p.key] * (PLAN_CREDITS[p.plan] ?? 0), 0);
+  const credits = PLANS.reduce((sum, seatPlan) => sum + extra[seatPlan.key] * (PLAN_CREDITS[seatPlan.plan] ?? 0), 0);
 
   return (
     <Card title={t('Extra seats not in the report')} subtitle={t('Seats you pay for but cannot name, for example when you only know the count.')}>
@@ -29,32 +29,32 @@ export function ExtraSeatsCard() {
         )}
       </p>
       <div className="divide-y divide-border-muted">
-        {PLANS.map((p) => {
-          const each = PLAN_CREDITS[p.plan] ?? 0;
+        {PLANS.map((seatPlan) => {
+          const each = PLAN_CREDITS[seatPlan.plan] ?? 0;
           return (
             <ThresholdRow
-              key={p.key}
-              label={t(p.name)}
+              key={seatPlan.key}
+              label={t(seatPlan.name)}
               description={t('{plan} seats include {credits} AI credits ({usd}) each month.', {
-                plan: p.plan,
+                plan: seatPlan.plan,
                 credits: fmtInt(each),
-                usd: fmtUSD(PLAN_PRICE[p.plan] ?? each * CREDIT_USD, 0),
+                usd: fmtUSD(PLAN_PRICE[seatPlan.plan] ?? each * CREDIT_USD, 0),
               })}
               hint={
-                extra[p.key] > 0
-                  ? t('Adds {credits} AI credits ({usd}) a month.', { credits: fmtInt(extra[p.key] * each), usd: fmtUSD(extra[p.key] * each * CREDIT_USD, 0) })
+                extra[seatPlan.key] > 0
+                  ? t('Adds {credits} AI credits ({usd}) a month.', { credits: fmtInt(extra[seatPlan.key] * each), usd: fmtUSD(extra[seatPlan.key] * each * CREDIT_USD, 0) })
                   : t('Default {value}', { value: fmtInt(0) })
               }
             >
               <NumInput
-                label={t(p.input)}
-                value={extra[p.key]}
+                label={t(seatPlan.input)}
+                value={extra[seatPlan.key]}
                 integer
                 min={LIMITS.extraSeats.min}
                 max={LIMITS.extraSeats.max}
                 digits={0}
-                onCommit={(v) => {
-                  if (v !== null) update({ extraSeats: { ...extra, [p.key]: v } });
+                onCommit={(seatCount) => {
+                  if (seatCount !== null) update({ extraSeats: { ...extra, [seatPlan.key]: seatCount } });
                 }}
               />
             </ThresholdRow>

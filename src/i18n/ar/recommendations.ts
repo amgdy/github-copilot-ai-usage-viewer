@@ -1,10 +1,10 @@
 import type { Dict, PluralEntry } from '../core';
 
 /** Arabic counted sentence: one, two, 3 to 10, 11 to 99, and 0 or 100 and up. */
-const p = (one: string, two: string, few: string, many: string, other: string): PluralEntry => ({ zero: other, one, two, few, many, other });
+const plural = (one: string, two: string, few: string, many: string, other: string): PluralEntry => ({ zero: other, one, two, few, many, other });
 
 /** Arabic for the Recommendations page, the recommendation engine, the personal tips and the executive summary. */
-const ar: Dict = {
+const arabic: Dict = {
   // Recommendation card
   'Cash saved per month. This filtered view already has billed overage, so at least this much is cash. Included credits cannot be split for a filtered view, so the real saving can be higher.':
     'المبلغ النقدي الموفَّر شهريًا. في هذا العرض المصفّى مبلغ مدفوع إضافيًا بالفعل، لذا فهذا المقدار على الأقل نقد. لا يمكن تقسيم الأرصدة المشمولة في عرض مصفّى، لذلك قد يكون التوفير الفعلي أعلى.',
@@ -81,7 +81,7 @@ const ar: Dict = {
     'وسّع الاستخدام إلى الفرق التي لديها تراخيص لكن استخدامها قليل، مثلًا بجلسات تدريب قصيرة.',
   'Reclaim {seats} to save about {amount}/month': 'استرجاع التراخيص ({seats}) يوفّر نحو {amount} شهريًا',
   '{seats}, but only {amount}/month is recoverable': '{seats}، لكن يمكن استرداد {amount} شهريًا فقط',
-  '{n} idle seats currently fund the pool for heavier users': p(
+  '{n} idle seats currently fund the pool for heavier users': plural(
     'ترخيص واحد غير مستخدم يموّل حاليًا الرصيد المشترك للمستخدمين الأكثر استخدامًا',
     'ترخيصان غير مستخدمين يموّلان حاليًا الرصيد المشترك للمستخدمين الأكثر استخدامًا',
     '{n} تراخيص غير مستخدمة تموّل حاليًا الرصيد المشترك للمستخدمين الأكثر استخدامًا',
@@ -94,7 +94,7 @@ const ar: Dict = {
     'إزالة هذه التراخيص لن تخفض الفاتورة ما دام الرصيد المشترك مستخدمًا بالكامل: سيدفع المستخدمون الكثيرو الاستخدام ثمن تلك الأرصدة كمبالغ إضافية. أعد تعيين التراخيص لأشخاص سيستخدمونها.',
   '{users} in the report with minimal use and little activity (seat value {value}/month): {names}.':
     '{users} في التقرير باستخدام ضئيل ونشاط قليل (قيمة الترخيص {value} شهريًا): {names}.',
-  '{n} roster seats never appear in the report ({value}/month): {names}.': p(
+  '{n} roster seats never appear in the report ({value}/month): {names}.': plural(
     'ترخيص واحد في القائمة لم يظهر في التقرير قط ({value} شهريًا): {names}.',
     'ترخيصان في القائمة لم يظهرا في التقرير قط ({value} شهريًا): {names}.',
     '{n} تراخيص في القائمة لم تظهر في التقرير قط ({value} شهريًا): {names}.',
@@ -110,7 +110,7 @@ const ar: Dict = {
   'Show low-activity users': 'اعرض المستخدمين قليلي النشاط',
 
   // Downgrade
-  '{n} Enterprise users never needed more than the Business allotment': p(
+  '{n} Enterprise users never needed more than the Business allotment': plural(
     'مستخدم Enterprise واحد لم يحتج قط إلى أكثر من حصة Business',
     'مستخدما Enterprise لم يحتاجا قط إلى أكثر من حصة Business',
     '{n} مستخدمي Enterprise لم يحتاجوا قط إلى أكثر من حصة Business',
@@ -136,7 +136,7 @@ const ar: Dict = {
   'Show Pareto class A': 'اعرض فئة باريتو A',
 
   // Runaway users
-  '{n} users used at least {multiple}× their included credits': p(
+  '{n} users used at least {multiple}× their included credits': plural(
     'مستخدم واحد استخدم ما لا يقل عن {multiple}× من أرصدته المشمولة',
     'مستخدمان استخدما ما لا يقل عن {multiple}× من أرصدتهما المشمولة',
     '{n} مستخدمين استخدموا ما لا يقل عن {multiple}× من أرصدتهم المشمولة',
@@ -181,7 +181,7 @@ const ar: Dict = {
 
   // Prompt cache
   'Only {share} of prompt tokens are cache hits': '{share} فقط من رموز الطلب تُقرأ من الذاكرة المؤقتة',
-  '{n} users reuse the prompt cache poorly': p(
+  '{n} users reuse the prompt cache poorly': plural(
     'مستخدم واحد يعيد استخدام الذاكرة المؤقتة للطلبات بشكل ضعيف',
     'مستخدمان يعيدان استخدام الذاكرة المؤقتة للطلبات بشكل ضعيف',
     '{n} مستخدمين يعيدون استخدام الذاكرة المؤقتة للطلبات بشكل ضعيف',
@@ -191,7 +191,7 @@ const ar: Dict = {
   'Cached tokens cost about 10% of normal input. Every cache miss re-sends the whole context at full price.': 'تكلف الرموز المخزنة مؤقتًا نحو 10% من الإدخال العادي. وكل إخفاق في الذاكرة المؤقتة يعيد إرسال السياق كاملًا بالسعر الكامل.',
   'Overall cache hit rate is {share} of prompt tokens.': 'نسبة القراءة من الذاكرة المؤقتة الإجمالية هي {share} من رموز الطلب.',
   'Cache writes cost {writes} of priced usage; cache reads {reads}.': 'تكلف كتابات الذاكرة المؤقتة {writes} من الاستخدام المسعَّر، وقراءاتها {reads}.',
-  '{n} users are below {threshold} cache hit: {names}.': p(
+  '{n} users are below {threshold} cache hit: {names}.': plural(
     'مستخدم واحد دون {threshold} في القراءة من الذاكرة المؤقتة: {names}.',
     'مستخدمان دون {threshold} في القراءة من الذاكرة المؤقتة: {names}.',
     '{n} مستخدمين دون {threshold} في القراءة من الذاكرة المؤقتة: {names}.',
@@ -217,7 +217,7 @@ const ar: Dict = {
   // Long-context surcharges
   'Long-context surcharges cost at least {amount}': 'تكلف رسوم السياق الطويل الإضافية {amount} على الأقل',
   "{share} of usage is the surcharge on requests whose prompts crossed a model's long-context threshold.": '{share} من الاستخدام هو الرسم الإضافي على الطلبات التي تجاوزت رموز الطلب فيها حد السياق الطويل للنموذج.',
-  '{n} requests were billed at the long-context rate.': p(
+  '{n} requests were billed at the long-context rate.': plural(
     'طلب واحد حُوسب بسعر السياق الطويل.',
     'طلبان حُوسبا بسعر السياق الطويل.',
     '{n} طلبات حُوسبت بسعر السياق الطويل.',
@@ -245,7 +245,7 @@ const ar: Dict = {
   'Enter your budget in Settings': 'أدخل ميزانيتك في الإعدادات',
 
   // Cost-center coverage
-  '{n} users are not assigned to a cost center': p(
+  '{n} users are not assigned to a cost center': plural(
     'مستخدم واحد غير مسند إلى مركز تكلفة',
     'مستخدمان غير مسندين إلى مركز تكلفة',
     '{n} مستخدمين غير مسندين إلى مركز تكلفة',
@@ -268,7 +268,7 @@ const ar: Dict = {
   'Show unattributed usage': 'اعرض الاستخدام غير المنسوب',
 
   // Several organizations
-  '{n} users bill to more than one organization': p(
+  '{n} users bill to more than one organization': plural(
     'مستخدم واحد يُحاسَب عبر أكثر من مؤسسة',
     'مستخدمان يُحاسَبان عبر أكثر من مؤسسة',
     '{n} مستخدمين يُحاسَبون عبر أكثر من مؤسسة',
@@ -295,7 +295,7 @@ const ar: Dict = {
   'Show new users': 'اعرض المستخدمين الجدد',
 
   // Champions
-  '{n} champions use GitHub Copilot often and heavily': p(
+  '{n} champions use GitHub Copilot often and heavily': plural(
     'رائد واحد يستخدم GitHub Copilot كثيرًا وبكثافة',
     'رائدان يستخدمان GitHub Copilot كثيرًا وبكثافة',
     '{n} روّاد يستخدمون GitHub Copilot كثيرًا وبكثافة',
@@ -309,7 +309,7 @@ const ar: Dict = {
   'Show champions': 'اعرض الروّاد',
 
   // Spiky users
-  '{n} users concentrate their usage on a single day': p(
+  '{n} users concentrate their usage on a single day': plural(
     'مستخدم واحد يركّز استخدامه في يوم واحد',
     'مستخدمان يركّزان استخدامهما في يوم واحد',
     '{n} مستخدمين يركّزون استخدامهم في يوم واحد',
@@ -368,7 +368,7 @@ const ar: Dict = {
   'The size of the pool is unknown (see the missing columns below), so pool size, utilization and seat recommendations are not shown.': 'حجم الرصيد المشترك غير معروف (انظر الأعمدة الناقصة أدناه)، لذلك لا يُعرض حجم الرصيد المشترك ولا نسبة الاستخدام ولا توصيات التراخيص.',
   'The current estimate only includes users in this report. Add a complete license list in Settings to improve included-credit and seat-activity estimates.':
     'يشمل التقدير الحالي المستخدمين الظاهرين في التقرير فقط. أضف قائمة تراخيص كاملة في الإعدادات لتحسين تقديرات الأرصدة المشمولة ونشاط أصحاب التراخيص.',
-  'Only {n} days of data: projections and trends are indicative.': p(
+  'Only {n} days of data: projections and trends are indicative.': plural(
     'يوم واحد فقط من البيانات: التوقعات والاتجاهات استرشادية.',
     'يومان فقط من البيانات: التوقعات والاتجاهات استرشادية.',
     '{n} أيام فقط من البيانات: التوقعات والاتجاهات استرشادية.',
@@ -378,7 +378,7 @@ const ar: Dict = {
   '{amount} is on models that are not in the built-in price card. What-if savings exclude them; add overrides in Settings.': '{amount} على نماذج غير موجودة في قائمة الأسعار المدمجة. تستثنيها وفورات «ماذا لو»؛ أضف تعديلات الأسعار في الإعدادات.',
   '{amount} is on usage lines without token counts or a model name, so price card estimates and what-if savings exclude it.': '{amount} على أسطر استخدام بلا أعداد رموز أو اسم نموذج، لذلك تستثنيها تقديرات قائمة الأسعار ووفورات «ماذا لو».',
   'The report covers AI-credit usage only. Code completions and next edit suggestions are not included.': 'يغطي التقرير استخدام أرصدة الذكاء الاصطناعي فقط. إكمالات الكود واقتراحات التعديل التالي غير مشمولة.',
-  '{n} duplicate rows were dropped while merging files.': p(
+  '{n} duplicate rows were dropped while merging files.': plural(
     'أُسقط صف مكرر واحد أثناء دمج الملفات.',
     'أُسقط صفان مكرران أثناء دمج الملفات.',
     'أُسقطت {n} صفوف مكررة أثناء دمج الملفات.',
@@ -413,7 +413,7 @@ const ar: Dict = {
   'Start a new conversation when you change problem, use /compact for long CLI sessions, keep AGENTS.md or copilot-instructions.md current and enable only the MCP tools you need.': 'ابدأ محادثة جديدة عند الانتقال إلى مشكلة أخرى، واستخدم /compact لجلسات CLI الطويلة، وأبقِ AGENTS.md أو copilot-instructions.md محدّثًا، وفعّل فقط أدوات MCP التي تحتاجها.',
   '{share} of your usage happened on {day}': '{share} من استخدامك حدث في {day}',
   'Review what ran on that day. A session limit stops an open-ended agent task before it grows into one very large day.': 'راجع ما جرى في ذلك اليوم. يوقف حد الجلسة مهمة الوكيل المفتوحة قبل أن تتحول إلى يوم واحد ضخم.',
-  'You used {n} different models': p(
+  'You used {n} different models': plural(
     'استخدمت نموذجًا واحدًا مختلفًا',
     'استخدمت نموذجين مختلفين',
     'استخدمت {n} نماذج مختلفة',
@@ -533,7 +533,7 @@ const ar: Dict = {
   'Month in progress': 'شهر جارٍ',
   Segment: 'الشريحة',
   'Tier (usage vs own included credits)': 'المستوى (الاستخدام مقابل أرصدته المشمولة الخاصة)',
-  'Top {n} users by usage': p(
+  'Top {n} users by usage': plural(
     'أعلى مستخدم بحسب الاستخدام',
     'أعلى مستخدمين بحسب الاستخدام',
     'أعلى {n} مستخدمين بحسب الاستخدام',
@@ -614,7 +614,7 @@ const ar: Dict = {
   'Starting point': 'نقطة الانطلاق',
   'No recommendation needs action in this period, so there is nothing to schedule. Keep the habits below in mind as usage grows.': 'لا توصية تحتاج إلى إجراء في هذه الفترة، لذلك لا شيء يُجدول. ضع العادات أدناه في الحسبان مع نمو الاستخدام.',
   "The first {size} recommendations that need action go in the first 30 days, the next {size} in days 31 to 60 and the rest in days 61 to 90. Their values overlap, so they are not added up. Adjust the order to your team's capacity, and use the What-if simulator to size the combined effect.": 'أول {size} من التوصيات التي تحتاج إلى إجراء تدخل في أول 30 يومًا، و{size} التالية في الأيام من 31 إلى 60، والبقية في الأيام من 61 إلى 90. وتتداخل قيمها، لذلك لا تُجمع. اضبط الترتيب بحسب طاقة فريقك، واستخدم محاكي «ماذا لو» لتقدير الأثر المجمَّع.',
-  '{n} more recommendations need action and are listed on the Recommendations tab.': p(
+  '{n} more recommendations need action and are listed on the Recommendations tab.': plural(
     'توصية واحدة أخرى تحتاج إلى إجراء وهي مدرجة في تبويب التوصيات.',
     'توصيتان أخريان تحتاجان إلى إجراء وهما مدرجتان في تبويب التوصيات.',
     '{n} توصيات أخرى تحتاج إلى إجراء وهي مدرجة في تبويب التوصيات.',
@@ -726,7 +726,7 @@ const ar: Dict = {
   'Cash, about {year} a year, on top of any seat savings, if every recommendation is followed. The plan also avoids about {usage} of usage per month.': 'نقدًا، نحو {year} سنويًا، إضافة إلى أي وفورات في التراخيص، إذا اتُّبعت كل توصية. وتتجنب الخطة أيضًا نحو {usage} من الاستخدام شهريًا.',
   'Usage stays within the included credits, so using less would not lower the bill today. The plan avoids about {usage} of usage per month, which turns into cash if usage grows past the included credits.': 'يبقى الاستخدام ضمن الأرصدة المشمولة، لذلك لن يخفض خفض الاستخدام الفاتورة اليوم. وتتجنب الخطة نحو {usage} من الاستخدام شهريًا، ويتحول ذلك إلى نقد إذا تجاوز الاستخدام الأرصدة المشمولة.',
   'Recommendations overlap, so their individual values are not added up. This figure comes from one combined plan that applies each lever once.': 'تتداخل التوصيات، لذلك لا تُجمع قيمها الفردية. يأتي هذا الرقم من خطة مجمَّعة واحدة تطبّق كل إجراء مرة واحدة.',
-  '{n} that need action': p(
+  '{n} that need action': plural(
     'واحدة تحتاج إلى إجراء',
     'اثنتان تحتاجان إلى إجراء',
     '{n} منها تحتاج إلى إجراء',
@@ -892,4 +892,4 @@ const ar: Dict = {
   'Share of Business allotment': 'النسبة من حصة Business',
 };
 
-export default ar;
+export default arabic;

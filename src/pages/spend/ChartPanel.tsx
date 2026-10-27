@@ -17,7 +17,7 @@ interface ChartPanelProps {
   footer?: ReactNode;
   option: EChartsOption;
   height?: number;
-  onClick?: (p: ChartClick) => void;
+  onClick?: (event: ChartClick) => void;
   exportName: string;
   label: string;
   /** Replaces the chart with this message, for example when there is no data. */

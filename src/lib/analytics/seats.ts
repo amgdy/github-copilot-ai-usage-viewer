@@ -63,55 +63,55 @@ export function planSeats(users: UserSet, _settings: Settings): SeatPlan {
   const downgrade: SeatCandidate[] = [];
   const idleIds = new Set<number>();
   const businessAllot = PLAN_CREDITS.Business * CREDIT_USD;
-  for (const p of users.profiles) {
-    if (isLeaving(p.license)) continue;
-    const value = p.quotaCredits > 0 ? seatPrice(p.quotaCredits) : seatPrice(users.fallbackQuotaCredits);
+  for (const user of users.profiles) {
+    if (isLeaving(user.license)) continue;
+    const value = user.quotaCredits > 0 ? seatPrice(user.quotaCredits) : seatPrice(users.fallbackQuotaCredits);
     // Code completions are not in the report, so a seat the license data shows as active in the last 30 days is not idle.
     const hasActivityEvidence =
-      p.license == null || (p.license.seat && (p.license.status === 'fading' || p.license.status === 'stale'));
-    if (p.tier === 'minimal' && (p.persona === 'dormant' || p.persona === 'lapsed') && hasActivityEvidence) {
-      idle.push({ id: p.id, name: p.name, plan: p.plan, value, gross: p.gross, utilization: p.utilization, ...licenseOf(p.license) });
-      idleIds.add(p.id);
+      user.license == null || (user.license.seat && (user.license.status === 'fading' || user.license.status === 'stale'));
+    if (user.tier === 'minimal' && (user.persona === 'dormant' || user.persona === 'lapsed') && hasActivityEvidence) {
+      idle.push({ id: user.id, name: user.name, plan: user.plan, value, gross: user.gross, utilization: user.utilization, ...licenseOf(user.license) });
+      idleIds.add(user.id);
     }
   }
-  for (const p of users.profiles) {
-    if (idleIds.has(p.id) || p.isNew || isLeaving(p.license)) continue;
-    if (p.license?.seat && (p.license.status === 'no-date' || p.license.status === 'unknown')) continue;
-    if (p.quotaCredits === PLAN_CREDITS.Enterprise && p.peakMonthGross <= DOWNGRADE_HEADROOM * businessAllot) {
+  for (const user of users.profiles) {
+    if (idleIds.has(user.id) || user.isNew || isLeaving(user.license)) continue;
+    if (user.license?.seat && (user.license.status === 'no-date' || user.license.status === 'unknown')) continue;
+    if (user.quotaCredits === PLAN_CREDITS.Enterprise && user.peakMonthGross <= DOWNGRADE_HEADROOM * businessAllot) {
       downgrade.push({
-        id: p.id,
-        name: p.name,
-        plan: p.plan,
+        id: user.id,
+        name: user.name,
+        plan: user.plan,
         value: PLAN_PRICE.Enterprise - PLAN_PRICE.Business,
-        gross: p.gross,
-        utilization: p.utilization,
-        ...licenseOf(p.license),
+        gross: user.gross,
+        utilization: user.utilization,
+        ...licenseOf(user.license),
       });
     }
   }
   const assumedPlan = assumedPlanLabel(users.fallbackQuotaCredits);
   const unused: SeatCandidate[] = [];
   const keep: SeatCandidate[] = [];
-  for (const s of users.inactive) {
-    if (isLeaving(s.license)) continue;
+  for (const seat of users.inactive) {
+    if (isLeaving(seat.license)) continue;
     const candidate: SeatCandidate = {
       id: -1,
-      name: s.user,
-      plan: s.plan ?? assumedPlan,
-      value: rosterSeatValue(s.plan, users.fallbackQuotaCredits),
+      name: seat.user,
+      plan: seat.plan ?? assumedPlan,
+      value: rosterSeatValue(seat.plan, users.fallbackQuotaCredits),
       gross: 0,
       utilization: 0,
-      ...licenseOf(s.license),
+      ...licenseOf(seat.license),
     };
-    if (s.license !== undefined && (s.license.status === 'recent' || s.license.isNew)) {
+    if (seat.license !== undefined && (seat.license.status === 'recent' || seat.license.isNew)) {
       keep.push(candidate);
-    } else if (s.license !== undefined && (s.license.status === 'no-date' || s.license.status === 'unknown')) {
+    } else if (seat.license !== undefined && (seat.license.status === 'no-date' || seat.license.status === 'unknown')) {
       continue;
     } else {
       unused.push(candidate);
     }
   }
-  const sum = (xs: SeatCandidate[]) => xs.reduce((a, x) => a + x.value, 0);
+  const sum = (candidates: SeatCandidate[]) => candidates.reduce((total, candidate) => total + candidate.value, 0);
   const plan: SeatPlan = {
     idle,
     downgrade,

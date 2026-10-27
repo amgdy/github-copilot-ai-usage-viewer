@@ -24,7 +24,7 @@ export const LICENSE_FIRST = msg('This is a license list. Load your usage report
 
 const CSV_TYPES = new Set(['text/csv', 'application/vnd.ms-excel']);
 
-export const isCsvFile = (f: UploadFile): boolean => /\.csv$/i.test(f.name) || CSV_TYPES.has(f.type ?? '');
+export const isCsvFile = (file: UploadFile): boolean => /\.csv$/i.test(file.name) || CSV_TYPES.has(file.type ?? '');
 
 /**
  * Usage reports load as before and license lists go to the license list. A CSV that is neither still goes to the usage
@@ -42,7 +42,7 @@ export interface SortedUploads<F extends UploadFile> {
 }
 
 /** Reads the start of every file and sorts the files by route. A file that cannot be read goes to the usage loader when it is a CSV. */
-export async function sortUploads<F extends UploadFile>(files: readonly F[], readHead: (f: F) => Promise<string>): Promise<SortedUploads<F>> {
+export async function sortUploads<F extends UploadFile>(files: readonly F[], readHead: (file: F) => Promise<string>): Promise<SortedUploads<F>> {
   const out: SortedUploads<F> = { usage: [], license: [], reject: [] };
   for (const file of files) {
     let kind: UploadKind = 'unknown';
@@ -95,18 +95,18 @@ export interface RosterState {
 
 /** Compares two lists by login: who is new, who changed, who stayed the same and who is gone. */
 export function diffRoster(before: readonly RosterEntry[], after: readonly RosterEntry[]): { added: number; updated: number; unchanged: number; removed: number } {
-  const old = new Map(before.map((e) => [loginKey(e.user), JSON.stringify(e)]));
+  const old = new Map(before.map((seat) => [loginKey(seat.user), JSON.stringify(seat)]));
   const now = new Set<string>();
   let added = 0;
   let updated = 0;
   let unchanged = 0;
-  for (const e of after) {
-    const key = loginKey(e.user);
+  for (const seat of after) {
+    const key = loginKey(seat.user);
     if (now.has(key)) continue;
     now.add(key);
     const had = old.get(key);
     if (had === undefined) added++;
-    else if (had === JSON.stringify(e)) unchanged++;
+    else if (had === JSON.stringify(seat)) unchanged++;
     else updated++;
   }
   let removed = 0;
@@ -121,7 +121,7 @@ export function diffRoster(before: readonly RosterEntry[], after: readonly Roste
 export async function importLicenseFiles<F extends UploadFile>(
   files: readonly F[],
   current: RosterState,
-  readText: (f: F) => Promise<string>,
+  readText: (file: F) => Promise<string>,
   today?: string,
 ): Promise<{ state: RosterState; changed: boolean; mode: RosterMode | null; files: LicenseFileResult[] }> {
   let state: RosterState = { roster: [...current.roster], rosterAsOf: current.rosterAsOf };
@@ -145,16 +145,16 @@ export async function importLicenseFiles<F extends UploadFile>(
     if (parse.seats.length === 0) continue;
     const step: RosterMode = state.roster.length === 0 ? 'replace' : 'add';
     mode ??= step;
-    const r = applyLicenseImport(parse, state, step, today);
-    state = { roster: r.roster, rosterAsOf: r.rosterAsOf };
+    const imported = applyLicenseImport(parse, state, step, today);
+    state = { roster: imported.roster, rosterAsOf: imported.rosterAsOf };
   }
   return { state, changed: mode !== null, mode, files: results };
 }
 
 export interface UploadDeps<F extends UploadFile> {
   /** The first SNIFF_BYTES of the file as text. */
-  readHead: (f: F) => Promise<string>;
-  readText: (f: F) => Promise<string>;
+  readHead: (file: F) => Promise<string>;
+  readText: (file: F) => Promise<string>;
   /** Replaces the loaded data with the usage files. Resolves true on success and shows its own errors. */
   loadUsage: (files: F[]) => Promise<boolean>;
   hasDataset: () => boolean;
@@ -176,27 +176,27 @@ export interface UploadOutcome {
  * Sends each file where it belongs. Usage reports replace the loaded data. License lists are imported once usage data is
  * loaded, from this batch or before. A license list alone with no usage data gets the LICENSE_FIRST message.
  */
-export async function routeUploads<F extends UploadFile>(files: readonly F[], deps: UploadDeps<F>): Promise<UploadOutcome> {
-  const sorted = await sortUploads(files, deps.readHead);
-  const ignored = sorted.reject.map((f) => f.name);
+export async function routeUploads<F extends UploadFile>(files: readonly F[], dependencies: UploadDeps<F>): Promise<UploadOutcome> {
+  const sorted = await sortUploads(files, dependencies.readHead);
+  const ignored = sorted.reject.map((file) => file.name);
 
   if (sorted.usage.length === 0 && sorted.license.length === 0) {
-    deps.setError(t(NOT_A_CSV));
+    dependencies.setError(t(NOT_A_CSV));
     return { usageLoaded: null, notice: null };
   }
 
   let usageLoaded: boolean | null = null;
-  if (sorted.usage.length > 0) usageLoaded = await deps.loadUsage(sorted.usage);
+  if (sorted.usage.length > 0) usageLoaded = await dependencies.loadUsage(sorted.usage);
 
-  if (sorted.license.length === 0 || !deps.hasDataset()) {
-    if (sorted.license.length > 0 && usageLoaded === null) deps.setError(t(LICENSE_FIRST));
-    const notice = ignored.length > 0 && usageLoaded ? emptyNotice(ignored, deps.roster().roster.length) : null;
+  if (sorted.license.length === 0 || !dependencies.hasDataset()) {
+    if (sorted.license.length > 0 && usageLoaded === null) dependencies.setError(t(LICENSE_FIRST));
+    const notice = ignored.length > 0 && usageLoaded ? emptyNotice(ignored, dependencies.roster().roster.length) : null;
     return { usageLoaded, notice };
   }
 
-  const before = deps.roster();
-  const done = await importLicenseFiles(sorted.license, before, deps.readText, deps.today);
-  const saved = done.changed ? deps.saveRoster(done.state) : null;
+  const before = dependencies.roster();
+  const done = await importLicenseFiles(sorted.license, before, dependencies.readText, dependencies.today);
+  const saved = done.changed ? dependencies.saveRoster(done.state) : null;
   const diff = diffRoster(before.roster, done.state.roster);
   return {
     usageLoaded,
@@ -209,7 +209,7 @@ function emptyNotice(ignored: string[], total: number): UploadNotice {
 }
 
 /** The last batch result, so the Data page can show it after a drop on the start page. */
-export const useUploadNotice = create<{ notice: UploadNotice | null; show: (n: UploadNotice | null) => void }>((set) => ({
+export const useUploadNotice = create<{ notice: UploadNotice | null; show: (notice: UploadNotice | null) => void }>((set) => ({
   notice: null,
   show: (notice) => set({ notice }),
 }));

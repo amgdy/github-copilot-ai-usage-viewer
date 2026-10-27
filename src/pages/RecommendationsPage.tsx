@@ -35,9 +35,9 @@ export default function RecommendationsPage() {
   const [recFilters, setRecFilters] = useState<RecFilters>(DEFAULT_REC_FILTERS);
   const [levers, setLevers] = useState<LeverParams>(DEFAULT_LEVERS);
   const [seatFlags, setSeatFlags] = useState<SeatFlags>(DEFAULT_SEAT_FLAGS);
-  const { range, agg, seats, users } = analysis;
+  const { range, agg: aggregates, seats, users } = analysis;
 
-  if (agg.totals.rows === 0) {
+  if (aggregates.totals.rows === 0) {
     return (
       <>
         <PageHeader title={t('Recommendations')} description={t(DESCRIPTION)} />
@@ -62,13 +62,13 @@ export default function RecommendationsPage() {
     { id: 'seats', label: t('Seats'), icon: <Armchair size={ICON} aria-hidden />, count: seatCount },
     { id: 'playbook', label: t('Playbook'), icon: <BookOpen size={ICON} aria-hidden /> },
   ];
-  const active = tabs.find((x) => x.id === tab) ?? tabs[0];
+  const active = tabs.find((tabItem) => tabItem.id === tab) ?? tabs[0];
 
   return (
     <>
       <PageHeader
         title={t('Recommendations')}
-        description={`${t(DESCRIPTION)} ${t('{from} to {to}', { from: fmtDay(range.start, true), to: fmtDay(range.end, true) })} · ${pluralize(range.length, 'day')} · ${pluralize(agg.totals.users, 'user')}`}
+        description={`${t(DESCRIPTION)} ${t('{from} to {to}', { from: fmtDay(range.start, true), to: fmtDay(range.end, true) })} · ${pluralize(range.length, 'day')} · ${pluralize(aggregates.totals.users, 'user')}`}
         actions={
           <div className="contents print:hidden">
             <CopyButton label={t('Copy summary')} getText={summary} />

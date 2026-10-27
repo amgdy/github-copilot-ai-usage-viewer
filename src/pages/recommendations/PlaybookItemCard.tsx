@@ -54,10 +54,10 @@ export function PlaybookItemCard({ entry }: { entry: PlaybookEntry }) {
 
       {item.docs.length ? (
         <div className="mt-auto flex flex-wrap gap-x-4 gap-y-1 pt-1 text-xs">
-          {item.docs.map((d) => (
-            <a key={d.url} href={d.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-accent hover:underline">
+          {item.docs.map((docLink) => (
+            <a key={docLink.url} href={docLink.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-accent hover:underline">
               <ExternalLink size={12} />
-              {t(d.label)}
+              {t(docLink.label)}
             </a>
           ))}
         </div>

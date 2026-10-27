@@ -46,23 +46,23 @@ export interface UserColumns {
   hasLicense: boolean;
 }
 
-export function buildColumns(ctx: ColumnContext): UserColumns {
-  const hasLicense = ctx.hasLicense === true;
-  const general = generalColumns(ctx);
-  const tokens = tokenColumns(ctx);
-  const auto = autoColumns(ctx);
+export function buildColumns(context: ColumnContext): UserColumns {
+  const hasLicense = context.hasLicense === true;
+  const general = generalColumns(context);
+  const tokens = tokenColumns(context);
+  const auto = autoColumns(context);
   const license = hasLicense ? licenseColumns() : [];
   const all = [...general, ...tokens, ...auto, ...license];
-  const byKey = new Map(all.map((c) => [c.key, c]));
+  const byKey = new Map(all.map((column) => [column.key, column]));
   const extra: Record<Exclude<UsersView, 'general'>, Column<UserProfile>[]> = { tokens, auto, license };
   const forView = (view: Exclude<UsersView, 'general'>): Column<UserProfile>[] => {
     const first = VIEW_FIRST[view];
-    const head = first.flatMap((k) => {
-      const c = byKey.get(k);
-      return c ? [{ ...c, hidden: false }] : [];
+    const head = first.flatMap((columnKey) => {
+      const column = byKey.get(columnKey);
+      return column ? [{ ...column, hidden: false }] : [];
     });
     const pool = [...general, ...extra[view]];
-    const rest = pool.filter((c) => !first.includes(c.key)).map((c) => ({ ...c, hidden: true }));
+    const rest = pool.filter((column) => !first.includes(column.key)).map((column) => ({ ...column, hidden: true }));
     return [...head, ...rest];
   };
   return {
@@ -79,7 +79,7 @@ function generalColumns({ taxonomy, trendReliable, coverage }: ColumnContext): C
   const profiles = taxLookup(taxonomy.profiles);
   const pareto = taxLookup(taxonomy.pareto);
   const traits = taxLookup(taxonomy.traits);
-  const change = (p: UserProfile): number => (trendReliable ? p.recent - p.prior : Number.NaN);
+  const change = (user: UserProfile): number => (trendReliable ? user.recent - user.prior : Number.NaN);
   const billingKnown = coverage.billing;
   const noBilling = withReason(NO_BILLING);
   const noModels = withReason(NO_MODELS);
@@ -94,17 +94,17 @@ function generalColumns({ taxonomy, trendReliable, coverage }: ColumnContext): C
       header: t('Rank'),
       hint: t('Position by usage among all users in the date range'),
       calc: 'user-share',
-      value: (p) => p.rank,
-      render: (p) => fmtInt(p.rank),
+      value: (user) => user.rank,
+      render: (user) => fmtInt(user.rank),
       align: 'end',
     },
     {
       key: 'user',
       header: t('User'),
-      value: (p) => p.name,
-      render: (p) => (
-        <span className="block max-w-[14rem] truncate font-medium" title={p.name}>
-          {p.name}
+      value: (user) => user.name,
+      render: (user) => (
+        <span className="block max-w-[14rem] truncate font-medium" title={user.name}>
+          {user.name}
         </span>
       ),
     },
@@ -113,24 +113,24 @@ function generalColumns({ taxonomy, trendReliable, coverage }: ColumnContext): C
       header: t('Persona'),
       hint: t('The kind of user, from how often and how much they use GitHub Copilot'),
       calc: 'persona-groups',
-      value: (p) => personas[p.persona].label,
-      render: (p) => <TaxBadge item={personas[p.persona]} />,
+      value: (user) => personas[user.persona].label,
+      render: (user) => <TaxBadge item={personas[user.persona]} />,
     },
     {
       key: 'tier',
       header: t('Usage tier'),
       hint: t('Usage compared with the included credits of the seat'),
       calc: 'spend-tiers',
-      value: (p) => tiers[p.tier].label,
-      render: (p) => <TaxBadge item={shortItem(tiers[p.tier])} />,
+      value: (user) => tiers[user.tier].label,
+      render: (user) => <TaxBadge item={shortItem(tiers[user.tier])} />,
     },
     {
       key: 'engagement',
       header: t('Engagement'),
       hint: t('How often the user is active: the share of workdays with use'),
       calc: 'engagement-levels',
-      value: (p) => engagement[p.engagement].label,
-      render: (p) => <TaxBadge item={engagement[p.engagement]} />,
+      value: (user) => engagement[user.engagement].label,
+      render: (user) => <TaxBadge item={engagement[user.engagement]} />,
       hidden: true,
     },
     {
@@ -138,8 +138,8 @@ function generalColumns({ taxonomy, trendReliable, coverage }: ColumnContext): C
       header: t('Usage profile'),
       hint: coverage.models ? t('Which kind of model the user mostly uses: Efficient, Balanced or Frontier-heavy') : noModelsText,
       calc: 'usage-profiles',
-      value: (p) => (coverage.models ? profiles[p.profile].label : ''),
-      render: (p) => (coverage.models ? <TaxBadge item={profiles[p.profile]} /> : noModels),
+      value: (user) => (coverage.models ? profiles[user.profile].label : ''),
+      render: (user) => (coverage.models ? <TaxBadge item={profiles[user.profile]} /> : noModels),
       hidden: true,
     },
     {
@@ -149,8 +149,8 @@ function generalColumns({ taxonomy, trendReliable, coverage }: ColumnContext): C
         'A: the users who make the first part of all usage. B: the next part. C: the long tail. Based on all users in the date range, not on the persona, tier or Auto use filters.',
       ),
       calc: 'pareto-classes',
-      value: (p) => pareto[p.pareto].label,
-      render: (p) => <TaxBadge item={pareto[p.pareto]} />,
+      value: (user) => pareto[user.pareto].label,
+      render: (user) => <TaxBadge item={pareto[user.pareto]} />,
       hidden: true,
     },
     {
@@ -158,22 +158,22 @@ function generalColumns({ taxonomy, trendReliable, coverage }: ColumnContext): C
       header: t('Plan'),
       hint: t('The seat of the user, from the included credits in the file'),
       calc: 'user-credits-used',
-      value: (p) => (hasQuota(p) ? p.plan : ''),
-      render: (p) => (hasQuota(p) ? p.plan : dash),
+      value: (user) => (hasQuota(user) ? user.plan : ''),
+      render: (user) => (hasQuota(user) ? user.plan : dash),
       hidden: true,
     },
     {
       key: 'org',
       header: t('Organization'),
-      value: (p) => withOthers(p.org, p.orgMixed),
-      render: (p) => (p.org ? withOthers(p.org, p.orgMixed) : dash),
+      value: (user) => withOthers(user.org, user.orgMixed),
+      render: (user) => (user.org ? withOthers(user.org, user.orgMixed) : dash),
       hidden: true,
     },
     {
       key: 'costCenter',
       header: t('Cost center'),
-      value: (p) => withOthers(p.costCenter, p.costCenterMixed),
-      render: (p) => (p.costCenter ? withOthers(p.costCenter, p.costCenterMixed) : dash),
+      value: (user) => withOthers(user.costCenter, user.costCenterMixed),
+      render: (user) => (user.costCenter ? withOthers(user.costCenter, user.costCenterMixed) : dash),
       hidden: true,
     },
     {
@@ -181,20 +181,20 @@ function generalColumns({ taxonomy, trendReliable, coverage }: ColumnContext): C
       header: t('Usage'),
       hint: t('Usage in the date range, before included credits'),
       calc: 'usage',
-      value: (p) => p.gross,
-      render: (p) => usd(p.gross),
+      value: (user) => user.gross,
+      render: (user) => usd(user.gross),
       align: 'end',
-      total: (rows) => usd(sum(rows, (p) => p.gross)),
+      total: (rows) => usd(sum(rows, (user) => user.gross)),
     },
     {
       key: 'share',
       header: t('Share of usage'),
       hint: t('Share of the usage of all users in the date range'),
       calc: 'user-share',
-      value: (p) => p.share,
-      render: (p) => fmtPct(p.share, 1),
+      value: (user) => user.share,
+      render: (user) => fmtPct(user.share, 1),
       align: 'end',
-      total: (rows) => fmtPct(sum(rows, (p) => p.share), 1),
+      total: (rows) => fmtPct(sum(rows, (user) => user.share), 1),
     },
     {
       key: 'net',
@@ -203,20 +203,20 @@ function generalColumns({ taxonomy, trendReliable, coverage }: ColumnContext): C
         ? t('Billed on top of seats, as the file states it. The included credits are pooled, so a user can be billed while below their own credits.')
         : noBillingText,
       calc: 'billed',
-      value: (p) => (billingKnown ? p.net : Number.NaN),
-      render: (p) => (billingKnown ? usd(p.net) : noBilling),
+      value: (user) => (billingKnown ? user.net : Number.NaN),
+      render: (user) => (billingKnown ? usd(user.net) : noBilling),
       align: 'end',
-      total: (rows) => (billingKnown ? usd(sum(rows, (p) => p.net)) : '–'),
+      total: (rows) => (billingKnown ? usd(sum(rows, (user) => user.net)) : '–'),
     },
     {
       key: 'discount',
       header: t('Covered'),
       hint: billingKnown ? t('Usage covered by included credits') : noBillingText,
       calc: 'covered',
-      value: (p) => (billingKnown ? p.discount : Number.NaN),
-      render: (p) => (billingKnown ? usd(p.discount) : noBilling),
+      value: (user) => (billingKnown ? user.discount : Number.NaN),
+      render: (user) => (billingKnown ? usd(user.discount) : noBilling),
       align: 'end',
-      total: (rows) => (billingKnown ? usd(sum(rows, (p) => p.discount)) : '–'),
+      total: (rows) => (billingKnown ? usd(sum(rows, (user) => user.discount)) : '–'),
       hidden: true,
     },
     {
@@ -224,12 +224,12 @@ function generalColumns({ taxonomy, trendReliable, coverage }: ColumnContext): C
       header: t('Included credits used'),
       hint: t('Usage as a share of the included credits of the seat. Above 100% means the user drew from the shared pool.'),
       calc: 'user-credits-used',
-      value: (p) => (hasQuota(p) ? p.utilization : Number.NaN),
-      render: (p) =>
-        hasQuota(p) ? (
+      value: (user) => (hasQuota(user) ? user.utilization : Number.NaN),
+      render: (user) =>
+        hasQuota(user) ? (
           <div className="flex items-center justify-end gap-2">
-            <ProgressBar value={p.utilization} height={6} className="hidden w-14 sm:block" label={t('Included credits used')} />
-            <span className="w-14 text-end">{fmtPctAuto(p.utilization)}</span>
+            <ProgressBar value={user.utilization} height={6} className="hidden w-14 sm:block" label={t('Included credits used')} />
+            <span className="w-14 text-end">{fmtPctAuto(user.utilization)}</span>
           </div>
         ) : (
           dash
@@ -241,8 +241,8 @@ function generalColumns({ taxonomy, trendReliable, coverage }: ColumnContext): C
       header: t('Balance'),
       hint: t('Included credits minus usage. Negative means the user drew from the shared pool.'),
       calc: 'user-credits-used',
-      value: (p) => (hasQuota(p) ? p.balance : Number.NaN),
-      render: (p) => (hasQuota(p) ? <span className={cx(p.balance < 0 && 'text-bad')}>{usd(p.balance)}</span> : dash),
+      value: (user) => (hasQuota(user) ? user.balance : Number.NaN),
+      render: (user) => (hasQuota(user) ? <span className={cx(user.balance < 0 && 'text-bad')}>{usd(user.balance)}</span> : dash),
       align: 'end',
       hidden: true,
     },
@@ -251,8 +251,8 @@ function generalColumns({ taxonomy, trendReliable, coverage }: ColumnContext): C
       header: t('Active days'),
       hint: t('Days with real use in the date range'),
       calc: 'user-active-days',
-      value: (p) => p.activeDays,
-      render: (p) => fmtInt(p.activeDays),
+      value: (user) => user.activeDays,
+      render: (user) => fmtInt(user.activeDays),
       align: 'end',
     },
     {
@@ -260,8 +260,8 @@ function generalColumns({ taxonomy, trendReliable, coverage }: ColumnContext): C
       header: t('Active rate'),
       hint: t('Share of workdays with use since the user started'),
       calc: 'user-active-rate',
-      value: (p) => p.activeRate,
-      render: (p) => fmtPct(p.activeRate, 0),
+      value: (user) => user.activeRate,
+      render: (user) => fmtPct(user.activeRate, 0),
       align: 'end',
       hidden: true,
     },
@@ -270,8 +270,8 @@ function generalColumns({ taxonomy, trendReliable, coverage }: ColumnContext): C
       header: t('Days since last use'),
       hint: t('Days between the last day with use and the end of the date range'),
       calc: 'user-days-since-last',
-      value: (p) => p.daysSinceLast,
-      render: (p) => fmtInt(p.daysSinceLast),
+      value: (user) => user.daysSinceLast,
+      render: (user) => fmtInt(user.daysSinceLast),
       align: 'end',
       hidden: true,
     },
@@ -280,8 +280,8 @@ function generalColumns({ taxonomy, trendReliable, coverage }: ColumnContext): C
       header: t('Cost per active day'),
       hint: t('Usage divided by active days'),
       calc: 'user-cost-per-active-day',
-      value: (p) => p.costPerActiveDay,
-      render: (p) => (Number.isFinite(p.costPerActiveDay) ? usd(p.costPerActiveDay) : dash),
+      value: (user) => user.costPerActiveDay,
+      render: (user) => (Number.isFinite(user.costPerActiveDay) ? usd(user.costPerActiveDay) : dash),
       align: 'end',
       hidden: true,
     },
@@ -290,8 +290,8 @@ function generalColumns({ taxonomy, trendReliable, coverage }: ColumnContext): C
       header: t('Auto share of usage'),
       hint: coverage.models ? t('Share of usage on Auto model selection') : noModelsText,
       calc: 'auto-share',
-      value: (p) => (coverage.models ? p.autoShare : Number.NaN),
-      render: (p) => (coverage.models ? fmtPct(p.autoShare, 0) : noModels),
+      value: (user) => (coverage.models ? user.autoShare : Number.NaN),
+      render: (user) => (coverage.models ? fmtPct(user.autoShare, 0) : noModels),
       align: 'end',
       hidden: true,
     },
@@ -300,8 +300,8 @@ function generalColumns({ taxonomy, trendReliable, coverage }: ColumnContext): C
       header: t('Cache hit rate'),
       hint: coverage.tokens ? t('Share of prompt tokens read from the cache, where text the model has seen before costs less') : noTokensText,
       calc: 'cache-hit',
-      value: (p) => (coverage.tokens ? p.cacheHit : Number.NaN),
-      render: (p) => (!coverage.tokens ? noTokens : Number.isFinite(p.cacheHit) ? fmtPct(p.cacheHit, 0) : dash),
+      value: (user) => (coverage.tokens ? user.cacheHit : Number.NaN),
+      render: (user) => (!coverage.tokens ? noTokens : Number.isFinite(user.cacheHit) ? fmtPct(user.cacheHit, 0) : dash),
       align: 'end',
       hidden: true,
     },
@@ -310,12 +310,12 @@ function generalColumns({ taxonomy, trendReliable, coverage }: ColumnContext): C
       header: t('Top model'),
       hint: coverage.models ? t('The model with the most usage for this user') : noModelsText,
       calc: 'user-model-mix',
-      value: (p) => p.topModel,
-      render: (p) =>
-        p.topModel ? (
-          <span className="flex max-w-[14rem] items-center gap-1.5" title={t('{model}: {share} of usage', { model: p.topModel, share: fmtPct(p.topModelShare, 0) })}>
-            <VendorIcon vendor={inferVendor(p.topModel)} size={12} className="shrink-0 text-fg-muted" />
-            <span className="truncate">{p.topModel}</span>
+      value: (user) => user.topModel,
+      render: (user) =>
+        user.topModel ? (
+          <span className="flex max-w-[14rem] items-center gap-1.5" title={t('{model}: {share} of usage', { model: user.topModel, share: fmtPct(user.topModelShare, 0) })}>
+            <VendorIcon vendor={inferVendor(user.topModel)} size={12} className="shrink-0 text-fg-muted" />
+            <span className="truncate">{user.topModel}</span>
           </span>
         ) : coverage.models ? (
           dash
@@ -330,16 +330,16 @@ function generalColumns({ taxonomy, trendReliable, coverage }: ColumnContext): C
       hint: t('Usage in the last 7 days minus the 7 days before. Needs a range of at least 14 days.'),
       calc: ['user-change', 'week-over-week'],
       value: change,
-      render: (p) => {
-        const v = change(p);
-        if (!Number.isFinite(v)) return dash;
-        const vars = { recent: usd(p.recent), prior: usd(p.prior) };
-        const title = Number.isFinite(p.trend)
-          ? t('{recent} in the last 7 days, {prior} in the 7 days before ({change})', { ...vars, change: `${p.trend >= 0 ? '+' : '−'}${fmtPct(Math.abs(p.trend), 0)}` })
-          : t('{recent} in the last 7 days, {prior} in the 7 days before', vars);
+      render: (user) => {
+        const changeAmount = change(user);
+        if (!Number.isFinite(changeAmount)) return dash;
+        const values = { recent: usd(user.recent), prior: usd(user.prior) };
+        const title = Number.isFinite(user.trend)
+          ? t('{recent} in the last 7 days, {prior} in the 7 days before ({change})', { ...values, change: `${user.trend >= 0 ? '+' : '−'}${fmtPct(Math.abs(user.trend), 0)}` })
+          : t('{recent} in the last 7 days, {prior} in the 7 days before', values);
         return (
-          <span className={cx(Math.abs(v) < 0.005 && 'text-fg-muted')} title={title}>
-            {signedUsd(v)}
+          <span className={cx(Math.abs(changeAmount) < 0.005 && 'text-fg-muted')} title={title}>
+            {signedUsd(changeAmount)}
           </span>
         );
       },
@@ -350,28 +350,28 @@ function generalColumns({ taxonomy, trendReliable, coverage }: ColumnContext): C
       header: t('Potential savings'),
       hint: t('Usage that could be avoided with the levers in this report. An estimate.'),
       calc: 'user-potential',
-      value: (p) => p.potential,
-      render: (p) => usd(p.potential),
+      value: (user) => user.potential,
+      render: (user) => usd(user.potential),
       align: 'end',
-      total: (rows) => usd(sum(rows, (p) => p.potential)),
+      total: (rows) => usd(sum(rows, (user) => user.potential)),
     },
     {
       key: 'traits',
       header: t('Traits'),
       hint: t('Habits worth a look. Hover a badge to see what it means.'),
       calc: 'user-traits',
-      value: (p) => p.traits.map((id) => traits[id].label).join(', '),
-      render: (p) =>
-        p.traits.length === 0 ? (
+      value: (user) => user.traits.map((id) => traits[id].label).join(', '),
+      render: (user) =>
+        user.traits.length === 0 ? (
           dash
         ) : (
           <div className="flex items-center gap-1">
-            {p.traits.slice(0, MAX_TRAIT_BADGES).map((id) => (
+            {user.traits.slice(0, MAX_TRAIT_BADGES).map((id) => (
               <TaxBadge key={id} item={traits[id]} />
             ))}
-            {p.traits.length > MAX_TRAIT_BADGES ? (
-              <span className="text-xs text-fg-muted" title={p.traits.slice(MAX_TRAIT_BADGES).map((id) => traits[id].label).join(', ')}>
-                +{p.traits.length - MAX_TRAIT_BADGES}
+            {user.traits.length > MAX_TRAIT_BADGES ? (
+              <span className="text-xs text-fg-muted" title={user.traits.slice(MAX_TRAIT_BADGES).map((id) => traits[id].label).join(', ')}>
+                +{user.traits.length - MAX_TRAIT_BADGES}
               </span>
             ) : null}
           </div>
@@ -383,9 +383,9 @@ function generalColumns({ taxonomy, trendReliable, coverage }: ColumnContext): C
 
 /** Every column of the table, for the full CSV download. */
 export function userTableCsv(columns: Column<UserProfile>[], rows: UserProfile[]): { headers: string[]; rows: unknown[][] } {
-  const cols = columns.filter((c) => !c.noCsv);
+  const cols = columns.filter((column) => !column.noCsv);
   return {
-    headers: cols.map((c) => c.csvHeader ?? (typeof c.header === 'string' ? c.header : c.key)),
-    rows: rows.map((r) => cols.map((c) => c.value(r) ?? '')),
+    headers: cols.map((column) => column.csvHeader ?? (typeof column.header === 'string' ? column.header : column.key)),
+    rows: rows.map((user) => cols.map((column) => column.value(user) ?? '')),
   };
 }

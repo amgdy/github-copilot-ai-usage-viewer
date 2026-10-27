@@ -12,19 +12,19 @@ import { fmtCompact, fmtInt, fmtNum } from '../../lib/utils/format';
 import { navigate, type PageId } from '../../state/router';
 
 /** USD per 1M tokens, with at least two decimals ("$0.10", "$0.175", "$14.00"). A dash when there is no price. */
-export const fmtRate = (v: number): string =>
-  Number.isFinite(v) ? `$${v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 3 })}` : '–';
+export const fmtRate = (price: number): string =>
+  Number.isFinite(price) ? `$${price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 3 })}` : '–';
 
 /** Whole numbers below 1,000, compact above ("842", "12.4K"). */
-export const fmtCount = (v: number): string => (Math.abs(v) >= 1000 ? fmtCompact(v) : fmtInt(v));
+export const fmtCount = (count: number): string => (Math.abs(count) >= 1000 ? fmtCompact(count) : fmtInt(count));
 
 /** Credits are not always whole numbers, so small values keep a decimal. */
-export const fmtCredits = (v: number): string => (Math.abs(v) >= 100 ? fmtInt(v) : fmtNum(v, 1));
+export const fmtCredits = (credits: number): string => (Math.abs(credits) >= 100 ? fmtInt(credits) : fmtNum(credits, 1));
 
-export const vendorColor = (c: ChartColors, vendorIndex: number): string => c.palette[vendorIndex % c.palette.length];
+export const vendorColor = (colors: ChartColors, vendorIndex: number): string => colors.palette[vendorIndex % colors.palette.length];
 
 /** The name a reader sees for a vendor. Company names stay as they are; only "Other" is translated. */
-export const vendorLabel = (v: Vendor): string => (v === 'Other' ? t('Other') : v);
+export const vendorLabel = (vendor: Vendor): string => (vendor === 'Other' ? t('Other') : vendor);
 
 /** The translated name of a model tier. */
 export const tierLabel = (tier: Category): string => t(tier);

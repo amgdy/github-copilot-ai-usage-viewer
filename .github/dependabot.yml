@@ -5,6 +5,11 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    ignore:
+      # Keep the Node types on the Node 26 line.
+      - dependency-name: "@types/node"
+        update-types:
+          - version-update:semver-major
     groups:
       dev-dependencies:
         dependency-type: development

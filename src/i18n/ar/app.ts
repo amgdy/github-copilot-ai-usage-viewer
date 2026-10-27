@@ -1,9 +1,9 @@
 import type { Dict, PluralEntry } from '../core';
 
-const p = (one: string, two: string, few: string, many: string, other: string): PluralEntry => ({ zero: other, one, two, few, many, other });
+const plural = (one: string, two: string, few: string, many: string, other: string): PluralEntry => ({ zero: other, one, two, few, many, other });
 
 /** Arabic text for the app shell: start page, side bar, top bar, page list, file loading and the filtered-view notice. */
-const ar: Dict = {
+const arabic: Dict = {
   'Could not change language. Please try again.': 'تعذّر تغيير اللغة. حاول مرة أخرى.',
   'Something went wrong': 'حدث خطأ',
   'Something went wrong in {page}': 'حدث خطأ في {page}',
@@ -130,7 +130,7 @@ const ar: Dict = {
   // Brand, contents list and sample report
   'GitHub Copilot': 'GitHub Copilot',
   'Usage report': 'تقرير الاستخدام',
-  '{n} urgent actions': p('إجراء عاجل واحد', 'إجراءان عاجلان', '{n} إجراءات عاجلة', '{n} إجراءً عاجلًا', '{n} إجراء عاجل'),
+  '{n} urgent actions': plural('إجراء عاجل واحد', 'إجراءان عاجلان', '{n} إجراءات عاجلة', '{n} إجراءً عاجلًا', '{n} إجراء عاجل'),
   'Making a sample report…': 'جارٍ إنشاء تقرير تجريبي…',
   'Sample report (made-up data)': 'تقرير تجريبي (بيانات وهمية)',
   'Sample data': 'بيانات تجريبية',
@@ -151,4 +151,4 @@ const ar: Dict = {
   'The sample uses made-up people and numbers. It is made in this browser tab.': 'يستخدم التقرير التجريبي أشخاصًا وأرقامًا وهمية، ويُنشأ في علامة التبويب هذه.',
 };
 
-export default ar;
+export default arabic;

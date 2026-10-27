@@ -2,25 +2,25 @@ import { useMemo } from 'react';
 import { Kpi, KpiGrid } from '../../components/ui';
 import { t } from '../../i18n';
 import { useAnalysis } from '../../state/analysis';
-import { dowOf, fmtDay, ymd } from '../../lib/utils/date';
+import { dowOf, fmtDay, dateParts } from '../../lib/utils/date';
 import { fmtDelta, fmtInt, fmtNum, fmtPct, fmtUSD, pluralize } from '../../lib/utils/format';
 import { busiestWeekday, dayStats, weekdayName, weekdayStats } from './model';
 
 export default function Kpis() {
   const { analysis, settings, filters } = useAnalysis();
-  const { agg, range, trend, anomalies } = analysis;
-  const stats = useMemo(() => dayStats(agg.days), [agg]);
-  const weekdays = useMemo(() => weekdayStats(range, agg.days, agg.dow), [agg, range]);
+  const { agg: aggregates, range, trend, anomalies } = analysis;
+  const stats = useMemo(() => dayStats(aggregates.days), [aggregates]);
+  const weekdays = useMemo(() => weekdayStats(range, aggregates.days, aggregates.dow), [aggregates, range]);
   const busiest = useMemo(() => busiestWeekday(weekdays), [weekdays]);
 
   const weekdayFilter = filters.weekdays.length > 0 && filters.weekdays.length < 7;
-  const spansYears = ymd(range.start).y !== ymd(range.end).y;
-  const eligibleDays = weekdayFilter ? filters.weekdays.reduce((sum, d) => sum + (weekdays[d]?.occurrences ?? 0), 0) : range.length;
+  const spansYears = dateParts(range.start).y !== dateParts(range.end).y;
+  const eligibleDays = weekdayFilter ? filters.weekdays.reduce((sum, dayOfWeek) => sum + (weekdays[dayOfWeek]?.occurrences ?? 0), 0) : range.length;
 
   const peak = useMemo(() => {
     if (stats.peakIdx < 0) return null;
     const day = range.start + stats.peakIdx;
-    return { day, unusual: anomalies.some((a) => a.day === day) };
+    return { day, unusual: anomalies.some((anomaly) => anomaly.day === day) };
   }, [stats.peakIdx, range.start, anomalies]);
 
   const weekendDays = weekdays[5].occurrences + weekdays[6].occurrences;
@@ -44,14 +44,14 @@ export default function Kpis() {
 
   let peakSub = noUsage;
   if (peak) {
-    const vars = { amount: fmtUSD(stats.peakGross), weekday: weekdayName(dowOf(peak.day)) };
-    peakSub = peak.unusual ? t('{amount} on {weekday}, an unusual day', vars) : t('{amount} on {weekday}', vars);
+    const values = { amount: fmtUSD(stats.peakGross), weekday: weekdayName(dowOf(peak.day)) };
+    peakSub = peak.unusual ? t('{amount} on {weekday}, an unusual day', values) : t('{amount} on {weekday}', values);
   }
 
   let busiestSub = noUsage;
   if (busiest) {
-    const vars = { amount: fmtUSD(busiest.perOccurrence), weekday: weekdayName(busiest.dow) };
-    busiestSub = weekdayFilter ? t('About {amount} on an average {weekday}, among the selected weekdays', vars) : t('About {amount} on an average {weekday}', vars);
+    const values = { amount: fmtUSD(busiest.perOccurrence), weekday: weekdayName(busiest.dow) };
+    busiestSub = weekdayFilter ? t('About {amount} on an average {weekday}, among the selected weekdays', values) : t('About {amount} on an average {weekday}', values);
   }
 
   // Most useful first: how many people use it, whether usage is rising, then when it happens.
@@ -61,7 +61,7 @@ export default function Kpis() {
         label={t('Average active users per day')}
         value={fmtNum(stats.avgActive, 1)}
         sub={stats.usageDays > 0 ? t('Highest was {n} in one day', { n: fmtInt(stats.maxActive) }) : noUsage}
-        spark={agg.days.activeUsers.length >= 2 ? agg.days.activeUsers : undefined}
+        spark={aggregates.days.activeUsers.length >= 2 ? aggregates.days.activeUsers : undefined}
         hint={t('Users with at least {amount} of usage on a day, averaged over the days that have usage. Change the threshold in Settings.', {
           amount: fmtUSD(settings.activeThreshold),
         })}

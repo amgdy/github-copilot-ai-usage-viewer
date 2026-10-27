@@ -33,27 +33,27 @@ export function PoolMonthCard({ rows, selected, onSelect }: PoolMonthCardProps) 
   const colors = useChartColors();
   const { narrowed, range, pool, coverage } = analysis;
   const billing = coverage.billing;
-  const r = rows.find((x) => x.m.key === selected) ?? rows[rows.length - 1] ?? null;
-  const m = r?.m ?? null;
-  const curves = useMemo(() => (m ? dailyCurves(m, range) : null), [m, range]);
-  const path = useMemo(() => (m ? projectionPath(m) : null), [m]);
+  const selectedRow = rows.find((row) => row.m.key === selected) ?? rows[rows.length - 1] ?? null;
+  const month = selectedRow?.m ?? null;
+  const curves = useMemo(() => (month ? dailyCurves(month, range) : null), [month, range]);
+  const path = useMemo(() => (month ? projectionPath(month) : null), [month]);
   const lowerBound = pool.capacityIsLowerBound;
   const option = useMemo(() => {
-    if (!r || !m || !curves) return null;
-    const date = m.exhaustedOn !== null ? fmtDay(m.exhaustedOn) : '';
+    if (!selectedRow || !month || !curves) return null;
+    const date = month.exhaustedOn !== null ? fmtDay(month.exhaustedOn) : '';
     return poolMonthOption(colors, {
-      m,
+      m: month,
       curves,
       path,
-      capacity: r.known ? m.capacity : null,
+      capacity: selectedRow.known ? month.capacity : null,
       lowerBound,
-      markBilling: !narrowed && m.exhaustedOn !== null,
-      billingLabel: r.known ? t('Ran out {date}', { date }) : t('Billing began {date}', { date }),
+      markBilling: !narrowed && month.exhaustedOn !== null,
+      billingLabel: selectedRow.known ? t('Ran out {date}', { date }) : t('Billing began {date}', { date }),
       billing,
     });
-  }, [colors, r, m, curves, path, lowerBound, narrowed, billing]);
+  }, [colors, selectedRow, month, curves, path, lowerBound, narrowed, billing]);
 
-  if (!r || !m || !option) {
+  if (!selectedRow || !month || !option) {
     return (
       <Card title={t(TITLE)} calc="pool-month-chart">
         <EmptyState title={t('No billing month in the selected period')} />
@@ -78,8 +78,8 @@ export function PoolMonthCard({ rows, selected, onSelect }: PoolMonthCardProps) 
         )}
       </Callout>
     );
-  } else if (!r.known) {
-    const gap = poolGap(billing, [m]);
+  } else if (!selectedRow.known) {
+    const gap = poolGap(billing, [month]);
     if (gap === 'billing') {
       notice = (
         <Callout tone="warn" title={t('Pool figures are not available')}>
@@ -97,23 +97,23 @@ export function PoolMonthCard({ rows, selected, onSelect }: PoolMonthCardProps) 
         <Callout tone="warn" title={t('The pool is bigger than this file shows')} action={<SettingsButton />}>
           {t(
             'In {month}, included credits covered {covered}. That is more than the {capacity} that the seats in this file pay for. Other seats share the same pool, so the real size is unknown and no pool line is drawn.',
-            { month: m.label, covered: fmtUSD(m.discount, 0), capacity: fmtUSD(m.capacity, 0) },
+            { month: month.label, covered: fmtUSD(month.discount, 0), capacity: fmtUSD(month.capacity, 0) },
           )}
         </Callout>
       );
     }
   }
 
-  const facts = monthFacts(r, narrowed, billing);
-  const monthOptions = [...rows].reverse().map((x) => ({ value: x.m.key, label: x.m.label }));
+  const facts = monthFacts(selectedRow, narrowed, billing);
+  const monthOptions = [...rows].reverse().map((row) => ({ value: row.m.key, label: row.m.label }));
   const controls =
     rows.length > 1 ? (
       <div className="flex items-center gap-2 text-xs text-fg-muted">
         <span>{t('Month')}</span>
         {rows.length <= 4 ? (
-          <Segmented size="sm" label={t('Month')} value={m.key} onChange={onSelect} options={rows.map((x) => ({ value: x.m.key, label: x.m.label }))} />
+          <Segmented size="sm" label={t('Month')} value={month.key} onChange={onSelect} options={rows.map((row) => ({ value: row.m.key, label: row.m.label }))} />
         ) : (
-          <Select aria-label={t('Month')} className="!py-0.5 text-xs" value={m.key} onChange={onSelect} options={monthOptions} order="given" />
+          <Select aria-label={t('Month')} className="!py-0.5 text-xs" value={month.key} onChange={onSelect} options={monthOptions} order="given" />
         )}
       </div>
     ) : null;
@@ -123,21 +123,21 @@ export function PoolMonthCard({ rows, selected, onSelect }: PoolMonthCardProps) 
       title={t(TITLE)}
       calc="pool-month-chart"
       subtitle={
-        r.known
-          ? t('{month}: usage added up day by day, against the pool of included credits.', { month: m.label })
-          : t('{month}: usage added up day by day.', { month: m.label })
+        selectedRow.known
+          ? t('{month}: usage added up day by day, against the pool of included credits.', { month: month.label })
+          : t('{month}: usage added up day by day.', { month: month.label })
       }
       controls={controls}
       notice={notice}
       option={option}
       height={320}
-      exportName={`github-copilot-pool-${m.key}`}
-      label={t('Usage added up day by day in {month}', { month: m.label })}
+      exportName={`github-copilot-pool-${month.key}`}
+      label={t('Usage added up day by day in {month}', { month: month.label })}
       below={
         <div className="space-y-2">
           <ul className="list-disc space-y-1 ps-5 text-sm marker:text-fg-subtle">
-            {facts.lines.map((line, i) => (
-              <li key={i}>{line}</li>
+            {facts.lines.map((line, lineIndex) => (
+              <li key={lineIndex}>{line}</li>
             ))}
           </ul>
           {facts.note ? <p className="text-xs text-fg-muted">{facts.note}</p> : null}

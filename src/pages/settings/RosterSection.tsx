@@ -14,28 +14,28 @@ import { RosterImport } from './RosterImport';
 import { RosterList } from './RosterList';
 import { ResetButton, SettingsSection } from './SettingsSection';
 
-const seats = (n: number) => tp(n, '{n} seat', '{n} seats', { n: fmtInt(n) });
+const seats = (seatCount: number) => tp(seatCount, '{n} seat', '{n} seats', { n: fmtInt(seatCount) });
 
-function describe(s: RosterStats): string {
-  if (s.seats === 0) return t('No seats yet.');
+function describe(stats: RosterStats): string {
+  if (stats.seats === 0) return t('No seats yet.');
   const parts = [
-    s.business > 0 ? t('{n} Business', { n: fmtInt(s.business) }) : '',
-    s.enterprise > 0 ? t('{n} Enterprise', { n: fmtInt(s.enterprise) }) : '',
-    s.custom > 0 ? t('{n} with a custom plan', { n: fmtInt(s.custom) }) : '',
-    s.noPlan > 0 ? t('{n} with no plan', { n: fmtInt(s.noPlan) }) : '',
+    stats.business > 0 ? t('{n} Business', { n: fmtInt(stats.business) }) : '',
+    stats.enterprise > 0 ? t('{n} Enterprise', { n: fmtInt(stats.enterprise) }) : '',
+    stats.custom > 0 ? t('{n} with a custom plan', { n: fmtInt(stats.custom) }) : '',
+    stats.noPlan > 0 ? t('{n} with no plan', { n: fmtInt(stats.noPlan) }) : '',
   ].filter(Boolean);
-  const head = t('{seats}: {plans}.', { seats: seats(s.seats), plans: parts.join(t(', ')) });
-  if (s.inReport === null) return head;
-  return `${head} ${t('{inReport} appear in the report and {notInReport} do not.', { inReport: fmtInt(s.inReport), notInReport: fmtInt(s.notInReport ?? 0) })}`;
+  const head = t('{seats}: {plans}.', { seats: seats(stats.seats), plans: parts.join(t(', ')) });
+  if (stats.inReport === null) return head;
+  return `${head} ${t('{inReport} appear in the report and {notInReport} do not.', { inReport: fmtInt(stats.inReport), notInReport: fmtInt(stats.notInReport ?? 0) })}`;
 }
 
 export function RosterSection() {
-  const roster = useApp((s) => s.settings.roster);
-  const rosterAsOf = useApp((s) => s.settings.rosterAsOf);
-  const saved = useApp((s) => s.settingsSaved);
+  const roster = useApp((state) => state.settings.roster);
+  const rosterAsOf = useApp((state) => state.settings.rosterAsOf);
+  const saved = useApp((state) => state.settingsSaved);
   // The sample's made-up users are never compared with the saved list, which holds real people.
-  const store = useApp((s) => (s.dataset?.sample ? null : s.dataset?.store)) ?? null;
-  const update = useApp((s) => s.updateSettings);
+  const store = useApp((state) => (state.dataset?.sample ? null : state.dataset?.store)) ?? null;
+  const update = useApp((state) => state.updateSettings);
 
   const inReport = useMemo(() => (store ? reportUsers(store) : null), [store]);
   const stats = useMemo(() => rosterStats(roster, inReport), [roster, inReport]);

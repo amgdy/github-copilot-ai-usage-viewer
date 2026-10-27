@@ -45,15 +45,15 @@ export function fmtIsoDay(iso: string | null | undefined): string {
 
 /** A plan in the current language: Business, Enterprise, a custom size, or '' when the list does not say. */
 export function planText(plan: string): string {
-  const p = plan.trim();
-  if (p === '') return '';
-  if (p === 'No quota') return t('No included credits');
-  const custom = /^Custom \(([\d,]+) credits\)$/.exec(p);
-  const credits = custom ? Number(custom[1].replace(/,/g, '')) : planCredits(p);
+  const trimmedPlan = plan.trim();
+  if (trimmedPlan === '') return '';
+  if (trimmedPlan === 'No quota') return t('No included credits');
+  const custom = /^Custom \(([\d,]+) credits\)$/.exec(trimmedPlan);
+  const credits = custom ? Number(custom[1].replace(/,/g, '')) : planCredits(trimmedPlan);
   if (credits === PLAN_CREDITS.Business) return t('Business');
   if (credits === PLAN_CREDITS.Enterprise) return t('Enterprise');
   if (Number.isFinite(credits) && credits > 0) return t('Custom plan, {n} credits', { n: fmtInt(credits) });
-  return p;
+  return trimmedPlan;
 }
 
 const REASON_LABEL: Record<ReclaimReason, string> = {
@@ -87,7 +87,7 @@ export interface StatusRow {
 
 /** Every seat by activity status, positive to negative. Statuses without seats are left out. */
 export function statusRows(report: Pick<LicenseReport, 'byStatus' | 'seats'>): StatusRow[] {
-  return STATUS_ORDER.filter((s) => report.byStatus[s] > 0).map((status) => {
+  return STATUS_ORDER.filter((status) => report.byStatus[status] > 0).map((status) => {
     const meta = STATUS_META[status];
     const count = report.byStatus[status];
     return { status, label: t(meta.label), tone: meta.tone, calc: meta.calc, count, share: report.seats > 0 ? count / report.seats : 0 };
@@ -104,7 +104,7 @@ export interface ShareRow {
 
 /** Seats by plan: Business, Enterprise, then other plans (custom or not in the list) when there are any. */
 export function planRows(report: Pick<LicenseReport, 'byPlan' | 'seats'>): ShareRow[] {
-  const share = (n: number) => (report.seats > 0 ? n / report.seats : 0);
+  const share = (seatCount: number) => (report.seats > 0 ? seatCount / report.seats : 0);
   const rows: ShareRow[] = [
     { id: 'business', label: t('Business'), count: report.byPlan.Business, share: share(report.byPlan.Business), calc: 'license-seats' },
     { id: 'enterprise', label: t('Enterprise'), count: report.byPlan.Enterprise, share: share(report.byPlan.Enterprise), calc: 'license-seats' },
@@ -115,7 +115,7 @@ export function planRows(report: Pick<LicenseReport, 'byPlan' | 'seats'>): Share
 
 /** Where the seats are in the report. The three rows add up to all seats. */
 export function placeRows(report: Pick<LicenseReport, 'matched' | 'seenOutsideScope' | 'neverSeen' | 'seats'>): ShareRow[] {
-  const share = (n: number) => (report.seats > 0 ? n / report.seats : 0);
+  const share = (seatCount: number) => (report.seats > 0 ? seatCount / report.seats : 0);
   return [
     { id: 'matched', label: t('Seats with usage in this view'), count: report.matched, share: share(report.matched), calc: 'license-matched' },
     { id: 'outside', label: t('Seats with usage outside this view'), count: report.seenOutsideScope, share: share(report.seenOutsideScope), calc: 'license-outside-scope' },
@@ -296,8 +296,8 @@ export interface Field<T> {
   sum?: boolean;
 }
 
-const cents = (v: number): number => Math.round(v * 100) / 100;
-const orNull = (s: string): string | null => (s === '' ? null : s);
+const cents = (amount: number): number => Math.round(amount * 100) / 100;
+const orNull = (text: string): string | null => (text === '' ? null : text);
 
 type FindingField = Field<LicenseFinding>;
 
@@ -306,13 +306,13 @@ const userField = (): FindingField => ({
   header: t('User'),
   hint: t('Click a user who is in the report to see their details.'),
   format: 'user',
-  value: (f) => f.login,
+  value: (finding) => finding.login,
 });
-const nameField = (): FindingField => ({ key: 'name', header: t('Name'), hidden: true, format: 'text', value: (f) => orNull(f.name) });
-const reasonField = (): FindingField => ({ key: 'reason', header: t('Reason'), calc: 'license-reclaim', format: 'text', value: (f) => orNull(reasonText(f.reason)) });
-const planField = (): FindingField => ({ key: 'plan', header: t('Plan'), calc: 'license-seats', format: 'plan', value: (f) => orNull(f.plan) });
-const orgField = (): FindingField => ({ key: 'org', header: t('Organization'), format: 'text', value: (f) => orNull(f.org) });
-const teamField = (hidden: boolean): FindingField => ({ key: 'team', header: t('Team'), hidden, format: 'text', value: (f) => orNull(f.team) });
+const nameField = (): FindingField => ({ key: 'name', header: t('Name'), hidden: true, format: 'text', value: (finding) => orNull(finding.name) });
+const reasonField = (): FindingField => ({ key: 'reason', header: t('Reason'), calc: 'license-reclaim', format: 'text', value: (finding) => orNull(reasonText(finding.reason)) });
+const planField = (): FindingField => ({ key: 'plan', header: t('Plan'), calc: 'license-seats', format: 'plan', value: (finding) => orNull(finding.plan) });
+const orgField = (): FindingField => ({ key: 'org', header: t('Organization'), format: 'text', value: (finding) => orNull(finding.org) });
+const teamField = (hidden: boolean): FindingField => ({ key: 'team', header: t('Team'), hidden, format: 'text', value: (finding) => orNull(finding.team) });
 const daysField = (): FindingField => ({
   key: 'days',
   header: t('Days since activity'),
@@ -320,19 +320,19 @@ const daysField = (): FindingField => ({
   calc: 'license-as-of',
   align: 'end',
   format: 'int',
-  value: (f) => f.daysSinceActivity,
+  value: (finding) => finding.daysSinceActivity,
 });
-const lastActivityField = (): FindingField => ({ key: 'lastActivity', header: t('Last activity'), calc: 'license-as-of', format: 'date', value: (f) => orNull(f.lastActivityAt) });
+const lastActivityField = (): FindingField => ({ key: 'lastActivity', header: t('Last activity'), calc: 'license-as-of', format: 'date', value: (finding) => orNull(finding.lastActivityAt) });
 const surfaceField = (hidden: boolean): FindingField => ({
   key: 'surface',
   header: t('Last used in'),
   hint: t('The editor or place of the last activity, as the license list writes it.'),
   hidden,
   format: 'text',
-  value: (f) => orNull(f.lastSurface),
+  value: (finding) => orNull(finding.lastSurface),
 });
-const createdField = (hidden: boolean): FindingField => ({ key: 'created', header: t('Seat since'), calc: 'license-new-seats', hidden, format: 'date', value: (f) => orNull(f.createdAt) });
-const endsField = (): FindingField => ({ key: 'ends', header: t('Ends on'), calc: 'license-pending-cancellation', format: 'date', value: (f) => orNull(f.pendingCancellation) });
+const createdField = (hidden: boolean): FindingField => ({ key: 'created', header: t('Seat since'), calc: 'license-new-seats', hidden, format: 'date', value: (finding) => orNull(finding.createdAt) });
+const endsField = (): FindingField => ({ key: 'ends', header: t('Ends on'), calc: 'license-pending-cancellation', format: 'date', value: (finding) => orNull(finding.pendingCancellation) });
 const usageField = (): FindingField => ({
   key: 'usage',
   header: t('Usage in this period'),
@@ -340,7 +340,7 @@ const usageField = (): FindingField => ({
   calc: 'usage',
   align: 'end',
   format: 'usd',
-  value: (f) => cents(f.usage),
+  value: (finding) => cents(finding.usage),
   sum: true,
 });
 const priceField = (asValue: boolean): FindingField => ({
@@ -350,7 +350,7 @@ const priceField = (asValue: boolean): FindingField => ({
   calc: asValue ? 'license-reclaim' : 'license-seats',
   align: 'end',
   format: 'usd',
-  value: (f) => cents(f.seatPrice),
+  value: (finding) => cents(finding.seatPrice),
   sum: true,
 });
 
@@ -375,14 +375,14 @@ export function findingFields(id: Exclude<ListId, 'unmatched'>): FindingField[] 
 /** The columns of the users with usage but no seat. */
 export function unmatchedFields(): Field<UnmatchedUser>[] {
   return [
-    { key: 'user', header: t('User'), hint: t('Click a user to see their details.'), format: 'user', value: (u) => u.name },
-    { key: 'org', header: t('Organization'), format: 'text', value: (u) => orNull(u.org) },
+    { key: 'user', header: t('User'), hint: t('Click a user to see their details.'), format: 'user', value: (user) => user.name },
+    { key: 'org', header: t('Organization'), format: 'text', value: (user) => orNull(user.org) },
     {
       key: 'plan',
       header: t('Plan in the report'),
       hint: t('The plan read from the monthly included credits of the user in the report.'),
       format: 'plan',
-      value: (u) => orNull(u.plan),
+      value: (user) => orNull(user.plan),
     },
     {
       key: 'usage',
@@ -391,7 +391,7 @@ export function unmatchedFields(): Field<UnmatchedUser>[] {
       calc: 'license-unmatched',
       align: 'end',
       format: 'usd',
-      value: (u) => cents(u.usage),
+      value: (user) => cents(user.usage),
       sum: true,
     },
   ];
@@ -399,8 +399,8 @@ export function unmatchedFields(): Field<UnmatchedUser>[] {
 
 /** The CSV of a table: the headers and rows of the visible columns, as the table export writes them. */
 export function csvOf<T>(fields: readonly Field<T>[], rows: readonly T[]): { headers: string[]; rows: Cell[][] } {
-  const visible = fields.filter((f) => !f.hidden);
-  return { headers: visible.map((f) => f.csvHeader ?? f.header), rows: rows.map((r) => visible.map((f) => f.value(r))) };
+  const visible = fields.filter((field) => !field.hidden);
+  return { headers: visible.map((field) => field.csvHeader ?? field.header), rows: rows.map((row) => visible.map((field) => field.value(row))) };
 }
 
 // ---- Users in the report ------------------------------------------------------------------------
@@ -408,9 +408,9 @@ export function csvOf<T>(fields: readonly Field<T>[], rows: readonly T[]): { hea
 /** Report user id by lower-case login. The first profile wins (profiles come biggest usage first). */
 export function profileIds(profiles: readonly { id: number; name: string }[]): Map<string, number> {
   const out = new Map<string, number>();
-  for (const p of profiles) {
-    const key = p.name.trim().toLowerCase();
-    if (key !== '' && !out.has(key)) out.set(key, p.id);
+  for (const profile of profiles) {
+    const key = profile.name.trim().toLowerCase();
+    if (key !== '' && !out.has(key)) out.set(key, profile.id);
   }
   return out;
 }

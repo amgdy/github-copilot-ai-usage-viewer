@@ -36,13 +36,13 @@ const POINTS = [
 ];
 
 export function Landing() {
-  const loading = useApp((s) => s.loading);
-  const error = useApp((s) => s.error);
-  const setError = useApp((s) => s.setError);
-  const theme = useApp((s) => s.theme);
-  const setTheme = useApp((s) => s.setTheme);
-  const dataset = useApp((s) => s.dataset);
-  const setPickingData = useApp((s) => s.setPickingData);
+  const loading = useApp((state) => state.loading);
+  const error = useApp((state) => state.error);
+  const setError = useApp((state) => state.setError);
+  const theme = useApp((state) => state.theme);
+  const setTheme = useApp((state) => state.setTheme);
+  const dataset = useApp((state) => state.dataset);
+  const setPickingData = useApp((state) => state.setPickingData);
   const dark = resolveTheme(theme) === 'dark';
   const [over, setOver] = useState(false);
   const input = useRef<HTMLInputElement>(null);
@@ -60,10 +60,10 @@ export function Landing() {
     });
   };
 
-  const onDrop = (e: DragEvent) => {
-    e.preventDefault();
+  const onDrop = (event: DragEvent) => {
+    event.preventDefault();
     setOver(false);
-    if (!busy) take(e.dataTransfer.files);
+    if (!busy) take(event.dataTransfer.files);
   };
 
   return (
@@ -118,8 +118,8 @@ export function Landing() {
                   over ? 'border-accent bg-accent-soft' : 'border-control bg-surface-2',
                   busy && 'pointer-events-none',
                 )}
-                onDragOver={(e) => {
-                  e.preventDefault();
+                onDragOver={(event) => {
+                  event.preventDefault();
                   if (!busy) setOver(true);
                 }}
                 onDragLeave={() => setOver(false)}
@@ -147,9 +147,9 @@ export function Landing() {
                       accept={UPLOAD_ACCEPT}
                       multiple
                       hidden
-                      onChange={(e) => {
-                        if (e.target.files?.length) take(e.target.files);
-                        e.target.value = '';
+                      onChange={(event) => {
+                        if (event.target.files?.length) take(event.target.files);
+                        event.target.value = '';
                       }}
                     />
                   </>

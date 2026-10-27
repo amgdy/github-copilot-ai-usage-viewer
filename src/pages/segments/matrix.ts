@@ -25,16 +25,16 @@ export interface Matrix {
 const cell = (): MatrixCell => ({ users: 0, gross: 0 });
 
 /** The lenses for the rows and the columns: the picked ones when offered and different, else the first offered ones that are. */
-export function pickLenses(row: LensId, col: LensId, offered: readonly LensId[]): [LensId, LensId] {
-  const r = offered.includes(row) ? row : offered[0];
-  const c = offered.includes(col) && col !== r ? col : (offered.find((id) => id !== r) ?? r);
-  return [r, c];
+export function pickLenses(row: LensId, column: LensId, offered: readonly LensId[]): [LensId, LensId] {
+  const rowLens = offered.includes(row) ? row : offered[0];
+  const columnLens = offered.includes(column) && column !== rowLens ? column : (offered.find((id) => id !== rowLens) ?? rowLens);
+  return [rowLens, columnLens];
 }
 
 function nonEmpty(totals: MatrixCell[]): number[] {
   const keep: number[] = [];
-  totals.forEach((t, i) => {
-    if (t.users > 0) keep.push(i);
+  totals.forEach((total, index) => {
+    if (total.users > 0) keep.push(index);
   });
   return keep;
 }
@@ -43,51 +43,51 @@ function nonEmpty(totals: MatrixCell[]): number[] {
 export function buildMatrix(rowLens: Lens, colLens: Lens, taxonomy: Taxonomy, population: UserSet): Matrix {
   const rowItems = rowLens.items(taxonomy);
   const colItems = colLens.items(taxonomy);
-  const rowIndex = new Map(rowItems.map((it, i) => [it.id, i]));
-  const colIndex = new Map(colItems.map((it, i) => [it.id, i]));
+  const rowIndex = new Map(rowItems.map((item, index) => [item.id, index]));
+  const colIndex = new Map(colItems.map((item, index) => [item.id, index]));
   const cells = rowItems.map(() => colItems.map(cell));
   const rowTotals = rowItems.map(cell);
   const colTotals = colItems.map(cell);
 
-  for (const p of population.profiles) {
+  for (const user of population.profiles) {
     const cols: number[] = [];
-    for (const id of colLens.idsOf(p)) {
-      const ci = colIndex.get(id);
-      if (ci === undefined) continue;
-      cols.push(ci);
-      colTotals[ci].users++;
-      colTotals[ci].gross += p.gross;
+    for (const id of colLens.idsOf(user)) {
+      const columnPosition = colIndex.get(id);
+      if (columnPosition === undefined) continue;
+      cols.push(columnPosition);
+      colTotals[columnPosition].users++;
+      colTotals[columnPosition].gross += user.gross;
     }
-    for (const id of rowLens.idsOf(p)) {
-      const ri = rowIndex.get(id);
-      if (ri === undefined) continue;
-      rowTotals[ri].users++;
-      rowTotals[ri].gross += p.gross;
-      for (const ci of cols) {
-        cells[ri][ci].users++;
-        cells[ri][ci].gross += p.gross;
+    for (const id of rowLens.idsOf(user)) {
+      const rowPosition = rowIndex.get(id);
+      if (rowPosition === undefined) continue;
+      rowTotals[rowPosition].users++;
+      rowTotals[rowPosition].gross += user.gross;
+      for (const columnPosition of cols) {
+        cells[rowPosition][columnPosition].users++;
+        cells[rowPosition][columnPosition].gross += user.gross;
       }
     }
   }
 
   const keepRows = nonEmpty(rowTotals);
   const keepCols = nonEmpty(colTotals);
-  const shown = keepRows.map((ri) => keepCols.map((ci) => cells[ri][ci]));
+  const shown = keepRows.map((rowPosition) => keepCols.map((columnPosition) => cells[rowPosition][columnPosition]));
   let maxUsers = 0;
   let maxGross = 0;
   for (const row of shown) {
-    for (const c of row) {
-      if (c.users > maxUsers) maxUsers = c.users;
-      if (c.gross > maxGross) maxGross = c.gross;
+    for (const matrixCell of row) {
+      if (matrixCell.users > maxUsers) maxUsers = matrixCell.users;
+      if (matrixCell.gross > maxGross) maxGross = matrixCell.gross;
     }
   }
 
   return {
-    rows: keepRows.map((i) => rowItems[i]),
-    cols: keepCols.map((i) => colItems[i]),
+    rows: keepRows.map((rowPosition) => rowItems[rowPosition]),
+    cols: keepCols.map((columnPosition) => colItems[columnPosition]),
     cells: shown,
-    rowTotals: keepRows.map((i) => rowTotals[i]),
-    colTotals: keepCols.map((i) => colTotals[i]),
+    rowTotals: keepRows.map((rowPosition) => rowTotals[rowPosition]),
+    colTotals: keepCols.map((columnPosition) => colTotals[columnPosition]),
     all: { users: population.totals.users, gross: population.totals.gross },
     maxUsers,
     maxGross,

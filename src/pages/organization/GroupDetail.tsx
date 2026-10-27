@@ -60,14 +60,14 @@ export function GroupDetail({ spec, column, group, onClear }: { spec: DimSpec; c
 
   const byOption = useMemo(() => {
     const values = store.dicts[byDim].values;
-    const items: DonutItem[] = detail.by.slice(0, 8).map((b) => ({ name: labelOf(byDim, values[b.id]), value: b.gross, color: b.id === 0 ? colors.muted : undefined }));
+    const items: DonutItem[] = detail.by.slice(0, 8).map((part) => ({ name: labelOf(byDim, values[part.id]), value: part.gross, color: part.id === 0 ? colors.muted : undefined }));
     const rest = detail.by.slice(8);
     if (rest.length > 0) items.push({ name: t('Other ({n} more)', { n: fmtInt(rest.length) }), value: rest.reduce((a, b) => a + b.gross, 0), color: colors.muted });
     return { items, option: donutOption(colors, { items, legend: 'bottom', center: { value: fmtUSD(detail.gross, 0), caption: t('usage') } }) };
   }, [store, byDim, detail, colors]);
 
   const tierOption = useMemo(() => {
-    const items: DonutItem[] = CATEGORIES.map((name, i) => ({ name: t(name), value: detail.tiers[i], color: CATEGORY_COLORS[name] })).filter((d) => d.value > 0);
+    const items: DonutItem[] = CATEGORIES.map((name, index) => ({ name: t(name), value: detail.tiers[index], color: CATEGORY_COLORS[name] })).filter((slice) => slice.value > 0);
     return { items, option: donutOption(colors, { items, legend: 'bottom', center: { value: fmtUSD(detail.gross, 0), caption: t('usage') } }) };
   }, [detail, colors]);
 
@@ -76,15 +76,15 @@ export function GroupDetail({ spec, column, group, onClear }: { spec: DimSpec; c
     const bucketer = makeBucketer(range.start, range.end, weekly ? 'week' : 'day');
     const gross = new Float64Array(bucketer.count);
     const net = new Float64Array(bucketer.count);
-    for (let d = 0; d < detail.daily.length; d++) {
-      const b = bucketer.indexOf(range.start + d);
-      if (b < 0 || b >= bucketer.count) continue;
-      gross[b] += detail.daily[d];
-      net[b] += detail.dailyNet[d];
+    for (let dayIndex = 0; dayIndex < detail.daily.length; dayIndex++) {
+      const bucketIndex = bucketer.indexOf(range.start + dayIndex);
+      if (bucketIndex < 0 || bucketIndex >= bucketer.count) continue;
+      gross[bucketIndex] += detail.daily[dayIndex];
+      net[bucketIndex] += detail.dailyNet[dayIndex];
     }
     const series: TimeSeriesInput[] = [{ name: t('Usage'), data: gross, color: colors.accent }];
     if (detail.net > 0.005) series.push({ name: t('Billed'), data: net, color: colors.warn });
-    const labels = Array.from({ length: bucketer.count }, (_, i) => bucketer.label(i));
+    const labels = Array.from({ length: bucketer.count }, (_, bucketIndex) => bucketer.label(bucketIndex));
     return stackedTimeOption(colors, { labels, series, kind: 'line', stack: false, legend: series.length > 1, format: usd });
   }, [range, weekly, detail, colors]);
 

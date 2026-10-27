@@ -17,14 +17,14 @@ export function orderError<K extends string>(
   values: Record<K, number>,
   key: K,
   next: number,
-  fmt: (n: number) => string,
+  formatValue: (value: number) => string,
 ): string | null {
-  const i = items.findIndex((it) => it.key === key);
-  if (i < 0) return null;
-  const below = items[i - 1];
-  if (below && next <= values[below.key]) return t('"{name}" must be above "{other}" ({value}).', { name: t(items[i].label), other: t(below.label), value: fmt(values[below.key]) });
-  const above = items[i + 1];
-  if (above && next >= values[above.key]) return t('"{name}" must be below "{other}" ({value}).', { name: t(items[i].label), other: t(above.label), value: fmt(values[above.key]) });
+  const index = items.findIndex((item) => item.key === key);
+  if (index < 0) return null;
+  const below = items[index - 1];
+  if (below && next <= values[below.key]) return t('"{name}" must be above "{other}" ({value}).', { name: t(items[index].label), other: t(below.label), value: formatValue(values[below.key]) });
+  const above = items[index + 1];
+  if (above && next >= values[above.key]) return t('"{name}" must be below "{other}" ({value}).', { name: t(items[index].label), other: t(above.label), value: formatValue(values[above.key]) });
   return null;
 }
 
@@ -68,14 +68,14 @@ export function autoLimitsError(current: AutoLimits, key: keyof AutoLimits, next
  * it gets. Returns the line for the list of left-out items, or null when the pair holds.
  */
 export function autoLimitsFileError(file: Partial<AutoLimits>, defaults: AutoLimits): string | null {
-  const present = (['lowAuto', 'autoFirst'] as const).filter((k) => file[k] !== undefined);
+  const present = (['lowAuto', 'autoFirst'] as const).filter((limit) => file[limit] !== undefined);
   if (present.length === 0) return null;
   const low = file.lowAuto ?? defaults.lowAuto;
   const first = file.autoFirst ?? defaults.autoFirst;
   if (low < first) return null;
   const valueOf = (key: keyof AutoLimits, value: number) =>
     file[key] === undefined ? t('{value}, the default', { value: autoValue(key, value) }) : autoValue(key, value);
-  const vars = { low: autoName('lowAuto'), lowValue: valueOf('lowAuto', low), first: autoName('autoFirst'), firstValue: valueOf('autoFirst', first) };
-  if (present.length === 2) return t('Auto use limits: "{low}" ({lowValue}) must be below "{first}" ({firstValue}). "{low}" and "{first}" were left out.', vars);
-  return t('Auto use limits: "{low}" ({lowValue}) must be below "{first}" ({firstValue}). "{name}" was left out.', { ...vars, name: autoName(present[0]) });
+  const messageValues = { low: autoName('lowAuto'), lowValue: valueOf('lowAuto', low), first: autoName('autoFirst'), firstValue: valueOf('autoFirst', first) };
+  if (present.length === 2) return t('Auto use limits: "{low}" ({lowValue}) must be below "{first}" ({firstValue}). "{low}" and "{first}" were left out.', messageValues);
+  return t('Auto use limits: "{low}" ({lowValue}) must be below "{first}" ({firstValue}). "{name}" was left out.', { ...messageValues, name: autoName(present[0]) });
 }

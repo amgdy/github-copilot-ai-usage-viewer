@@ -33,7 +33,7 @@ function must<T>(value: T | null | undefined): T {
 describe('plans when the language is Arabic', () => {
   it('reads every plan text the same way', () => {
     const cells = ['Business', 'GitHub Copilot Enterprise', 'Custom (2,500 credits)', 'Custom (500 credits)', '1,900', '$25', 'unknown', 'platinum', 'Custom (abc credits)'];
-    const read = (): unknown[] => cells.map((c) => [readPlan(c), planCredits(c), seatCredits(c, 1900)]);
+    const read = (): unknown[] => cells.map((cell) => [readPlan(cell), planCredits(cell), seatCredits(cell, 1900)]);
     const english = read();
     applyLocale('ar', arabic);
     expect(read()).toEqual(english);
@@ -54,18 +54,18 @@ describe('plans when the language is Arabic', () => {
     });
     const table = ['login,plan', 'user004,"Custom (2,500 credits)"', 'user005,Business', ',Business'].join('\n');
     const files = [rest, table, 'user006\nuser007\nnot a login!', ''];
-    const run = (): LicenseParse[] => files.map((f) => parseLicenseFile(f));
-    const bare = (runs: LicenseParse[]): unknown[] => runs.map((r) => ({ ...r, problems: r.problems.length }));
+    const run = (): LicenseParse[] => files.map((file) => parseLicenseFile(file));
+    const bare = (runs: LicenseParse[]): unknown[] => runs.map((parsed) => ({ ...parsed, problems: parsed.problems.length }));
 
     const english = run();
-    expect(english[0].seats.map((s) => s.plan)).toEqual(['Business', 'Enterprise', undefined]);
-    expect(english[1].seats.map((s) => s.plan)).toEqual(['2500', 'Business']);
+    expect(english[0].seats.map((seat) => seat.plan)).toEqual(['Business', 'Enterprise', undefined]);
+    expect(english[1].seats.map((seat) => seat.plan)).toEqual(['2500', 'Business']);
     expect(english[3].problems).toEqual(['The file is empty.']);
 
     applyLocale('ar', arabic);
     const translated = run();
     expect(bare(translated)).toEqual(bare(english));
-    expect(translated.map((r) => rosterFromParse(r))).toEqual(english.map((r) => rosterFromParse(r)));
+    expect(translated.map((parsed) => rosterFromParse(parsed))).toEqual(english.map((parsed) => rosterFromParse(parsed)));
     expect(translated[3].problems).toHaveLength(1);
     expect(translated[3].problems).not.toEqual(english[3].problems);
   });
@@ -85,24 +85,24 @@ describe('plans when the language is Arabic', () => {
       { user: 'user004', plan: 'Custom (2,500 credits)', lastActivityAt: '2026-01-10', source: 'api' },
       { user: 'user005', source: 'api' },
     ];
-    const pl = await analyzeCsv(makeCsv(specs, { pool: true }), { settings: { roster, rosterAsOf: '2026-05-31' } });
-    const view = (a: Analysis): unknown => ({
-      licenses: a.licenses,
-      seats: a.seats,
-      plans: a.population.profiles.map((p) => [p.name, p.plan, p.license]),
+    const pipeline = await analyzeCsv(makeCsv(specs, { pool: true }), { settings: { roster, rosterAsOf: '2026-05-31' } });
+    const view = (analysis: Analysis): unknown => ({
+      licenses: analysis.licenses,
+      seats: analysis.seats,
+      plans: analysis.population.profiles.map((profile) => [profile.name, profile.plan, profile.license]),
     });
 
-    const report = must(pl.analysis.licenses);
-    const listed = report.reclaim.filter((f) => ['user002', 'user003', 'user004'].includes(f.login));
-    expect(listed.map((f) => [f.login, f.plan, f.seatPrice])).toEqual([
+    const report = must(pipeline.analysis.licenses);
+    const listed = report.reclaim.filter((finding) => ['user002', 'user003', 'user004'].includes(finding.login));
+    expect(listed.map((finding) => [finding.login, finding.plan, finding.seatPrice])).toEqual([
       ['user002', 'Enterprise', 39],
       ['user003', '2500', 25],
       ['user004', 'Custom (2,500 credits)', 25],
     ]);
-    expect(report.unmatched.map((u) => [u.name, u.plan])).toEqual([['user009', 'Custom (1,000 credits)']]);
+    expect(report.unmatched.map((user) => [user.name, user.plan])).toEqual([['user009', 'Custom (1,000 credits)']]);
 
-    const english = view(pl.analysis);
+    const english = view(pipeline.analysis);
     applyLocale('ar', arabic);
-    expect(view(pl.run())).toEqual(english);
+    expect(view(pipeline.run())).toEqual(english);
   });
 });

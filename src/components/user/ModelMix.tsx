@@ -20,33 +20,33 @@ interface ModelUse {
   tier: string;
 }
 
-export function ModelMix({ p }: { p: UserProfile }) {
+export function ModelMix({ p: user }: { p: UserProfile }) {
   const { analysis, store, models } = useAnalysis();
-  const { agg, baseMask, range, segmentFiltered, users, coverage } = analysis;
+  const { agg: aggregates, baseMask, range, segmentFiltered, users, coverage } = analysis;
 
   const uses = useMemo<ModelUse[]>(() => {
     const nModels = store.dicts.model.values.length;
-    const inScope = !segmentFiltered || users.profiles.includes(p);
+    const inScope = !segmentFiltered || users.profiles.includes(user);
     const perModel: ArrayLike<number> =
-      agg.userModel && inScope && agg.nModels === nModels
-        ? agg.userModel.subarray(p.id * nModels, (p.id + 1) * nModels)
-        : userModelGross(store, baseMask, { start: range.start, end: range.end }, p.id);
+      aggregates.userModel && inScope && aggregates.nModels === nModels
+        ? aggregates.userModel.subarray(user.id * nModels, (user.id + 1) * nModels)
+        : userModelGross(store, baseMask, { start: range.start, end: range.end }, user.id);
     const out: ModelUse[] = [];
-    for (let m = 0; m < nModels; m++) {
-      if (!(perModel[m] > 0)) continue;
-      const tier = CATEGORIES[models.cat[m]] ?? 'Unknown';
-      out.push({ name: labelOf('model', store.dicts.model.values[m]), gross: perModel[m], color: CATEGORY_COLORS[tier], tier });
+    for (let modelIndex = 0; modelIndex < nModels; modelIndex++) {
+      if (!(perModel[modelIndex] > 0)) continue;
+      const tier = CATEGORIES[models.cat[modelIndex]] ?? 'Unknown';
+      out.push({ name: labelOf('model', store.dicts.model.values[modelIndex]), gross: perModel[modelIndex], color: CATEGORY_COLORS[tier], tier });
     }
     return out.sort((a, b) => b.gross - a.gross);
-  }, [agg, store, models, baseMask, range.start, range.end, segmentFiltered, users, p]);
+  }, [aggregates, store, models, baseMask, range.start, range.end, segmentFiltered, users, user]);
 
-  const total = uses.reduce((s, u) => s + u.gross, 0);
+  const total = uses.reduce((sum, modelUse) => sum + modelUse.gross, 0);
   const shown = uses.slice(0, MAX_MODELS);
   const rest = uses.slice(MAX_MODELS);
-  const restGross = rest.reduce((s, u) => s + u.gross, 0);
+  const restGross = rest.reduce((sum, modelUse) => sum + modelUse.gross, 0);
   const top = shown[0]?.gross ?? 0;
 
-  const unknownShare = Math.max(0, 1 - p.powerfulShare - p.versatileShare - p.lightweightShare);
+  const unknownShare = Math.max(0, 1 - user.powerfulShare - user.versatileShare - user.lightweightShare);
 
   if (!coverage.models) {
     return (
@@ -64,23 +64,23 @@ export function ModelMix({ p }: { p: UserProfile }) {
         <div className="rounded-lg border border-dashed border-border px-3 py-5 text-center text-xs text-fg-muted">{t('No model usage in this date range.')}</div>
       ) : (
         <BarList label={t('Usage by model')}>
-          {shown.map((u) => (
+          {shown.map((modelUse) => (
             <BarRow
-              key={u.name}
+              key={modelUse.name}
               label={
                 <span className="inline-flex min-w-0 items-center gap-1.5">
-                  <VendorIcon vendor={inferVendor(u.name)} size={12} />
-                  <span className="truncate">{u.name}</span>
+                  <VendorIcon vendor={inferVendor(modelUse.name)} size={12} />
+                  <span className="truncate">{modelUse.name}</span>
                 </span>
               }
-              value={`${fmtUSD(u.gross)} · ${fmtPct(u.gross / total, 0)}`}
-              fraction={u.gross / top}
-              color={u.color}
+              value={`${fmtUSD(modelUse.gross)} · ${fmtPct(modelUse.gross / total, 0)}`}
+              fraction={modelUse.gross / top}
+              color={modelUse.color}
               title={t("{model} ({tier}): {amount}, {share} of this user's usage", {
-                model: u.name,
-                tier: t(u.tier),
-                amount: fmtUSD(u.gross),
-                share: fmtPct(u.gross / total, 1),
+                model: modelUse.name,
+                tier: t(modelUse.tier),
+                amount: fmtUSD(modelUse.gross),
+                share: fmtPct(modelUse.gross / total, 1),
               })}
             />
           ))}
@@ -90,7 +90,7 @@ export function ModelMix({ p }: { p: UserProfile }) {
               value={`${fmtUSD(restGross)} · ${fmtPct(restGross / total, 0)}`}
               fraction={restGross / top}
               color="var(--fg-subtle)"
-              title={rest.map((u) => `${u.name}: ${fmtUSD(u.gross)}`).join('\n')}
+              title={rest.map((modelUse) => `${modelUse.name}: ${fmtUSD(modelUse.gross)}`).join('\n')}
             />
           ) : null}
         </BarList>
@@ -100,9 +100,9 @@ export function ModelMix({ p }: { p: UserProfile }) {
           title={t('Model tier')}
           calc="tier-usage"
           segments={[
-            { label: t('Powerful'), value: p.powerfulShare, color: CATEGORY_COLORS.Powerful },
-            { label: t('Versatile'), value: p.versatileShare, color: CATEGORY_COLORS.Versatile },
-            { label: t('Lightweight'), value: p.lightweightShare, color: CATEGORY_COLORS.Lightweight },
+            { label: t('Powerful'), value: user.powerfulShare, color: CATEGORY_COLORS.Powerful },
+            { label: t('Versatile'), value: user.versatileShare, color: CATEGORY_COLORS.Versatile },
+            { label: t('Lightweight'), value: user.lightweightShare, color: CATEGORY_COLORS.Lightweight },
             { label: t('Unknown'), value: unknownShare > 0.005 ? unknownShare : 0, color: CATEGORY_COLORS.Unknown },
           ]}
         />
@@ -111,8 +111,8 @@ export function ModelMix({ p }: { p: UserProfile }) {
           calc="auto-share"
           note={<FeatureIcon feature="auto" size={12} />}
           segments={[
-            { label: t('Auto'), value: p.autoShare, color: 'var(--accent)' },
-            { label: t('Hand-picked'), value: 1 - p.autoShare, color: 'var(--fg-subtle)' },
+            { label: t('Auto'), value: user.autoShare, color: 'var(--accent)' },
+            { label: t('Hand-picked'), value: 1 - user.autoShare, color: 'var(--fg-subtle)' },
           ]}
         />
       </div>

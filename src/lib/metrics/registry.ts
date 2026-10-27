@@ -31,14 +31,14 @@ export const METRICS: readonly MetricDoc[] = (() => {
     ...RECOMMENDATIONS_DOCS,
     ...DATA_DOCS,
   ];
-  const order = new Map<MetricArea, number>(METRIC_AREAS.map((a, i) => [a, i]));
+  const order = new Map<MetricArea, number>(METRIC_AREAS.map((area, index) => [area, index]));
   return all
-    .map((doc, i) => ({ doc, i }))
+    .map((doc, index) => ({ doc, i: index }))
     .sort((a, b) => (order.get(a.doc.area) ?? 0) - (order.get(b.doc.area) ?? 0) || a.i - b.i)
-    .map((x) => x.doc);
+    .map((entry) => entry.doc);
 })();
 
-const BY_ID = new Map<string, MetricDoc>(METRICS.map((m) => [m.id, m]));
+const BY_ID = new Map<string, MetricDoc>(METRICS.map((doc) => [doc.id, doc]));
 
 export const metricDoc = (id: string): MetricDoc | undefined => BY_ID.get(id);
 
@@ -51,27 +51,27 @@ export interface MetricGroup {
 export function metricsByArea(docs: readonly MetricDoc[] = METRICS): MetricGroup[] {
   const groups: MetricGroup[] = [];
   for (const area of METRIC_AREAS) {
-    const inArea = docs.filter((d) => d.area === area);
+    const inArea = docs.filter((doc) => doc.area === area);
     if (inArea.length) groups.push({ area, docs: inArea });
   }
   return groups;
 }
 
-const docTexts = (d: MetricDoc): string[] => [d.title, d.meaning, d.formula, ...(d.steps ?? []), ...(d.notes ?? []), d.example ?? ''];
+const docTexts = (doc: MetricDoc): string[] => [doc.title, doc.meaning, doc.formula, ...(doc.steps ?? []), ...(doc.notes ?? []), doc.example ?? ''];
 
 /** English text plus the current translation, so a search in either language finds the explanation. */
-const textOf = (d: MetricDoc): string => {
-  const en = docTexts(d);
-  const shown = getLocale() === 'en' ? [] : en.map((s) => (s ? translate(s) : ''));
-  return [d.id.replace(/-/g, ' '), ...en, ...(d.columns ?? []), ...shown].join(' ').toLowerCase();
+const textOf = (doc: MetricDoc): string => {
+  const englishTexts = docTexts(doc);
+  const shown = getLocale() === 'en' ? [] : englishTexts.map((text) => (text ? translate(text) : ''));
+  return [doc.id.replace(/-/g, ' '), ...englishTexts, ...(doc.columns ?? []), ...shown].join(' ').toLowerCase();
 };
 
 /** Docs that contain every word of the query, in any field. An empty query returns everything. */
 export function searchMetrics(query: string, docs: readonly MetricDoc[] = METRICS): MetricDoc[] {
   const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
   if (!terms.length) return [...docs];
-  return docs.filter((d) => {
-    const hay = textOf(d);
-    return terms.every((term) => hay.includes(term));
+  return docs.filter((doc) => {
+    const searchText = textOf(doc);
+    return terms.every((term) => searchText.includes(term));
   });
 }

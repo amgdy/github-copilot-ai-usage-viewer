@@ -1,7 +1,7 @@
 /** Arabic text for the Efficiency explanations (src/lib/metrics/docs/efficiency.ts). */
 import type { Dict } from '../core';
 
-const ar: Dict = {
+const arabic: Dict = {
   // lever-model-shift
   "Powerful models have the highest token prices, and many requests do not need one. This lever estimates how much usage would go away if a share of the work on Powerful models ran on a mid-tier model of the same vendor. It is the first lever applied.":
     'للنماذج القوية أعلى أسعار للرموز، وكثير من الطلبات لا يحتاج إليها. يقدّر هذا التغيير مقدار الاستخدام الذي يختفي لو نُقلت حصة من العمل على النماذج القوية إلى نموذج من الفئة المتوسطة من المورّد نفسه. وهو أول تغيير يُطبَّق.',
@@ -751,4 +751,4 @@ const ar: Dict = {
     'يوفر تغيير «اختيار النموذج المناسب» وحده 600 دولار على مدى فترة 61 يومًا. العادة المرتبطة به تعرض 600 دولار × 30.4375 ÷ 61 = نحو 299 دولارًا شهريًا. وإذا استخدمت عادتان هذا التغيير، تعرض كل منهما 299 دولارًا وتذكر أنها مشتركة مع عادة واحدة أخرى.',
 };
 
-export default ar;
+export default arabic;

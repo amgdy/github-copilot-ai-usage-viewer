@@ -29,17 +29,17 @@ export function TabBar<T extends string>({
 }) {
   const refs = useRef(new Map<string, HTMLButtonElement>());
 
-  const onKeyDown = (e: KeyboardEvent<HTMLButtonElement>, index: number) => {
+  const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
     // The arrow that points to the next tab follows the reading direction.
     const forward = isRtl() ? 'ArrowLeft' : 'ArrowRight';
     const back = isRtl() ? 'ArrowRight' : 'ArrowLeft';
     let next: number;
-    if (e.key === forward) next = (index + 1) % tabs.length;
-    else if (e.key === back) next = (index - 1 + tabs.length) % tabs.length;
-    else if (e.key === 'Home') next = 0;
-    else if (e.key === 'End') next = tabs.length - 1;
+    if (event.key === forward) next = (index + 1) % tabs.length;
+    else if (event.key === back) next = (index - 1 + tabs.length) % tabs.length;
+    else if (event.key === 'Home') next = 0;
+    else if (event.key === 'End') next = tabs.length - 1;
     else return;
-    e.preventDefault();
+    event.preventDefault();
     const target = tabs[next];
     onChange(target.id);
     refs.current.get(target.id)?.focus();
@@ -47,13 +47,13 @@ export function TabBar<T extends string>({
 
   return (
     <div role="tablist" aria-label={label} className="mb-4 flex gap-1 overflow-x-auto border-b border-border print:hidden">
-      {tabs.map((tab, i) => {
+      {tabs.map((tab, index) => {
         const active = tab.id === value;
         return (
           <button
             key={tab.id}
-            ref={(el) => {
-              if (el) refs.current.set(tab.id, el);
+            ref={(button) => {
+              if (button) refs.current.set(tab.id, button);
               else refs.current.delete(tab.id);
             }}
             type="button"
@@ -63,7 +63,7 @@ export function TabBar<T extends string>({
             aria-controls={panelId(idPrefix)}
             tabIndex={active ? 0 : -1}
             onClick={() => onChange(tab.id)}
-            onKeyDown={(e) => onKeyDown(e, i)}
+            onKeyDown={(event) => onKeyDown(event, index)}
             className={cx(
               '-mb-px inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium transition-colors',
               active ? 'border-accent text-fg' : 'border-transparent text-fg-muted hover:border-border hover:text-fg',

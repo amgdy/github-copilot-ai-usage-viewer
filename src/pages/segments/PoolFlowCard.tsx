@@ -42,12 +42,12 @@ function netSentence(takenUsd: number, lentUsd: number): string | null {
 
 /** Shown only when no filter is on, because included credits are shared across all seats. */
 export function PoolFlowCard({ analysis }: { analysis: Analysis }) {
-  const { population, pool, agg, coverage } = analysis;
-  const f = population.poolFlow;
+  const { population, pool, agg: aggregates, coverage } = analysis;
+  const poolFlow = population.poolFlow;
   if (analysis.narrowed || population.totals.allotment <= 0 || population.totals.users === 0) return null;
 
-  const top = Math.max(f.takenUsd, f.lentUsd);
-  const net = netSentence(f.takenUsd, f.lentUsd);
+  const top = Math.max(poolFlow.takenUsd, poolFlow.lentUsd);
+  const net = netSentence(poolFlow.takenUsd, poolFlow.lentUsd);
 
   return (
     <Card
@@ -57,14 +57,14 @@ export function PoolFlowCard({ analysis }: { analysis: Analysis }) {
     >
       <div className="grid gap-5 lg:grid-cols-2">
         <div className="space-y-4">
-          <p className="num text-sm">{sentence(f.takers, f.takenUsd, f.lenders, f.lentUsd)}</p>
+          <p className="num text-sm">{sentence(poolFlow.takers, poolFlow.takenUsd, poolFlow.lenders, poolFlow.lentUsd)}</p>
           <div className="space-y-3">
-            <FlowBar label={t('Drew on the pool')} users={f.takers} amount={f.takenUsd} value={top > 0 ? f.takenUsd / top : 0} tone="warn" />
-            <FlowBar label={t('Left in the pool')} users={f.lenders} amount={f.lentUsd} value={top > 0 ? f.lentUsd / top : 0} tone="good" />
+            <FlowBar label={t('Drew on the pool')} users={poolFlow.takers} amount={poolFlow.takenUsd} value={top > 0 ? poolFlow.takenUsd / top : 0} tone="warn" />
+            <FlowBar label={t('Left in the pool')} users={poolFlow.lenders} amount={poolFlow.lentUsd} value={top > 0 ? poolFlow.lentUsd / top : 0} tone="good" />
           </div>
           {net ? <p className="num text-sm text-fg-muted">{net}</p> : null}
           {coverage.billing ? (
-            <p className="num text-sm">{t('Billed on top of seats in this report: {amount}.', { amount: fmtUSD(agg.totals.net, 0) })}</p>
+            <p className="num text-sm">{t('Billed on top of seats in this report: {amount}.', { amount: fmtUSD(aggregates.totals.net, 0) })}</p>
           ) : (
             <p className="num text-sm text-fg-muted">{t('This file has no billing split, so what was billed on top of seats is not known.')}</p>
           )}

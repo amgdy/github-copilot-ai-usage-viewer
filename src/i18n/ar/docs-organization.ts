@@ -1,7 +1,7 @@
 import type { Dict } from '../core';
 
 /** Arabic for the Organization metric docs in `lib/metrics/docs/organization.ts`. */
-const ar: Dict = {
+const arabic: Dict = {
   // Groups
   'How usage is assigned to groups': 'كيف يُنسب الاستخدام إلى المجموعات',
   'Every row of the report names an organization, a cost center, a repository, an application and a product, or leaves one of them empty. A group is one value of the field you pick under View by. Its usage is the usage of the rows that carry that value.':
@@ -427,4 +427,4 @@ const ar: Dict = {
     'استخدم 30 من أصحاب التراخيص في مؤسسة لها 40 ترخيصًا $1,520 في فترة من 30 يومًا: $1,520 ÷ 40 × 30.4375 ÷ 30 = $38.55 لكل ترخيص في الشهر.',
 };
 
-export default ar;
+export default arabic;

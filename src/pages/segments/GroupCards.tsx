@@ -8,7 +8,7 @@ import { showGroup } from './actions';
 import { groupLinks, isAutoGroup } from './groupLinks';
 import { byImpact, type GroupRow, type Lens, type LensData } from './lenses';
 
-const money = (v: number): string => (Number.isFinite(v) ? fmtUSD(v, 0) : '–');
+const money = (amount: number): string => (Number.isFinite(amount) ? fmtUSD(amount, 0) : '–');
 
 function Meter({ label, value, tone }: { label: string; value: number; tone: 'info' | 'accent' }) {
   return (
@@ -95,16 +95,16 @@ function GroupCard({ row, lens }: { row: GroupRow; lens: Lens }) {
             <CalcInfo id="group-heaviest-users" />
           </div>
           <div className="flex flex-wrap gap-1.5">
-            {row.top.map((p) => (
+            {row.top.map((user) => (
               <button
-                key={p.id}
+                key={user.id}
                 type="button"
                 className="chip hover:border-accent/50 hover:bg-surface-3"
-                title={t('Open {name}: {amount} of usage', { name: p.name, amount: money(p.gross) })}
-                onClick={() => useApp.getState().selectUser(p.id)}
+                title={t('Open {name}: {amount} of usage', { name: user.name, amount: money(user.gross) })}
+                onClick={() => useApp.getState().selectUser(user.id)}
               >
-                <span className="max-w-36 truncate">{p.name}</span>
-                <span className="num text-fg-muted">{money(p.gross)}</span>
+                <span className="max-w-36 truncate">{user.name}</span>
+                <span className="num text-fg-muted">{money(user.gross)}</span>
               </button>
             ))}
           </div>
@@ -120,7 +120,7 @@ function GroupCard({ row, lens }: { row: GroupRow; lens: Lens }) {
 
 export function GroupCards({ data }: { data: LensData }) {
   const { lens, rows } = data;
-  const shown = byImpact(rows.filter((r) => r.users > 0 || lens.id === 'trait'));
+  const shown = byImpact(rows.filter((row) => row.users > 0 || lens.id === 'trait'));
   if (shown.length === 0) {
     return (
       <div className="card">
@@ -130,8 +130,8 @@ export function GroupCards({ data }: { data: LensData }) {
   }
   return (
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-      {shown.map((r) => (
-        <GroupCard key={r.id} row={r} lens={lens} />
+      {shown.map((row) => (
+        <GroupCard key={row.id} row={row} lens={lens} />
       ))}
     </div>
   );

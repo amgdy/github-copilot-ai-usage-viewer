@@ -14,10 +14,10 @@ export interface PopulationMedians {
 export function populationMedians(profiles: readonly UserProfile[]): PopulationMedians {
   return {
     users: profiles.length,
-    autoShare: median(profiles.map((p) => (p.gross > 0 ? p.autoShare : Number.NaN))),
-    cacheHit: median(profiles.map((p) => p.cacheHit)),
-    costPerActiveDay: median(profiles.map((p) => p.costPerActiveDay)),
-    activeRate: median(profiles.map((p) => p.activeRate)),
+    autoShare: median(profiles.map((user) => (user.gross > 0 ? user.autoShare : Number.NaN))),
+    cacheHit: median(profiles.map((user) => user.cacheHit)),
+    costPerActiveDay: median(profiles.map((user) => user.costPerActiveDay)),
+    activeRate: median(profiles.map((user) => user.activeRate)),
   };
 }
 

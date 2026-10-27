@@ -26,11 +26,11 @@ const COSTS = [
 const EMPTY = 'rounded-lg border border-dashed border-border px-3 py-5 text-center text-xs text-fg-muted';
 
 /** The four token types of one user, their share of all tokens, the estimated usage by token type and the cache hit rate. */
-export function TokensCard({ p }: { p: UserProfile }) {
+export function TokensCard({ p: user }: { p: UserProfile }) {
   const { analysis } = useAnalysis();
   const medians = usePopulationMedians();
   const { coverage, population } = analysis;
-  const allTokens = useMemo(() => population.profiles.reduce((sum, u) => sum + u.tokens, 0), [population]);
+  const allTokens = useMemo(() => population.profiles.reduce((sum, profile) => sum + profile.tokens, 0), [population]);
 
   if (!coverage.tokens) {
     return (
@@ -39,7 +39,7 @@ export function TokensCard({ p }: { p: UserProfile }) {
       </DrawerSection>
     );
   }
-  if (!(p.tokens > 0)) {
+  if (!(user.tokens > 0)) {
     return (
       <DrawerSection title={t('Tokens')} calc="user-tokens">
         <div className={EMPTY}>{t('No token counts for this user in this date range.')}</div>
@@ -47,37 +47,37 @@ export function TokensCard({ p }: { p: UserProfile }) {
     );
   }
 
-  const costTotal = COSTS.reduce((sum, c) => sum + p[c.key], 0);
-  const costTop = Math.max(0, ...COSTS.map((c) => p[c.key]));
+  const costTotal = COSTS.reduce((sum, tokenType) => sum + user[tokenType.key], 0);
+  const costTop = Math.max(0, ...COSTS.map((tokenType) => user[tokenType.key]));
   const typical =
     medians.users > 1 && Number.isFinite(medians.cacheHit) ? t('Typical user {rate}', { rate: fmtPct(medians.cacheHit, 0) }) : undefined;
 
   return (
-    <DrawerSection title={t('Tokens')} calc="user-tokens" aside={pluralTokens(p.tokens)}>
+    <DrawerSection title={t('Tokens')} calc="user-tokens" aside={pluralTokens(user.tokens)}>
       <KpiGrid cols="grid-cols-2 sm:grid-cols-3">
-        {COUNTS.map((c) => (
+        {COUNTS.map((tokenType) => (
           <Kpi
-            key={c.key}
-            label={t(c.label)}
-            value={fmtCount(p[c.key])}
-            sub={t("{share} of this user's tokens", { share: fmtPct(p[c.key] / p.tokens, 0) })}
-            hint={t('{n} tokens in the selected date range.', { n: fmtInt(p[c.key]) })}
-            calc={c.calc}
+            key={tokenType.key}
+            label={t(tokenType.label)}
+            value={fmtCount(user[tokenType.key])}
+            sub={t("{share} of this user's tokens", { share: fmtPct(user[tokenType.key] / user.tokens, 0) })}
+            hint={t('{n} tokens in the selected date range.', { n: fmtInt(user[tokenType.key]) })}
+            calc={tokenType.calc}
           />
         ))}
         <Kpi
           label={t('Total tokens')}
-          value={fmtCount(p.tokens)}
-          sub={allTokens > 0 ? t('{share} of all tokens', { share: fmtPct(p.tokens / allTokens, 1) }) : undefined}
+          value={fmtCount(user.tokens)}
+          sub={allTokens > 0 ? t('{share} of all tokens', { share: fmtPct(user.tokens / allTokens, 1) }) : undefined}
           hint={t('{n} tokens in the selected date range. The share compares the user with everyone in the current date range and row filters.', {
-            n: fmtInt(p.tokens),
+            n: fmtInt(user.tokens),
           })}
           calc="tokens-total"
         />
         <Kpi
           label={t('Cache hit rate')}
-          value={fmtPct(p.cacheHit, 0)}
-          sub={Number.isFinite(p.cacheHit) ? typical : t('No prompt tokens')}
+          value={fmtPct(user.cacheHit, 0)}
+          sub={Number.isFinite(user.cacheHit) ? typical : t('No prompt tokens')}
           hint={t('The share of prompt tokens that were read from the cache. A higher rate means less repeated input.')}
           calc="cache-hit"
         />
@@ -90,15 +90,15 @@ export function TokensCard({ p }: { p: UserProfile }) {
         </div>
         {costTotal > 0 ? (
           <BarList label={t('Estimated usage by token type')}>
-            {COSTS.map((c) => (
+            {COSTS.map((tokenType) => (
               <BarRow
-                key={c.key}
-                label={t(c.label)}
-                value={`${fmtUSD(p[c.key])} · ${fmtPct(p[c.key] / costTotal, 0)}`}
-                fraction={costTop > 0 ? p[c.key] / costTop : 0}
+                key={tokenType.key}
+                label={t(tokenType.label)}
+                value={`${fmtUSD(user[tokenType.key])} · ${fmtPct(user[tokenType.key] / costTotal, 0)}`}
+                fraction={costTop > 0 ? user[tokenType.key] / costTop : 0}
                 title={t("{label}: {amount} of {total} of this user's priced usage", {
-                  label: t(c.label),
-                  amount: fmtUSD(p[c.key]),
+                  label: t(tokenType.label),
+                  amount: fmtUSD(user[tokenType.key]),
                   total: fmtUSD(costTotal),
                 })}
               />
@@ -108,10 +108,10 @@ export function TokensCard({ p }: { p: UserProfile }) {
           <p className="text-xs text-fg-muted">{t("None of this user's usage could be priced from token counts, so it is not split by token type.")}</p>
         )}
         <p className="text-xs text-fg-subtle">
-          {p.tokenCoverage >= 0.995
+          {user.tokenCoverage >= 0.995
             ? t("An estimate from the price card. It covers all of this user's usage.")
             : t("An estimate from the price card. It covers {share} of this user's usage. The rest has no token counts or a model that is not on the price card.", {
-                share: fmtPct(p.tokenCoverage, 0),
+                share: fmtPct(user.tokenCoverage, 0),
               })}
         </p>
       </div>
@@ -119,4 +119,4 @@ export function TokensCard({ p }: { p: UserProfile }) {
   );
 }
 
-const pluralTokens = (n: number): string => t('{n} tokens', { n: fmtInt(n) });
+const pluralTokens = (tokenCount: number): string => t('{n} tokens', { n: fmtInt(tokenCount) });

@@ -70,7 +70,7 @@ export function ModelRow({ row, share, onChange, onRemove }: ModelRowProps) {
           className={cx('w-36', meta.category === 'Unknown' && 'border-warn')}
           value={meta.category}
           options={tierOptions}
-          onChange={(v) => onChange({ category: v === 'Unknown' ? undefined : v })}
+          onChange={(category) => onChange({ category: category === 'Unknown' ? undefined : category })}
         />
         {builtInTier ? <span className="text-[11px] text-fg-subtle">{t('Tier on the price card: {tier}', { tier: t(builtInTier) })}</span> : null}
         {!meta.priced ? (
@@ -84,7 +84,7 @@ export function ModelRow({ row, share, onChange, onRemove }: ModelRowProps) {
           {meta.base ? t('{rates} per 1M tokens', { rates: ratesText(meta.base) }) : t('The token-based estimates skip this model until it has prices.')}
         </span>
         <span className="ms-auto inline-flex flex-wrap gap-1.5">
-          <button type="button" className="btn btn-sm" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+          <button type="button" className="btn btn-sm" aria-expanded={open} onClick={() => setOpen((wasOpen) => !wasOpen)}>
             {open ? t('Close') : meta.priced ? t('Edit prices') : t('Set prices')}
           </button>
           {meta.overridden ? (

@@ -18,10 +18,10 @@ const EDGE: Record<Tone, string> = {
   info: 'border-s-info',
 };
 
-export function TipCards({ p }: { p: UserProfile }) {
+export function TipCards({ p: user }: { p: UserProfile }) {
   const { analysis, settings } = useAnalysis();
   const perMonth = DAYS_PER_MONTH / Math.max(1, analysis.range.length);
-  const tips = useMemo(() => visibleTips(p, settings), [p, settings]);
+  const tips = useMemo(() => visibleTips(user, settings), [user, settings]);
 
   return (
     <DrawerSection title={t('What to do')} description={t('The tips are written to the user, so you can pass them on as they are.')}>

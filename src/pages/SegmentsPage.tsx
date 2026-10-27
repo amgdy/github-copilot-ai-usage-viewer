@@ -21,7 +21,7 @@ import { NarrowedNotice, usePerMonth } from './shared';
 
 export default function SegmentsPage() {
   const { analysis, settings, taxonomy, store } = useAnalysis();
-  const filters = useApp((s) => s.filters);
+  const filters = useApp((state) => state.filters);
   const perMonth = usePerMonth();
   const [lensId, setLensId] = useState<LensId>('persona');
   const { population } = analysis;
@@ -38,10 +38,10 @@ export default function SegmentsPage() {
   );
   const lensOptions = useMemo<SegmentedOption<LensId>[]>(
     () =>
-      LENSES.map((l) => ({
-        value: l.id,
-        label: t(l.label),
-        title: lensUnavailableReason(l.id, availability) === null ? t(l.title) : t('{title} Not available for this report. Select it to see why.', { title: t(l.title) }),
+      LENSES.map((lensDefinition) => ({
+        value: lensDefinition.id,
+        label: t(lensDefinition.label),
+        title: lensUnavailableReason(lensDefinition.id, availability) === null ? t(lensDefinition.title) : t('{title} Not available for this report. Select it to see why.', { title: t(lensDefinition.title) }),
       })),
     [availability],
   );

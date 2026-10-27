@@ -34,22 +34,22 @@ export function RankingCard() {
 
   const colorOptions = useMemo(
     () =>
-      (analysis.coverage.models ? COLOR_BY_OPTIONS : COLOR_BY_OPTIONS.filter((o) => o.value !== 'profile')).map((o) => ({
-        value: o.value,
-        label: t(o.label),
+      (analysis.coverage.models ? COLOR_BY_OPTIONS : COLOR_BY_OPTIONS.filter((colorOption) => colorOption.value !== 'profile')).map((colorOption) => ({
+        value: colorOption.value,
+        label: t(colorOption.label),
       })),
     [analysis.coverage.models],
   );
-  const topOptions = TOP_SIZES.map((n) => ({ value: n, label: t('Top {n}', { n: fmtInt(n) }) }));
+  const topOptions = TOP_SIZES.map((size) => ({ value: size, label: t('Top {n}', { n: fmtInt(size) }) }));
   const metricGroups = rankMetricGroups();
-  const effectiveColorBy: ColorBy = colorOptions.some((o) => o.value === colorBy) ? colorBy : 'persona';
+  const effectiveColorBy: ColorBy = colorOptions.some((colorOption) => colorOption.value === colorBy) ? colorBy : 'persona';
 
-  const metric = RANK_METRICS.find((m) => m.id === metricId) ?? RANK_METRICS[0];
+  const metric = RANK_METRICS.find((rankMetric) => rankMetric.id === metricId) ?? RANK_METRICS[0];
   const profiles = analysis.users.profiles;
   const trendReliable = analysis.users.trendReliable;
   const minSpend = settings.minSpendForTraits;
 
-  const ctx = useMemo<MetricContext>(
+  const metricContext = useMemo<MetricContext>(
     () => ({
       minSpend,
       trendReliable,
@@ -59,38 +59,38 @@ export function RankingCard() {
     }),
     [profiles, trendReliable, minSpend, analysis.coverage.tokens, analysis.coverage.models],
   );
-  const ranking = useMemo(() => rankUsers(profiles, metric, dir, ctx, topN), [profiles, metric, dir, ctx, topN]);
-  const cat = useMemo(() => categorizer(taxonomy, effectiveColorBy), [taxonomy, effectiveColorBy]);
+  const ranking = useMemo(() => rankUsers(profiles, metric, dir, metricContext, topN), [profiles, metric, dir, metricContext, topN]);
+  const colorCategories = useMemo(() => categorizer(taxonomy, effectiveColorBy), [taxonomy, effectiveColorBy]);
   const personas = useMemo(() => taxLookup(taxonomy.personas), [taxonomy]);
 
   const legend = useMemo(() => {
     const seen = new Set<string>();
-    for (const r of ranking.ranked) {
-      const item = cat.of(r.p);
+    for (const rankedUser of ranking.ranked) {
+      const item = colorCategories.of(rankedUser.p);
       if (item) seen.add(item.id);
     }
-    return cat.items.filter((i) => seen.has(i.id));
-  }, [ranking, cat]);
+    return colorCategories.items.filter((category) => seen.has(category.id));
+  }, [ranking, colorCategories]);
 
   const option = useMemo<EChartsOption>(
     () =>
       rankBarOption(colors, {
         labelWidth: 140,
-        format: (v) => metric.format(v, dir),
-        items: ranking.ranked.map(({ p, value }) => ({
-          name: p.name,
+        format: (value) => metric.format(value, dir),
+        items: ranking.ranked.map(({ p: user, value }) => ({
+          name: user.name,
           value,
-          color: cat.of(p)?.color,
+          color: colorCategories.of(user)?.color,
           note: [
-            personas[p.persona]?.label ?? '',
-            metric.note ? metric.note(p) : t('{amount} usage', { amount: fmtUSD(p.gross) }),
-            pluralize(p.activeDays, 'active day'),
+            personas[user.persona]?.label ?? '',
+            metric.note ? metric.note(user) : t('{amount} usage', { amount: fmtUSD(user.gross) }),
+            pluralize(user.activeDays, 'active day'),
           ]
             .filter(Boolean)
             .join(' · '),
         })),
       }),
-    [colors, ranking, cat, personas, metric, dir],
+    [colors, ranking, colorCategories, personas, metric, dir],
   );
 
   const shown = ranking.ranked.length;
@@ -103,17 +103,17 @@ export function RankingCard() {
         : tp(shown, 'Showing the only ranked user.', 'Showing all {n} ranked users.', { n: fmtInt(shown) })
       : '',
     skipped > 0 ? tp(skipped, '{n} user is not ranked.', '{n} users are not ranked.', { n: fmtInt(skipped) }) : '',
-    skipped > 0 ? metric.skipReason(ctx, dir) : '',
+    skipped > 0 ? metric.skipReason(metricContext, dir) : '',
   ]
     .filter(Boolean)
     .join(' ');
 
   const pickMetric = (id: MetricId) => {
     setMetricId(id);
-    setDir(RANK_METRICS.find((m) => m.id === id)?.defaultDir ?? 'high');
+    setDir(RANK_METRICS.find((rankMetric) => rankMetric.id === id)?.defaultDir ?? 'high');
   };
 
-  const unavailable = (metric.group === 'tokens' && !ctx.hasTokens) || (metric.group === 'auto' && !ctx.hasModels);
+  const unavailable = (metric.group === 'tokens' && !metricContext.hasTokens) || (metric.group === 'auto' && !metricContext.hasModels);
   const metricLabel = t(metric.label);
 
   return (
@@ -150,7 +150,7 @@ export function RankingCard() {
 
       {shown === 0 ? (
         <div className="p-4">
-          <EmptyState title={unavailable ? t('Not available in this file') : t('Nobody to rank')} description={metric.missing(ctx, dir)} />
+          <EmptyState title={unavailable ? t('Not available in this file') : t('Nobody to rank')} description={metric.missing(metricContext, dir)} />
         </div>
       ) : (
         <>
@@ -160,18 +160,18 @@ export function RankingCard() {
               height={Math.max(160, shown * 27 + 16)}
               exportName="github-copilot-user-ranking"
               label={t('Top {n} users by {measure}', { n: fmtInt(shown), measure: metricLabel })}
-              onClick={(p) => {
-                const r = ranking.ranked[p.dataIndex];
-                if (r) useApp.getState().selectUser(r.p.id);
+              onClick={(event) => {
+                const rankedUser = ranking.ranked[event.dataIndex];
+                if (rankedUser) useApp.getState().selectUser(rankedUser.p.id);
               }}
             />
           </div>
           {legend.length > 1 ? (
             <ul className="flex flex-wrap gap-x-3 gap-y-1 px-4 pt-1 text-xs text-fg-muted" aria-label={t('Bar colors')}>
-              {legend.map((i) => (
-                <li key={i.id} className="inline-flex items-center gap-1.5" title={i.description}>
-                  <span className="size-2 rounded-xs" style={{ background: i.color }} aria-hidden />
-                  {shortLabel(i.label)}
+              {legend.map((category) => (
+                <li key={category.id} className="inline-flex items-center gap-1.5" title={category.description}>
+                  <span className="size-2 rounded-xs" style={{ background: category.color }} aria-hidden />
+                  {shortLabel(category.label)}
                 </li>
               ))}
             </ul>

@@ -21,10 +21,10 @@ const VIEWS: { value: View; label: string; title: string }[] = [
 /** Columns that need the billing split of the file. */
 const BILLING_COLUMNS = new Set(['billed', 'covered', 'billedShare']);
 
-function Trend({ g, reliable }: { g: Group; reliable: boolean }) {
+function Trend({ g: group, reliable }: { g: Group; reliable: boolean }) {
   if (!reliable) return DASH;
-  const change = trendChange(g);
-  if (change === null) return g.recent > 0 ? <span className="text-fg-muted">{t('new')}</span> : DASH;
+  const change = trendChange(group);
+  if (change === null) return group.recent > 0 ? <span className="text-fg-muted">{t('new')}</span> : DASH;
   return <span className={cx(change > 0.25 && 'text-warn')}>{signedPct(change)}</span>;
 }
 
@@ -51,21 +51,21 @@ export function GroupTable({
   const view: View = tokens ? picked : 'usage';
 
   const columns = useMemo<Column<Group>[]>(() => {
-    const maxShare = groups.reduce((m, g) => Math.max(m, g.share), 0);
-    const sum = (rows: Group[], f: (g: Group) => number) => rows.reduce((a, g) => a + f(g), 0);
+    const maxShare = groups.reduce((largest, row) => Math.max(largest, row.share), 0);
+    const sum = (rows: Group[], pick: (row: Group) => number) => rows.reduce((total, row) => total + pick(row), 0);
     const everything = (rows: Group[]) => rows.length === groups.length;
     const sumTokens = (rows: Group[]): TokenCounts => ({
-      input: sum(rows, (g) => g.input),
-      cacheRead: sum(rows, (g) => g.cacheRead),
-      cacheWrite: sum(rows, (g) => g.cacheWrite),
-      output: sum(rows, (g) => g.output),
+      input: sum(rows, (row) => row.input),
+      cacheRead: sum(rows, (row) => row.cacheRead),
+      cacheWrite: sum(rows, (row) => row.cacheWrite),
+      output: sum(rows, (row) => row.output),
     });
 
     const group: Column<Group> = {
       key: 'group',
       header: t(spec.label),
-      value: (g) => g.name,
-      render: (g) => <GroupName name={g.name} blank={g.blank} />,
+      value: (row) => row.name,
+      render: (row) => <GroupName name={row.name} blank={row.blank} />,
       total: (rows) => (everything(rows) ? t('Total') : t('Total of {n} matching', { n: fmtInt(rows.length) })),
     };
     const usage: Column<Group> = {
@@ -74,9 +74,9 @@ export function GroupTable({
       hint: t('Value of all AI credits used (1 credit = $0.01), including usage covered by included credits'),
       calc: 'usage',
       align: 'end',
-      value: (g) => g.gross,
-      render: (g) => fmtUSD(g.gross),
-      total: (rows) => fmtUSD(sum(rows, (g) => g.gross)),
+      value: (row) => row.gross,
+      render: (row) => fmtUSD(row.gross),
+      total: (rows) => fmtUSD(sum(rows, (row) => row.gross)),
     };
     const filter: Column<Group> = {
       key: 'filter',
@@ -86,31 +86,31 @@ export function GroupTable({
       sortable: false,
       align: 'end',
       value: () => null,
-      render: (g) => (
+      render: (row) => (
         <button
           type="button"
           className="btn btn-sm"
-          title={t('Filter the whole report to {name}', { name: g.name })}
-          onClick={(e) => {
-            e.stopPropagation();
-            filterToGroup(g);
+          title={t('Filter the whole report to {name}', { name: row.name })}
+          onClick={(event) => {
+            event.stopPropagation();
+            filterToGroup(row);
           }}
-          onKeyDown={(e) => e.stopPropagation()}
+          onKeyDown={(event) => event.stopPropagation()}
         >
           <ListFilter size={12} /> {t('Filter')}
         </button>
       ),
     };
-    const tokenColumn = (base: { key: string; header: string; hint: string; calc: CalcRef }, pick: (tk: TokenCounts) => number): Column<Group> => ({
+    const tokenColumn = (base: { key: string; header: string; hint: string; calc: CalcRef }, pick: (tokenCounts: TokenCounts) => number): Column<Group> => ({
       ...base,
       align: 'end',
-      value: (g) => pick(g),
-      render: (g) => fmtTokens(pick(g)),
+      value: (row) => pick(row),
+      render: (row) => fmtTokens(pick(row)),
       total: (rows) => fmtTokens(sum(rows, pick)),
     });
-    const hitRate = (tk: TokenCounts) => {
-      const v = cacheHitRate(tk);
-      return Number.isFinite(v) ? v : null;
+    const hitRate = (tokenCounts: TokenCounts) => {
+      const rate = cacheHitRate(tokenCounts);
+      return Number.isFinite(rate) ? rate : null;
     };
 
     if (view === 'tokens') {
@@ -119,7 +119,7 @@ export function GroupTable({
         usage,
         tokenColumn(
           { key: 'input', header: t('Input tokens'), hint: t('Tokens of fresh text sent to the model, not read from the cache'), calc: 'tokens-input' },
-          (tk) => tk.input,
+          (tokenCounts) => tokenCounts.input,
         ),
         tokenColumn(
           {
@@ -128,7 +128,7 @@ export function GroupTable({
             hint: t('Tokens served from the model cache, which are priced lower than fresh input'),
             calc: 'tokens-cache-read',
           },
-          (tk) => tk.cacheRead,
+          (tokenCounts) => tokenCounts.cacheRead,
         ),
         tokenColumn(
           {
@@ -137,9 +137,9 @@ export function GroupTable({
             hint: t('Tokens written to the model cache so that later requests can reuse them'),
             calc: 'tokens-cache-write',
           },
-          (tk) => tk.cacheWrite,
+          (tokenCounts) => tokenCounts.cacheWrite,
         ),
-        tokenColumn({ key: 'output', header: t('Output tokens'), hint: t('Tokens the model wrote back'), calc: 'tokens-output' }, (tk) => tk.output),
+        tokenColumn({ key: 'output', header: t('Output tokens'), hint: t('Tokens the model wrote back'), calc: 'tokens-output' }, (tokenCounts) => tokenCounts.output),
         tokenColumn(
           { key: 'totalTokens', header: t('Total tokens'), hint: t('Input, cache read, cache write and output tokens together'), calc: 'tokens-total' },
           totalTokens,
@@ -150,14 +150,14 @@ export function GroupTable({
           hint: t('Cache read tokens as a share of all prompt tokens (input, cache read and cache write)'),
           calc: 'cache-hit',
           align: 'end',
-          value: (g) => hitRate(g),
-          render: (g) => {
-            const v = hitRate(g);
-            return v === null ? DASH : fmtPct(v, 1);
+          value: (row) => hitRate(row),
+          render: (row) => {
+            const rate = hitRate(row);
+            return rate === null ? DASH : fmtPct(rate, 1);
           },
           total: (rows) => {
-            const v = hitRate(sumTokens(rows));
-            return v === null ? DASH : fmtPct(v, 1);
+            const rate = hitRate(sumTokens(rows));
+            return rate === null ? DASH : fmtPct(rate, 1);
           },
         },
         filter,
@@ -173,9 +173,9 @@ export function GroupTable({
         hint: t('Share of all usage in this view'),
         calc: 'org-share',
         align: 'end',
-        value: (g) => g.share,
-        render: (g) => <ShareCell frac={g.share} max={maxShare} text={fmtPct(g.share, 1)} />,
-        total: (rows) => fmtPct(sum(rows, (g) => g.share), 1),
+        value: (row) => row.share,
+        render: (row) => <ShareCell frac={row.share} max={maxShare} text={fmtPct(row.share, 1)} />,
+        total: (rows) => fmtPct(sum(rows, (row) => row.share), 1),
       },
       {
         key: 'billed',
@@ -183,9 +183,9 @@ export function GroupTable({
         hint: t('Billed on top of seats, as the report assigns it to this group'),
         calc: 'billed',
         align: 'end',
-        value: (g) => g.net,
-        render: (g) => fmtUSD(g.net),
-        total: (rows) => fmtUSD(sum(rows, (g) => g.net)),
+        value: (row) => row.net,
+        render: (row) => fmtUSD(row.net),
+        total: (rows) => fmtUSD(sum(rows, (row) => row.net)),
       },
       {
         key: 'covered',
@@ -193,9 +193,9 @@ export function GroupTable({
         hint: t('Usage covered by included credits'),
         calc: 'covered',
         align: 'end',
-        value: (g) => g.discount,
-        render: (g) => fmtUSD(g.discount),
-        total: (rows) => fmtUSD(sum(rows, (g) => g.discount)),
+        value: (row) => row.discount,
+        render: (row) => fmtUSD(row.discount),
+        total: (rows) => fmtUSD(sum(rows, (row) => row.discount)),
       },
       {
         key: 'users',
@@ -203,9 +203,9 @@ export function GroupTable({
         hint: t('People with usage in the group. A person who appears in several groups is counted in each of them.'),
         calc: 'org-users',
         align: 'end',
-        hidden: !groups.some((g) => g.users > 0),
-        value: (g) => g.users,
-        render: (g) => fmtInt(g.users),
+        hidden: !groups.some((row) => row.users > 0),
+        value: (row) => row.users,
+        render: (row) => fmtInt(row.users),
         total: (rows) => (everything(rows) ? fmtInt(totals.users) : DASH),
       },
       {
@@ -214,13 +214,13 @@ export function GroupTable({
         hint: t('Usage divided by users, in a 30.4-day month'),
         calc: 'org-per-user-month',
         align: 'end',
-        value: (g) => {
-          const v = perUserMonth(g, perMonth);
-          return Number.isFinite(v) ? v : null;
+        value: (row) => {
+          const perUser = perUserMonth(row, perMonth);
+          return Number.isFinite(perUser) ? perUser : null;
         },
-        render: (g) => {
-          const v = perUserMonth(g, perMonth);
-          return Number.isFinite(v) ? fmtUSD(v) : DASH;
+        render: (row) => {
+          const perUser = perUserMonth(row, perMonth);
+          return Number.isFinite(perUser) ? fmtUSD(perUser) : DASH;
         },
         total: (rows) => (everything(rows) && totals.users > 0 ? fmtUSD((totals.gross * perMonth) / totals.users) : DASH),
       },
@@ -230,8 +230,8 @@ export function GroupTable({
         hint: t('Usage of the last 7 days of the period against the 7 days before. It needs a period of at least 14 days.'),
         calc: 'org-trend',
         align: 'end',
-        value: (g) => (reliable ? trendChange(g) : null),
-        render: (g) => <Trend g={g} reliable={reliable} />,
+        value: (row) => (reliable ? trendChange(row) : null),
+        render: (row) => <Trend g={row} reliable={reliable} />,
       },
       {
         key: 'billedShare',
@@ -240,21 +240,21 @@ export function GroupTable({
         calc: 'org-billed-share',
         align: 'end',
         hidden: true,
-        value: (g) => (g.gross > 0 ? g.net / g.gross : null),
-        render: (g) => (g.gross > 0 ? fmtPct(g.net / g.gross, 1) : DASH),
+        value: (row) => (row.gross > 0 ? row.net / row.gross : null),
+        render: (row) => (row.gross > 0 ? fmtPct(row.net / row.gross, 1) : DASH),
       },
       filter,
     ];
-    return usageView.filter((c) => billing || !BILLING_COLUMNS.has(c.key));
+    return usageView.filter((column) => billing || !BILLING_COLUMNS.has(column.key));
   }, [spec, groups, reliable, perMonth, totals, view, billing]);
 
-  const noTokenCounts = view === 'tokens' && groups.every((g) => totalTokens(g) === 0);
+  const noTokenCounts = view === 'tokens' && groups.every((group) => totalTokens(group) === 0);
   const notes = [
     !tokens ? t(NO_TOKENS_NOTE) : null,
     noTokenCounts ? t('The rows in this view have no token counts, so every token column is 0.') : null,
     !billing ? t(NO_BILLING_NOTE) : null,
-  ].filter((n): n is string => n !== null);
-  const viewOptions: SegmentedOption<View>[] = VIEWS.map((o) => ({ value: o.value, label: t(o.label), title: t(o.title) }));
+  ].filter((note): note is string => note !== null);
+  const viewOptions: SegmentedOption<View>[] = VIEWS.map((option) => ({ value: option.value, label: t(option.label), title: t(option.title) }));
 
   return (
     <Card
@@ -262,20 +262,20 @@ export function GroupTable({
       subtitle={t('Click a row to see what the group is made of. The Filter button narrows the whole report to it.')}
       calc={[spec.id === 'team' ? 'org-team-groups' : 'org-groups', ...(view === 'tokens' ? ['org-group-tokens'] : [])]}
       actions={tokens ? <Segmented size="sm" label={t('Columns shown')} value={view} onChange={setPicked} options={viewOptions} /> : undefined}
-      footer={notes.length ? notes.map((n) => <p key={n}>{n}</p>) : undefined}
+      footer={notes.length ? notes.map((note) => <p key={note}>{note}</p>) : undefined}
     >
       <DataTable
         key={view}
         rows={groups}
         columns={columns}
-        rowKey={(g) => g.id}
+        rowKey={(group) => group.id}
         defaultSort={{ key: 'usage', dir: 'desc' }}
         pageSize={25}
         searchable
         searchPlaceholder={t('Search groups…')}
         exportName={`github-copilot-organization-${spec.id}${view === 'tokens' ? '-tokens' : ''}`}
         selectedKey={selected}
-        onRowClick={(g) => onSelect(g.id === selected ? null : g.id)}
+        onRowClick={(group) => onSelect(group.id === selected ? null : group.id)}
         emptyText={t('No groups match.')}
       />
     </Card>

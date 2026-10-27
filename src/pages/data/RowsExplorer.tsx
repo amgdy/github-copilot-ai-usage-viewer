@@ -14,9 +14,9 @@ import { ExplorerTable, type SortState } from './ExplorerTable';
 import { useDebounced, useSortedScope } from './useRowSet';
 
 const PAGE_SIZES = [50, 100, 250];
-const INITIAL_HIDDEN: ReadonlySet<ColumnId> = new Set(EXPLORER_COLUMNS.filter((c) => c.hiddenByDefault).map((c) => c.id));
+const INITIAL_HIDDEN: ReadonlySet<ColumnId> = new Set(EXPLORER_COLUMNS.filter((column) => column.hiddenByDefault).map((column) => column.id));
 // Columns whose first click sorts from the largest or latest value.
-const DESC_FIRST = new Set<ColumnId>([...EXPLORER_COLUMNS.filter((c) => c.numeric).map((c) => c.id), 'date']);
+const DESC_FIRST = new Set<ColumnId>([...EXPLORER_COLUMNS.filter((column) => column.numeric).map((column) => column.id), 'date']);
 
 interface Props {
   store: DataStore;
@@ -28,10 +28,10 @@ interface Props {
 
 function Pager({ current, pages, onPage }: { current: number; pages: number; onPage: (page: number) => void }) {
   const [jump, setJump] = useState('');
-  const go = (e: FormEvent) => {
-    e.preventDefault();
-    const n = Number.parseInt(jump, 10);
-    if (Number.isFinite(n)) onPage(Math.min(pages, Math.max(1, n)) - 1);
+  const go = (event: FormEvent) => {
+    event.preventDefault();
+    const pageNumber = Number.parseInt(jump, 10);
+    if (Number.isFinite(pageNumber)) onPage(Math.min(pages, Math.max(1, pageNumber)) - 1);
     setJump('');
   };
   return (
@@ -53,7 +53,7 @@ function Pager({ current, pages, onPage }: { current: number; pages: number; onP
                   inputMode="numeric"
                   value={jump}
                   placeholder={String(current + 1)}
-                  onChange={(e) => setJump(e.target.value.replace(/\D/g, ''))}
+                  onChange={(event) => setJump(event.target.value.replace(/\D/g, ''))}
                   aria-label={t('Go to page')}
                 />
               ),
@@ -90,7 +90,7 @@ export function RowsExplorer({ store, scope, range }: Props) {
   }
 
   const columns = useMemo(() => availableColumns(store), [store]);
-  const visible = useMemo(() => columns.filter((c) => !hidden.has(c.id)), [columns, hidden]);
+  const visible = useMemo(() => columns.filter((column) => !hidden.has(column.id)), [columns, hidden]);
   const billing = useMemo(() => dataCoverage(store).billing, [store]);
 
   const debounced = useDebounced(text, 220);
@@ -149,7 +149,7 @@ export function RowsExplorer({ store, scope, range }: Props) {
                 setPage(Math.floor(start / size));
                 setPageSize(size);
               }}
-              options={PAGE_SIZES.map((n) => ({ value: n, label: t('{n} per page', { n: fmtInt(n) }) }))}
+              options={PAGE_SIZES.map((rowsPerPage) => ({ value: rowsPerPage, label: t('{n} per page', { n: fmtInt(rowsPerPage) }) }))}
             />
             <ColumnPicker columns={columns} hidden={hidden} initialHidden={INITIAL_HIDDEN} onChange={setHidden} />
             <DownloadButton
@@ -208,8 +208,8 @@ export function RowsExplorer({ store, scope, range }: Props) {
         <div className="space-y-3">
           <SearchInput
             value={text}
-            onChange={(v) => {
-              setText(v);
+            onChange={(searchText) => {
+              setText(searchText);
               setPage(0);
             }}
             placeholder={t('Search user, model, repository, SKU, organization or cost center')}

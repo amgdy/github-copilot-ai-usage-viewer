@@ -1,5 +1,5 @@
 import type { EChartsOption } from '../../components/charts/EChart';
-import { esc, GRID, stackedTimeOption, stackTooltip, usd, usdCompact } from '../../components/charts/helpers';
+import { escapeHtml, GRID, stackedTimeOption, stackTooltip, usd, usdCompact } from '../../components/charts/helpers';
 import type { ChartColors } from '../../components/charts/theme';
 import { msg, t } from '../../i18n';
 import type { AnomalyDay } from '../../lib/analytics/anomalies';
@@ -20,17 +20,17 @@ function mostlyText(user: string | null, amount: string, model: string | null): 
 
 function anomalyHtml(days: AnomalyDay[], store: DataStore): string {
   const rows = days
-    .map((a) => {
-      const user = a.topUsers[0];
-      const model = a.topModels[0];
+    .map((anomaly) => {
+      const user = anomaly.topUsers[0];
+      const model = anomaly.topModels[0];
       const mostly = mostlyText(
-        user ? esc(labelOf('user', store.dicts.user.values[user.id])) : null,
+        user ? escapeHtml(labelOf('user', store.dicts.user.values[user.id])) : null,
         user ? fmtUSD(user.gross) : '',
-        model ? esc(labelOf('model', store.dicts.model.values[model.id])) : null,
+        model ? escapeHtml(labelOf('model', store.dicts.model.values[model.id])) : null,
       );
       const detail = mostly ? `<br/><span style="opacity:.75">${mostly}</span>` : '';
-      const line = t('{amount}, {multiple} a typical day ({baseline})', { amount: fmtUSD(a.gross), multiple: fmtMultiple(a.multiple), baseline: fmtUSD(a.baseline) });
-      return `<div style="margin-top:2px"><b>${fmtDay(a.day, true)}</b>: ${line}${detail}</div>`;
+      const line = t('{amount}, {multiple} a typical day ({baseline})', { amount: fmtUSD(anomaly.gross), multiple: fmtMultiple(anomaly.multiple), baseline: fmtUSD(anomaly.baseline) });
+      return `<div style="margin-top:2px"><b>${fmtDay(anomaly.day, true)}</b>: ${line}${detail}</div>`;
     })
     .join('');
   return `<div style="${sectionStart}"><div style="opacity:.75">${days.length > 1 ? t('Unusual days') : t('Unusual day')}</div>${rows}</div>`;
@@ -44,9 +44,9 @@ export interface UsageOptionInput {
 }
 
 /** Stacked usage per bucket, optionally with a pin on every bucket that holds an unusual day. */
-export function usageOverTimeOption(c: ChartColors, o: UsageOptionInput): EChartsOption {
-  const { usage, cumulative, marks, store } = o;
-  const base = stackedTimeOption(c, {
+export function usageOverTimeOption(colors: ChartColors, input: UsageOptionInput): EChartsOption {
+  const { usage, cumulative, marks, store } = input;
+  const base = stackedTimeOption(colors, {
     labels: usage.labels,
     series: usage.series,
     other: usage.other,
@@ -56,18 +56,18 @@ export function usageOverTimeOption(c: ChartColors, o: UsageOptionInput): EChart
   if (!marks.length) return base;
 
   const tip = stackTooltip(usd);
-  const byIndex = new Map(marks.map((m) => [m.index, m]));
-  const pins = marks.map((m) => ({
-    name: m.days.length > 1 ? pluralize(m.days.length, 'unusual day') : t('Unusual day {date}', { date: fmtDay(m.days[0].day) }),
-    coord: [m.index, m.value],
+  const byIndex = new Map(marks.map((anomalyMark) => [anomalyMark.index, anomalyMark]));
+  const pins = marks.map((anomalyMark) => ({
+    name: anomalyMark.days.length > 1 ? pluralize(anomalyMark.days.length, 'unusual day') : t('Unusual day {date}', { date: fmtDay(anomalyMark.days[0].day) }),
+    coord: [anomalyMark.index, anomalyMark.value],
   }));
-  const series = (base.series as unknown as Record<string, unknown>[]).map((s, i) =>
-    i === 0 ? { ...s, markPoint: { symbol: 'pin', symbolSize: 24, itemStyle: { color: c.bad }, label: { show: false }, animation: false, data: pins } } : s,
+  const series = (base.series as unknown as Record<string, unknown>[]).map((layer, layerIndex) =>
+    layerIndex === 0 ? { ...layer, markPoint: { symbol: 'pin', symbolSize: 24, itemStyle: { color: colors.bad }, label: { show: false }, animation: false, data: pins } } : layer,
   );
   return {
     ...base,
     series,
-    yAxis: { type: 'value', max: (v: { max: number }) => v.max * 1.12, axisLabel: { formatter: (v: number) => usdCompact(v) } },
+    yAxis: { type: 'value', max: (extent: { max: number }) => extent.max * 1.12, axisLabel: { formatter: (amount: number) => usdCompact(amount) } },
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: cumulative ? 'line' : 'shadow' },
@@ -104,45 +104,45 @@ const PROJECTED = msg('Projected usage');
 const RANGE = msg('Likely range');
 
 /** Cumulative usage over the days of one month with the pool size, the day it ran out and the projected month end. */
-export function poolMonthOption(c: ChartColors, o: PoolOptionInput): EChartsOption {
-  const { m, curves, path, capacity } = o;
-  const billing = o.billing !== false;
-  const n = m.daysInMonth;
-  const labels = Array.from({ length: n }, (_, i) => String(i + 1));
-  const points = curves.gross.filter((v) => v !== null).length;
-  const billingIdx = o.markBilling && m.exhaustedOn !== null ? m.exhaustedOn - m.monthStart : null;
-  const expectedIdx = capacity !== null && m.projection?.exhaustionDate != null ? m.projection.exhaustionDate - m.monthStart : null;
+export function poolMonthOption(colors: ChartColors, input: PoolOptionInput): EChartsOption {
+  const { m: month, curves, path, capacity } = input;
+  const billing = input.billing !== false;
+  const dayCount = month.daysInMonth;
+  const labels = Array.from({ length: dayCount }, (_, dayIndex) => String(dayIndex + 1));
+  const points = curves.gross.filter((amount) => amount !== null).length;
+  const billingIdx = input.markBilling && month.exhaustedOn !== null ? month.exhaustedOn - month.monthStart : null;
+  const expectedIdx = capacity !== null && month.projection?.exhaustionDate != null ? month.projection.exhaustionDate - month.monthStart : null;
 
   let top = 0;
-  for (const v of curves.gross) if (v !== null && v > top) top = v;
-  if (path) for (const v of path.high) if (v !== null && v > top) top = v;
+  for (const amount of curves.gross) if (amount !== null && amount > top) top = amount;
+  if (path) for (const amount of path.high) if (amount !== null && amount > top) top = amount;
   const yMax = capacity !== null || top > 0 ? niceMax(Math.max(top, capacity ?? 0) * 1.05) : undefined;
 
-  const chip = (color: string) => ({ show: true, color: c.text, fontSize: 12, backgroundColor: c.surface, borderColor: color, borderWidth: 1, padding: [2, 6] });
+  const chip = (color: string) => ({ show: true, color: colors.text, fontSize: 12, backgroundColor: colors.surface, borderColor: color, borderWidth: 1, padding: [2, 6] });
   const covered = t(COVERED);
   const billed = t(BILLED);
   const soFar = t(USAGE_SO_FAR);
   const projected = t(PROJECTED);
   const likely = t(RANGE);
   const marked: Record<string, unknown>[] = [];
-  if (billingIdx !== null && m.exhaustedOn !== null) {
+  if (billingIdx !== null && month.exhaustedOn !== null) {
     marked.push({
-      name: o.billingLabel,
+      name: input.billingLabel,
       coord: [billingIdx, capacity ?? curves.gross[billingIdx] ?? 0],
-      itemStyle: { color: c.warn },
-      label: { ...chip(c.warn), position: 'top', formatter: o.billingLabel },
+      itemStyle: { color: colors.warn },
+      label: { ...chip(colors.warn), position: 'top', formatter: input.billingLabel },
     });
   }
-  if (expectedIdx !== null && capacity !== null && m.projection?.exhaustionDate != null) {
-    const expected = t('Expected to run out {date}', { date: fmtDay(m.projection.exhaustionDate) });
+  if (expectedIdx !== null && capacity !== null && month.projection?.exhaustionDate != null) {
+    const expected = t('Expected to run out {date}', { date: fmtDay(month.projection.exhaustionDate) });
     marked.push({
       name: expected,
       coord: [expectedIdx, capacity],
-      itemStyle: { color: c.surface, borderColor: c.info, borderWidth: 2 },
-      label: { ...chip(c.info), position: 'top', formatter: expected },
+      itemStyle: { color: colors.surface, borderColor: colors.info, borderWidth: 2 },
+      label: { ...chip(colors.info), position: 'top', formatter: expected },
     });
   }
-  const earlyEvent = (billingIdx ?? expectedIdx ?? n) < n * 0.4;
+  const earlyEvent = (billingIdx ?? expectedIdx ?? dayCount) < dayCount * 0.4;
   const capacityLine =
     capacity === null
       ? undefined
@@ -150,9 +150,9 @@ export function poolMonthOption(c: ChartColors, o: PoolOptionInput): EChartsOpti
           symbol: 'none',
           silent: true,
           animation: false,
-          label: { formatter: '{b}', position: earlyEvent ? 'insideEndTop' : 'insideStartTop', color: c.textMuted, fontSize: 12 },
-          lineStyle: { type: 'dashed', width: 1.5, color: c.accent },
-          data: [{ name: t('Included credits {amount}', { amount: `${fmtUSD(capacity, 0)}${o.lowerBound ? '*' : ''}` }), yAxis: capacity }],
+          label: { formatter: '{b}', position: earlyEvent ? 'insideEndTop' : 'insideStartTop', color: colors.textMuted, fontSize: 12 },
+          lineStyle: { type: 'dashed', width: 1.5, color: colors.accent },
+          data: [{ name: t('Included credits {amount}', { amount: `${fmtUSD(capacity, 0)}${input.lowerBound ? '*' : ''}` }), yAxis: capacity }],
         };
 
   const area = (name: string, data: (number | null)[], color: string, opacity: number, extra: Record<string, unknown> = {}) => ({
@@ -170,41 +170,41 @@ export function poolMonthOption(c: ChartColors, o: PoolOptionInput): EChartsOpti
   });
   const markers = { markLine: capacityLine, markPoint: marked.length ? { symbol: 'circle', symbolSize: 10, silent: true, animation: false, data: marked } : undefined };
   const series: Record<string, unknown>[] = billing
-    ? [area(covered, curves.discount, c.accent, 0.4, markers), area(billed, curves.net, c.warn, 0.55)]
-    : [area(soFar, curves.gross, c.accent, 0.4, markers)];
+    ? [area(covered, curves.discount, colors.accent, 0.4, markers), area(billed, curves.net, colors.warn, 0.55)]
+    : [area(soFar, curves.gross, colors.accent, 0.4, markers)];
   const legend = billing ? [covered, billed] : [soFar];
   if (path) {
-    const band = path.high.map((h, i) => (h === null || path.low[i] === null ? null : h - (path.low[i] as number)));
+    const band = path.high.map((high, dayIndex) => (high === null || path.low[dayIndex] === null ? null : high - (path.low[dayIndex] as number)));
     series.push(
-      { name: projected, type: 'line', data: path.mid, color: c.info, showSymbol: false, lineStyle: { type: 'dashed', width: 2 }, z: 3 },
+      { name: projected, type: 'line', data: path.mid, color: colors.info, showSymbol: false, lineStyle: { type: 'dashed', width: 2 }, z: 3 },
       { name: 'range-base', type: 'line', stack: 'band', data: path.low, symbol: 'none', silent: true, lineStyle: { opacity: 0 }, tooltip: { show: false } },
-      { name: likely, type: 'line', stack: 'band', data: band, symbol: 'none', silent: true, color: c.info, lineStyle: { opacity: 0 }, areaStyle: { color: c.info, opacity: 0.14 } },
+      { name: likely, type: 'line', stack: 'band', data: band, symbol: 'none', silent: true, color: colors.info, lineStyle: { opacity: 0 }, areaStyle: { color: colors.info, opacity: 0.14 } },
     );
     legend.push(projected, likely);
   }
 
-  const tip = (i: number): string => {
-    const g = curves.gross[i];
-    const d = curves.discount[i];
-    const nt = curves.net[i];
+  const tip = (dayIndex: number): string => {
+    const runningGross = curves.gross[dayIndex];
+    const runningDiscount = curves.discount[dayIndex];
+    const runningNet = curves.net[dayIndex];
     const lines: string[] = [];
-    if (g !== null && d !== null && nt !== null) {
+    if (runningGross !== null && runningDiscount !== null && runningNet !== null) {
       if (billing) {
-        lines.push(row(covered, fmtUSD(d)), row(billed, fmtUSD(nt)), row(soFar, fmtUSD(g)));
-        if (capacity !== null && capacity > 0) lines.push(row(t('Included credits used'), fmtPct(d / capacity, 0)));
+        lines.push(row(covered, fmtUSD(runningDiscount)), row(billed, fmtUSD(runningNet)), row(soFar, fmtUSD(runningGross)));
+        if (capacity !== null && capacity > 0) lines.push(row(t('Included credits used'), fmtPct(runningDiscount / capacity, 0)));
       } else {
-        lines.push(row(soFar, fmtUSD(g)));
+        lines.push(row(soFar, fmtUSD(runningGross)));
       }
     }
-    if (path && i > path.startIndex) {
-      const mid = path.mid[i];
-      const lo = path.low[i];
-      const hi = path.high[i];
-      if (mid !== null && lo !== null && hi !== null) {
-        lines.push(row(projected, fmtUSD(mid)), `<div style="opacity:.7">${t('Likely {low} to {high}', { low: fmtUSD(lo), high: fmtUSD(hi) })}</div>`);
+    if (path && dayIndex > path.startIndex) {
+      const mid = path.mid[dayIndex];
+      const low = path.low[dayIndex];
+      const high = path.high[dayIndex];
+      if (mid !== null && low !== null && high !== null) {
+        lines.push(row(projected, fmtUSD(mid)), `<div style="opacity:.7">${t('Likely {low} to {high}', { low: fmtUSD(low), high: fmtUSD(high) })}</div>`);
       }
     }
-    return lines.length ? `<div style="font-weight:600;margin-bottom:4px">${fmtDay(m.monthStart + i, true)}</div>${lines.join('')}` : '';
+    return lines.length ? `<div style="font-weight:600;margin-bottom:4px">${fmtDay(month.monthStart + dayIndex, true)}</div>${lines.join('')}` : '';
   };
 
   return {
@@ -219,7 +219,7 @@ export function poolMonthOption(c: ChartColors, o: PoolOptionInput): EChartsOpti
       },
     },
     xAxis: { type: 'category', data: labels, boundaryGap: false, axisLabel: { hideOverlap: true } },
-    yAxis: { type: 'value', min: 0, max: yMax, axisLabel: { formatter: (v: number) => usdCompact(v) } },
+    yAxis: { type: 'value', min: 0, max: yMax, axisLabel: { formatter: (amount: number) => usdCompact(amount) } },
     series,
   } as EChartsOption;
 }

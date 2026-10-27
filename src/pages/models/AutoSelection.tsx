@@ -42,19 +42,19 @@ function Line({ label, value }: { label: ReactNode; value: ReactNode }) {
 function ShareBlock() {
   const { analysis } = useAnalysis();
   const colors = useChartColors();
-  const a = analysis.auto;
+  const auto = analysis.auto;
 
   const items = useMemo(
     () =>
       [
-        { key: 'auto' as const, name: t('Through Auto'), value: a.billed, color: colors.accent },
-        { key: 'manual' as const, name: t('Hand-picked'), value: a.direct, color: colors.muted },
-      ].filter((i) => i.value > 0),
-    [a.billed, a.direct, colors],
+        { key: 'auto' as const, name: t('Through Auto'), value: auto.billed, color: colors.accent },
+        { key: 'manual' as const, name: t('Hand-picked'), value: auto.direct, color: colors.muted },
+      ].filter((slice) => slice.value > 0),
+    [auto.billed, auto.direct, colors],
   );
   const option = useMemo(
-    () => donutOption(colors, { items, legend: 'bottom', center: { value: fmtPct(a.share, 0), caption: t('through Auto') } }),
-    [colors, items, a.share],
+    () => donutOption(colors, { items, legend: 'bottom', center: { value: fmtPct(auto.share, 0), caption: t('through Auto') } }),
+    [colors, items, auto.share],
   );
 
   return (
@@ -68,15 +68,15 @@ function ShareBlock() {
             height={190}
             label={t('Share of usage that went through Auto and share that was hand-picked')}
             exportName="github-copilot-auto-share"
-            onClick={(p) => {
-              const item = items[p.dataIndex];
+            onClick={(event) => {
+              const item = items[event.dataIndex];
               if (item) drill({ selection: item.key }, { merge: true });
             }}
           />
           <p className="text-center text-[11px] text-fg-subtle">{t('Click a slice to filter by it')}</p>
           <dl className="mt-2 space-y-0.5 text-xs">
-            <Line label={t('Through Auto')} value={fmtUSD(a.billed)} />
-            <Line label={t('Hand-picked models')} value={fmtUSD(a.direct)} />
+            <Line label={t('Through Auto')} value={fmtUSD(auto.billed)} />
+            <Line label={t('Hand-picked models')} value={fmtUSD(auto.direct)} />
           </dl>
         </>
       )}
@@ -86,27 +86,27 @@ function ShareBlock() {
 
 function DiscountBlock() {
   const { analysis } = useAnalysis();
-  const a = analysis.auto;
-  const has = a.billed > 0;
-  const got = a.discount > 0.005;
-  const inReport = a.original > 0 ? Math.min(1, a.billed / a.original) : 1;
+  const auto = analysis.auto;
+  const has = auto.billed > 0;
+  const got = auto.discount > 0.005;
+  const inReport = auto.original > 0 ? Math.min(1, auto.billed / auto.original) : 1;
   const basis =
-    a.measuredShare >= 0.995
+    auto.measuredShare >= 0.995
       ? t('Measured: the original price comes from the token counts and the price card.')
-      : a.measuredShare <= 0.005
+      : auto.measuredShare <= 0.005
         ? t('Estimated: these Auto rows have no usable token counts, so the original price uses the discount rate of the plan.')
         : t('{pct} of the Auto usage is measured from token counts. For the rest, the discount is estimated with the discount rate of the plan.', {
-            pct: fmtPct(a.measuredShare, 0),
+            pct: fmtPct(auto.measuredShare, 0),
           });
 
   return (
     <Block title={t('Auto discount received')} calc={['auto-discount', 'auto-original-price']} className={got ? 'border-good/30 bg-good-soft' : undefined}>
-      <div className={cx('num truncate text-2xl font-semibold', got && 'text-good')}>{has ? fmtUSD(got ? a.discount : 0) : '–'}</div>
+      <div className={cx('num truncate text-2xl font-semibold', got && 'text-good')}>{has ? fmtUSD(got ? auto.discount : 0) : '–'}</div>
       {has ? (
         <>
           <p className="mt-0.5 text-xs text-fg-muted">
             {got
-              ? t('{pct} off an original price of {amount}', { pct: fmtPct(a.rate, 1), amount: fmtUSD(a.original) })
+              ? t('{pct} off an original price of {amount}', { pct: fmtPct(auto.rate, 1), amount: fmtUSD(auto.original) })
               : t('The report shows no Auto discount. The Auto usage was billed at its original price.')}
           </p>
           {got ? (
@@ -120,8 +120,8 @@ function DiscountBlock() {
             />
           ) : null}
           <dl className="mt-2 space-y-0.5 text-xs">
-            <Line label={t('Original price of Auto usage')} value={fmtUSD(a.original)} />
-            <Line label={t('Auto usage in the report (after the discount)')} value={fmtUSD(a.billed)} />
+            <Line label={t('Original price of Auto usage')} value={fmtUSD(auto.original)} />
+            <Line label={t('Auto usage in the report (after the discount)')} value={fmtUSD(auto.billed)} />
           </dl>
           <p className="mt-2 text-[11px] leading-snug text-fg-subtle">{basis}</p>
         </>
@@ -135,16 +135,16 @@ function DiscountBlock() {
 function MissedBlock() {
   const { analysis } = useAnalysis();
   const perMonth = usePerMonth();
-  const a = analysis.auto;
+  const auto = analysis.auto;
   const moved = DEFAULT_LEVERS.autoAdoption;
-  const less = a.missed * moved * perMonth;
-  const missed = a.missed >= 0.005;
+  const less = auto.missed * moved * perMonth;
+  const missed = auto.missed >= 0.005;
 
   return (
     <Block title={t('Discount missed on hand-picked usage')} calc={['auto-missed', 'model-auto-adoption']}>
-      {a.total > 0 ? (
+      {auto.total > 0 ? (
         <>
-          <div className="num truncate text-2xl font-semibold">{fmtUSD(a.missed)}</div>
+          <div className="num truncate text-2xl font-semibold">{fmtUSD(auto.missed)}</div>
           <p className="mt-0.5 text-xs text-fg-muted">
             {missed
               ? t(
@@ -163,7 +163,7 @@ function MissedBlock() {
           <p className="mt-2 text-[11px] leading-snug text-fg-subtle">
             {t(
               'Usage, not cash: included credits are shared by the whole organization. Each plan uses the discount rate measured on its own Auto usage. Only a plan with no Auto usage to measure uses the Auto model discount from Settings ({pct}).',
-              { pct: fmtPct(a.assumedRate, 0) },
+              { pct: fmtPct(auto.assumedRate, 0) },
             )}
           </p>
         </>
@@ -176,21 +176,21 @@ function MissedBlock() {
 
 function HeavyUsersBlock() {
   const { analysis, settings } = useAnalysis();
-  const selectUser = useApp((s) => s.selectUser);
+  const selectUser = useApp((state) => state.selectUser);
 
   const { pool, list, lowest } = useMemo(() => {
     const pool = analysis.users.profiles
-      .filter((p) => p.gross >= settings.minSpendForTraits)
+      .filter((user) => user.gross >= settings.minSpendForTraits)
       .sort((a, b) => b.gross - a.gross)
       .slice(0, HEAVY_POOL);
     const list = pool
-      .filter((p) => p.autoShare < settings.autoFirst)
+      .filter((user) => user.autoShare < settings.autoFirst)
       .sort((a, b) => a.autoShare - b.autoShare || b.gross - a.gross)
       .slice(0, LISTED);
-    return { pool, list, lowest: Math.min(1, ...pool.map((p) => p.autoShare)) };
+    return { pool, list, lowest: Math.min(1, ...pool.map((user) => user.autoShare)) };
   }, [analysis.users.profiles, settings.minSpendForTraits, settings.autoFirst]);
 
-  const n = fmtInt(pool.length);
+  const userCount = fmtInt(pool.length);
   const pct = <span className="num font-medium">{fmtPct(lowest, 0)}</span>;
   const autoFirst = fmtPct(settings.autoFirst, 0);
   const allAuto = lowest >= 0.995;
@@ -210,34 +210,34 @@ function HeavyUsersBlock() {
                 <T text="The biggest user already sends at least {pct} of their usage through Auto." values={{ pct }} />
               )
             ) : allAuto ? (
-              t('Each of the {n} biggest users already sends all of their usage through Auto.', { n })
+              t('Each of the {n} biggest users already sends all of their usage through Auto.', { n: userCount })
             ) : (
-              <T text="Each of the {n} biggest users already sends at least {pct} of their usage through Auto." values={{ n, pct }} />
+              <T text="Each of the {n} biggest users already sends at least {pct} of their usage through Auto." values={{ n: userCount, pct }} />
             )}
           </span>
         </div>
       ) : (
         <>
           <ul className="-my-1 divide-y divide-border-muted">
-            {list.map((p) => (
-              <li key={p.id}>
-                <button type="button" className="flex w-full items-center gap-3 py-2 text-start hover:bg-surface-3" onClick={() => selectUser(p.id)}>
+            {list.map((user) => (
+              <li key={user.id}>
+                <button type="button" className="flex w-full items-center gap-3 py-2 text-start hover:bg-surface-3" onClick={() => selectUser(user.id)}>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium">{p.name}</span>
+                    <span className="block truncate text-sm font-medium">{user.name}</span>
                     <span className="block truncate text-xs text-fg-muted">
-                      {p.topModel ? (
+                      {user.topModel ? (
                         <T
                           text="{amount} usage · mostly {model}"
-                          values={{ amount: <span className="num">{fmtUSD(p.gross, 0)}</span>, model: p.topModel }}
+                          values={{ amount: <span className="num">{fmtUSD(user.gross, 0)}</span>, model: user.topModel }}
                         />
                       ) : (
-                        <T text="{amount} usage" values={{ amount: <span className="num">{fmtUSD(p.gross, 0)}</span> }} />
+                        <T text="{amount} usage" values={{ amount: <span className="num">{fmtUSD(user.gross, 0)}</span> }} />
                       )}
                     </span>
                   </span>
                   <span className="w-16 shrink-0">
-                    <span className="num block text-end text-sm font-medium">{fmtPct(p.autoShare, 0)}</span>
-                    <ProgressBar value={p.autoShare} height={4} label={t('Auto share of {name}', { name: p.name })} />
+                    <span className="num block text-end text-sm font-medium">{fmtPct(user.autoShare, 0)}</span>
+                    <ProgressBar value={user.autoShare} height={4} label={t('Auto share of {name}', { name: user.name })} />
                   </span>
                 </button>
               </li>
@@ -246,7 +246,7 @@ function HeavyUsersBlock() {
           <p className="mt-2 text-[11px] leading-snug text-fg-subtle">
             {pool.length === 1
               ? t('The biggest user by usage sends less than {pct} of their usage through Auto.', { pct: autoFirst })
-              : t('Of the {n} biggest users by usage, these send less than {pct} of their usage through Auto, lowest share first.', { n, pct: autoFirst })}{' '}
+              : t('Of the {n} biggest users by usage, these send less than {pct} of their usage through Auto, lowest share first.', { n: userCount, pct: autoFirst })}{' '}
             {t('Ask whether Auto would fit their routine work.')}
           </p>
         </>

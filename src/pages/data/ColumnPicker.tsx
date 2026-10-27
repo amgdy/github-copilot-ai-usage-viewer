@@ -11,7 +11,7 @@ interface Props {
 }
 
 export function ColumnPicker({ columns, hidden, initialHidden, onChange }: Props) {
-  const shown = columns.filter((c) => !hidden.has(c.id)).length;
+  const shown = columns.filter((column) => !hidden.has(column.id)).length;
 
   const toggle = (id: ColumnId) => {
     const next = new Set(hidden);
@@ -32,18 +32,18 @@ export function ColumnPicker({ columns, hidden, initialHidden, onChange }: Props
       )}
     >
       <div className="max-h-72 min-w-48 overflow-auto p-1">
-        {columns.map((c) => {
-          const checked = !hidden.has(c.id);
+        {columns.map((column) => {
+          const checked = !hidden.has(column.id);
           return (
-            <label key={c.id} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-xs hover:bg-surface-3">
+            <label key={column.id} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-xs hover:bg-surface-3">
               <input
                 type="checkbox"
                 className="accent-[var(--accent)]"
                 checked={checked}
                 disabled={checked && shown === 1}
-                onChange={() => toggle(c.id)}
+                onChange={() => toggle(column.id)}
               />
-              <span className="truncate">{t(c.header)}</span>
+              <span className="truncate">{t(column.header)}</span>
             </label>
           );
         })}

@@ -197,9 +197,9 @@ export const GLOSSARY: GlossaryEntry[] = [
     term: msg('Active day'),
     group: 'Activity',
     aliases: ['active days', 'threshold'],
-    definition: (s) =>
-      s.activeThreshold > 0
-        ? t("A day on which a user's usage adds up to at least {amount}. The amount is set under Classification thresholds.", { amount: usd(s.activeThreshold) })
+    definition: (settings) =>
+      settings.activeThreshold > 0
+        ? t("A day on which a user's usage adds up to at least {amount}. The amount is set under Classification thresholds.", { amount: usd(settings.activeThreshold) })
         : t('A day with any usage row for the user, because the active-day amount is set to $0.'),
   },
   {
@@ -216,11 +216,11 @@ export const GLOSSARY: GlossaryEntry[] = [
     term: msg('Engagement'),
     group: 'Activity',
     aliases: ['daily', 'regular', 'occasional', 'rare', 'frequency'],
-    definition: (s) =>
+    definition: (settings) =>
       t('How often a user is active, from the active rate: Daily at {daily} of workdays or more, Regular from {regular}, Occasional from {occasional}, and Rare below that.', {
-        daily: pct(s.engagement.daily),
-        regular: pct(s.engagement.regular),
-        occasional: pct(s.engagement.occasional),
+        daily: pct(settings.engagement.daily),
+        regular: pct(settings.engagement.regular),
+        occasional: pct(settings.engagement.occasional),
       }),
   },
   {
@@ -228,10 +228,10 @@ export const GLOSSARY: GlossaryEntry[] = [
     term: msg('New and lapsed users'),
     group: 'Activity',
     aliases: ['new', 'lapsed', 'onboarding'],
-    definition: (s) =>
+    definition: (settings) =>
       t(
         'A user is New when their first day in the report is within the last {newDays} of the period in view and at least {newDays} after the report starts, so people who were already active at the start are not new. A user is Lapsed when they are not new and have had no usage for the last {lapsedDays} or more.',
-        { newDays: pluralize(s.newUserDays, 'day'), lapsedDays: pluralize(s.lapsedDays, 'day') },
+        { newDays: pluralize(settings.newUserDays, 'day'), lapsedDays: pluralize(settings.lapsedDays, 'day') },
       ),
   },
   {
@@ -254,8 +254,8 @@ export const GLOSSARY: GlossaryEntry[] = [
     term: msg('Spend tier'),
     group: 'Classification',
     aliases: ['tier', 'minimal', 'light', 'core', 'power', 'runaway'],
-    definition: (s) => {
-      const tiers = s.tiers;
+    definition: (settings) => {
+      const tiers = settings.tiers;
       return t(
         "A band for a user's utilization: Minimal below {minimal}, Light from {minimal} to {light}, Core from {light} to {core}, Power from {core} to {power}, and Runaway at {power} or more. Core is the range in which the included credits of a seat are well used.",
         { minimal: pct(tiers.minimal), light: pct(tiers.light), core: pct(tiers.core), power: pct(tiers.power) },
@@ -267,10 +267,10 @@ export const GLOSSARY: GlossaryEntry[] = [
     term: msg('Persona'),
     group: 'Classification',
     aliases: ['champions', 'steady light users', 'burst users', 'dormant', 'runaway users', 'runaway spenders', 'precedence'],
-    definition: (s) =>
+    definition: (settings) =>
       t(
         'Each user gets one label, checked in this order: Runaway users (the Runaway tier), New users, then Lapsed users. Everyone else is split by two tests: active on at least {regular} of workdays, and utilization of at least {light}. Passing both makes a Champion, utilization only makes a Burst user, activity only makes a Steady light user, and neither makes a Dormant user.',
-        { regular: pct(s.engagement.regular), light: pct(s.tiers.light) },
+        { regular: pct(settings.engagement.regular), light: pct(settings.tiers.light) },
       ),
   },
   {
@@ -278,10 +278,10 @@ export const GLOSSARY: GlossaryEntry[] = [
     term: msg('Usage profile'),
     group: 'Classification',
     aliases: ['profile', 'behavior profile', 'frontier-heavy', 'balanced', 'efficient', 'model mix'],
-    definition: (s) =>
+    definition: (settings) =>
       t(
         'How a user splits usage across model tiers. A user is Frontier-heavy when at least {frontier} of their usage is on Powerful models, otherwise Efficient when at least {efficient} is on Versatile and Lightweight models, and Balanced when neither holds.',
-        { frontier: pct(s.frontierHeavy), efficient: pct(s.efficientShare) },
+        { frontier: pct(settings.frontierHeavy), efficient: pct(settings.efficientShare) },
       ),
   },
   {
@@ -289,10 +289,10 @@ export const GLOSSARY: GlossaryEntry[] = [
     term: msg('Pareto class'),
     group: 'Classification',
     aliases: ['pareto', 'top spenders', 'long tail', 'cumulative share'],
-    definition: (s) =>
+    definition: (settings) =>
       t(
         'Users sorted by usage, highest first, and grouped by the running share of total usage. Class A is the users who together make up the first {a}, class B the next {b} and class C the last {c}. A user whose usage carries the running share over a cutoff stays in the earlier class.',
-        { a: pct(s.pareto.a), b: pct(s.pareto.b - s.pareto.a), c: pct(1 - s.pareto.b) },
+        { a: pct(settings.pareto.a), b: pct(settings.pareto.b - settings.pareto.a), c: pct(1 - settings.pareto.b) },
       ),
   },
   {
@@ -319,10 +319,10 @@ export const GLOSSARY: GlossaryEntry[] = [
     term: msg('Auto discount received'),
     group: 'Auto model selection',
     aliases: ['auto discount', 'discount received', 'measured', 'assumed'],
-    definition: (s) =>
+    definition: (settings) =>
       t(
         'How much cheaper the Auto usage was than the same tokens at the original price of the models. The report has no column for it, so the app measures it by comparing the amount charged with the price card. A plan with no Auto usage to measure from uses the Auto model discount setting ({rate} now), and that rate is called assumed. It is not the discount_amount column, which holds the included credits.',
-        { rate: pct(s.autoDiscount) },
+        { rate: pct(settings.autoDiscount) },
       ),
   },
   {
@@ -348,10 +348,10 @@ export const GLOSSARY: GlossaryEntry[] = [
     term: msg('Auto use class'),
     group: 'Auto model selection',
     aliases: ['auto-first', 'mixed', 'direct models', 'not enough data', 'rarely uses auto'],
-    definition: (s) =>
+    definition: (settings) =>
       t(
         'Where a user sits between Auto and models picked by hand. Auto-first: {autoFirst} or more of their usage goes through Auto. Direct models: less than {lowAuto}. Mixed: in between. Not enough data: the report has no model column, or the user has no usage. Both limits are set under Classification thresholds, and the lower one must stay below the upper one.',
-        { autoFirst: pct(s.autoFirst), lowAuto: pct(s.lowAuto) },
+        { autoFirst: pct(settings.autoFirst), lowAuto: pct(settings.lowAuto) },
       ),
   },
 
@@ -360,18 +360,18 @@ export const GLOSSARY: GlossaryEntry[] = [
     term: msg('Traits'),
     group: 'Traits',
     aliases: ['habits', 'flags', 'minimum usage'],
-    definition: (s) =>
-      t('Labels for habits that a user can have in any combination. Most need at least {min} of usage, so that small accounts are not flagged. Each trait is listed below.', { min: usd(s.minSpendForTraits) }),
+    definition: (settings) =>
+      t('Labels for habits that a user can have in any combination. Most need at least {min} of usage, so that small accounts are not flagged. Each trait is listed below.', { min: usd(settings.minSpendForTraits) }),
   },
   {
     id: 'trait-low-cache',
     term: msg('Low cache reuse'),
     group: 'Traits',
     aliases: ['trait', 'cache'],
-    definition: (s) =>
+    definition: (settings) =>
       t('Cache hit rate below {rate}, so context is paid for again instead of being read from the cache. It needs at least {min} of usage, with at least half of it on models that have a price.', {
-        rate: pct(s.lowCacheHit),
-        min: usd(s.minSpendForTraits),
+        rate: pct(settings.lowCacheHit),
+        min: usd(settings.minSpendForTraits),
       }),
   },
   {
@@ -379,26 +379,26 @@ export const GLOSSARY: GlossaryEntry[] = [
     term: msg('Long-context surcharges'),
     group: 'Traits',
     aliases: ['trait', 'long context'],
-    definition: (s) =>
-      t("At least {share} of the user's usage is long-context premium. It needs at least {min} of usage.", { share: pct(s.longContextShare), min: usd(s.minSpendForTraits) }),
+    definition: (settings) =>
+      t("At least {share} of the user's usage is long-context premium. It needs at least {min} of usage.", { share: pct(settings.longContextShare), min: usd(settings.minSpendForTraits) }),
   },
   {
     id: 'trait-spiky',
     term: msg('Spiky usage'),
     group: 'Traits',
     aliases: ['trait', 'spike', 'peak day', 'spiky spend'],
-    definition: (s) =>
-      t("One day makes up at least {share} of the user's usage. It needs at least {min} of usage and at least 3 active days.", { share: pct(s.spikeShare), min: usd(s.minSpendForTraits) }),
+    definition: (settings) =>
+      t("One day makes up at least {share} of the user's usage. It needs at least {min} of usage and at least 3 active days.", { share: pct(settings.spikeShare), min: usd(settings.minSpendForTraits) }),
   },
   {
     id: 'trait-low-auto',
     term: msg('Rarely uses Auto'),
     group: 'Traits',
     aliases: ['trait', 'auto'],
-    definition: (s) =>
+    definition: (settings) =>
       t(
         "Less than {lowAuto} of the user's usage goes through Auto model selection, the same limit that puts a user in the Direct models class. The trait needs at least {min} of usage and a model column in the report.",
-        { lowAuto: pct(s.lowAuto), min: usd(s.minSpendForTraits) },
+        { lowAuto: pct(settings.lowAuto), min: usd(settings.minSpendForTraits) },
       ),
   },
   {
@@ -413,10 +413,10 @@ export const GLOSSARY: GlossaryEntry[] = [
     term: msg('Growing fast'),
     group: 'Traits',
     aliases: ['trait', 'growing', 'trend', 'accelerating'],
-    definition: (s) =>
+    definition: (settings) =>
       t(
         'Usage in the last 7 days is at least 1.5 times the 7 days before. It needs a period of 14 days or more and at least {min} in the last 7 days, and a user with nothing in the 7 days before counts unless they are new.',
-        { min: usd(s.minSpendForTraits) },
+        { min: usd(settings.minSpendForTraits) },
       ),
   },
   {
@@ -424,7 +424,7 @@ export const GLOSSARY: GlossaryEntry[] = [
     term: msg('Fading'),
     group: 'Traits',
     aliases: ['trait', 'declining', 'trend'],
-    definition: (s) => t('Usage in the last 7 days is half or less of the 7 days before. It needs a period of 14 days or more and at least {min} in the 7 days before.', { min: usd(s.minSpendForTraits) }),
+    definition: (settings) => t('Usage in the last 7 days is half or less of the 7 days before. It needs a period of 14 days or more and at least {min} in the 7 days before.', { min: usd(settings.minSpendForTraits) }),
   },
   {
     id: 'trait-no-cost-center',
@@ -457,10 +457,10 @@ export const GLOSSARY: GlossaryEntry[] = [
     term: msg('Potential savings and levers'),
     group: 'Savings and efficiency',
     aliases: ['savings', 'potential', 'levers', 'right-size models', 'use auto model selection', 'cache discipline', 'leaner context', 'cap runaway users', 'optimization'],
-    definition: (s) =>
+    definition: (settings) =>
       t(
         'Usage that habit changes could avoid, from six levers: right-size models, use Auto model selection, cache discipline, leaner context, avoid long-context surcharges and cap runaway users. The levers are applied one after the other, each on what is left, so the same usage is never counted twice, and the shares can be changed in the simulator on the Recommendations page. The Auto lever applies the Auto discount rate of each plan: the rate measured in the report or, for a plan with no Auto usage to measure from, {rate} from the Auto model discount setting. All of it is an estimate of usage, not of cash.',
-        { rate: pct(s.autoDiscount) },
+        { rate: pct(settings.autoDiscount) },
       ),
   },
   {

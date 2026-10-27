@@ -44,42 +44,42 @@ const GROUP_SUBTITLE: Record<Bucket, string> = {
 };
 
 const translated = <V extends string>(list: { value: V; label: string; title?: string }[]) =>
-  list.map((o) => ({ value: o.value, label: t(o.label), title: o.title ? t(o.title) : undefined }));
+  list.map((option) => ({ value: option.value, label: t(option.label), title: option.title ? t(option.title) : undefined }));
 
 interface BucketProps {
   bucket: Bucket;
-  onBucket: (b: Bucket) => void;
+  onBucket: (bucket: Bucket) => void;
 }
 
 function StackedModelsCard({ bucket, onBucket }: BucketProps) {
   const { analysis, store, models } = useAnalysis();
   const colors = useChartColors();
-  const { agg, mask, range } = analysis;
+  const { agg: aggregates, mask, range } = analysis;
   const [stack, setStack] = useState<StackBy>('model');
 
   const view = useMemo(() => {
     let ids: number[];
     let names: string[];
-    let groupOf: ((s: typeof store, i: number) => number) | undefined;
+    let groupOf: ((dataStore: typeof store, rowIndex: number) => number) | undefined;
     let paint: (id: number) => string | undefined = () => undefined;
     if (stack === 'tier') {
-      ids = CATEGORIES.map((_, i) => i);
+      ids = CATEGORIES.map((_, index) => index);
       names = CATEGORIES.map(tierLabel);
-      groupOf = (s, i) => models.cat[s.model[i]];
+      groupOf = (dataStore, rowIndex) => models.cat[dataStore.model[rowIndex]];
       paint = (id) => CATEGORY_COLORS[CATEGORIES[id]];
     } else if (stack === 'vendor') {
-      ids = VENDORS.map((_, i) => i);
+      ids = VENDORS.map((_, index) => index);
       names = VENDORS.map(vendorLabel);
-      groupOf = (s, i) => models.vendor[s.model[i]];
+      groupOf = (dataStore, rowIndex) => models.vendor[dataStore.model[rowIndex]];
       paint = (id) => vendorColor(colors, id);
     } else {
-      ids = topIds(agg.model.gross, TOP_MODELS);
+      ids = topIds(aggregates.model.gross, TOP_MODELS);
       names = ids.map((id) => labelOf('model', store.dicts.model.values[id]));
     }
-    const s = stackedSeries(store, mask, range, 'model', ids, 'gross', bucket, names, groupOf);
-    const series: TimeSeriesInput[] = s.series.filter((x) => x.data.some((v) => v !== 0)).map((x) => ({ name: x.name, data: x.data, color: paint(x.id) }));
-    return { bucketer: s.bucketer, labels: s.labels, series, other: s.other };
-  }, [stack, bucket, agg, mask, range, store, models, colors]);
+    const stacked = stackedSeries(store, mask, range, 'model', ids, 'gross', bucket, names, groupOf);
+    const series: TimeSeriesInput[] = stacked.series.filter((group) => group.data.some((value) => value !== 0)).map((group) => ({ name: group.name, data: group.data, color: paint(group.id) }));
+    return { bucketer: stacked.bucketer, labels: stacked.labels, series, other: stacked.other };
+  }, [stack, bucket, aggregates, mask, range, store, models, colors]);
 
   const option = useMemo(
     () =>
@@ -103,8 +103,8 @@ function StackedModelsCard({ bucket, onBucket }: BucketProps) {
       option={option}
       height={320}
       empty={view.labels.length === 0 ? t('No usage in this period') : false}
-      onClick={(p) => {
-        const patch = bucketPatch(view.bucketer, p.dataIndex, range.end);
+      onClick={(event) => {
+        const patch = bucketPatch(view.bucketer, event.dataIndex, range.end);
         if (patch) drill(patch, { merge: true });
       }}
       actions={
@@ -124,25 +124,25 @@ const AUTO_VIEWS: { value: AutoView; label: string; title: string }[] = [
   { value: 'amounts', label: msg('Auto and hand-picked'), title: msg('Usage through Auto and on hand-picked models, stacked') },
 ];
 
-function halfShares(s: AutoSeries): { first: number; second: number } | null {
-  const n = s.labels.length;
-  if (n < 4) return null;
-  const mid = Math.floor(n / 2);
-  let a1 = 0;
-  let t1 = 0;
-  let a2 = 0;
-  let t2 = 0;
-  for (let i = 0; i < n; i++) {
-    const sum = s.auto[i] + s.manual[i];
-    if (i < mid) {
-      a1 += s.auto[i];
-      t1 += sum;
+function halfShares(timeline: AutoSeries): { first: number; second: number } | null {
+  const periodCount = timeline.labels.length;
+  if (periodCount < 4) return null;
+  const halfwayIndex = Math.floor(periodCount / 2);
+  let firstAuto = 0;
+  let firstTotal = 0;
+  let secondAuto = 0;
+  let secondTotal = 0;
+  for (let i = 0; i < periodCount; i++) {
+    const sum = timeline.auto[i] + timeline.manual[i];
+    if (i < halfwayIndex) {
+      firstAuto += timeline.auto[i];
+      firstTotal += sum;
     } else {
-      a2 += s.auto[i];
-      t2 += sum;
+      secondAuto += timeline.auto[i];
+      secondTotal += sum;
     }
   }
-  return t1 > 0 && t2 > 0 ? { first: a1 / t1, second: a2 / t2 } : null;
+  return firstTotal > 0 && secondTotal > 0 ? { first: firstAuto / firstTotal, second: secondAuto / secondTotal } : null;
 }
 
 function AutoOverTimeCard({ bucket, onBucket }: BucketProps) {
@@ -151,16 +151,16 @@ function AutoOverTimeCard({ bucket, onBucket }: BucketProps) {
   const { mask, range } = analysis;
   const [view, setView] = useState<AutoView>('share');
 
-  const s = useMemo(() => autoManualSeries(store, mask, range, bucket), [store, mask, range, bucket]);
+  const timeline = useMemo(() => autoManualSeries(store, mask, range, bucket), [store, mask, range, bucket]);
   const { autoTotal, total, halves } = useMemo(() => {
-    let a = 0;
-    let m = 0;
-    for (let i = 0; i < s.labels.length; i++) {
-      a += s.auto[i];
-      m += s.manual[i];
+    let autoUsage = 0;
+    let manualUsage = 0;
+    for (let i = 0; i < timeline.labels.length; i++) {
+      autoUsage += timeline.auto[i];
+      manualUsage += timeline.manual[i];
     }
-    return { autoTotal: a, total: a + m, halves: halfShares(s) };
-  }, [s]);
+    return { autoTotal: autoUsage, total: autoUsage + manualUsage, halves: halfShares(timeline) };
+  }, [timeline]);
   const average = total > 0 ? autoTotal / total : 0;
 
   const option = useMemo((): EChartsOption => {
@@ -169,18 +169,18 @@ function AutoOverTimeCard({ bucket, onBucket }: BucketProps) {
     const autoShare = t('Auto share');
     if (view === 'amounts') {
       return stackedTimeOption(colors, {
-        labels: s.labels,
+        labels: timeline.labels,
         series: [
-          { name: throughAuto, data: s.auto, color: colors.accent },
-          { name: handPicked, data: s.manual, color: colors.muted },
+          { name: throughAuto, data: timeline.auto, color: colors.accent },
+          { name: handPicked, data: timeline.manual, color: colors.muted },
         ],
         kind: 'bar',
-        zoom: s.labels.length > 60,
+        zoom: timeline.labels.length > 60,
       });
     }
-    const share = Array.from(s.auto, (a, i) => {
-      const sum = a + s.manual[i];
-      return sum > 0 ? a / sum : null;
+    const share = Array.from(timeline.auto, (autoUsage, periodIndex) => {
+      const sum = autoUsage + timeline.manual[periodIndex];
+      return sum > 0 ? autoUsage / sum : null;
     });
     return {
       grid: { ...GRID, top: 16 },
@@ -189,29 +189,29 @@ function AutoOverTimeCard({ bucket, onBucket }: BucketProps) {
         trigger: 'axis',
         formatter: (params: unknown): string => {
           const list = (Array.isArray(params) ? params : [params]) as { dataIndex?: number }[];
-          const i = list[0]?.dataIndex ?? -1;
-          if (i < 0 || i >= s.labels.length) return '';
-          const a = s.auto[i];
-          const m = s.manual[i];
+          const periodIndex = list[0]?.dataIndex ?? -1;
+          if (periodIndex < 0 || periodIndex >= timeline.labels.length) return '';
+          const autoUsage = timeline.auto[periodIndex];
+          const manualUsage = timeline.manual[periodIndex];
           const row = (label: string, value: string) => `<div style="display:flex;justify-content:space-between;gap:16px"><span>${label}</span><b>${value}</b></div>`;
           return (
-            `<div style="font-weight:600;margin-bottom:4px">${s.labels[i]}</div>` +
-            row(autoShare, a + m > 0 ? fmtPct(a / (a + m), 0) : '–') +
-            row(throughAuto, fmtUSD(a, 'auto')) +
-            row(handPicked, fmtUSD(m, 'auto'))
+            `<div style="font-weight:600;margin-bottom:4px">${timeline.labels[periodIndex]}</div>` +
+            row(autoShare, autoUsage + manualUsage > 0 ? fmtPct(autoUsage / (autoUsage + manualUsage), 0) : '–') +
+            row(throughAuto, fmtUSD(autoUsage, 'auto')) +
+            row(handPicked, fmtUSD(manualUsage, 'auto'))
           );
         },
       },
-      xAxis: { type: 'category', data: s.labels, axisLabel: { hideOverlap: true, interval: s.labels.length > 45 ? 'auto' : 0 } },
-      yAxis: { type: 'value', min: 0, max: 1, axisLabel: { formatter: (v: number) => fmtPct(v, 0) } },
-      dataZoom: s.labels.length > 60 ? [{ type: 'inside' }, { type: 'slider', height: 18, bottom: 4 }] : undefined,
+      xAxis: { type: 'category', data: timeline.labels, axisLabel: { hideOverlap: true, interval: timeline.labels.length > 45 ? 'auto' : 0 } },
+      yAxis: { type: 'value', min: 0, max: 1, axisLabel: { formatter: (value: number) => fmtPct(value, 0) } },
+      dataZoom: timeline.labels.length > 60 ? [{ type: 'inside' }, { type: 'slider', height: 18, bottom: 4 }] : undefined,
       series: [
         {
           type: 'line',
           name: autoShare,
           data: share,
           color: colors.accent,
-          showSymbol: s.labels.length <= 40,
+          showSymbol: timeline.labels.length <= 40,
           symbolSize: 6,
           lineStyle: { width: 2 },
           areaStyle: { opacity: 0.12 },
@@ -229,7 +229,7 @@ function AutoOverTimeCard({ bucket, onBucket }: BucketProps) {
         },
       ],
     };
-  }, [view, s, colors, total, average]);
+  }, [view, timeline, colors, total, average]);
 
   const note =
     total <= 0
@@ -259,8 +259,8 @@ function AutoOverTimeCard({ bucket, onBucket }: BucketProps) {
       option={option}
       height={320}
       empty={total <= 0 ? t('No usage in this period') : false}
-      onClick={(p) => {
-        const patch = bucketPatch(s.bucketer, p.dataIndex, range.end);
+      onClick={(event) => {
+        const patch = bucketPatch(timeline.bucketer, event.dataIndex, range.end);
         if (patch) drill(patch, { merge: true });
       }}
       actions={

@@ -9,7 +9,7 @@ import { useApp } from '../../state/store';
 import { median, type AnomalyDay } from '../../lib/analytics/anomalies';
 import { BLANK_ID } from '../../lib/analytics/prepare';
 import { inferVendor, lookupCard } from '../../lib/pricing/models';
-import { DOW_NAMES, dowOf, fmtDay, isoDate } from '../../lib/utils/date';
+import { WEEKDAY_NAMES, dowOf, fmtDay, isoDate } from '../../lib/utils/date';
 import { fmtInt, fmtMultiple, fmtNum, fmtPct, fmtUSD } from '../../lib/utils/format';
 import { dimLabel, dimValue } from '../shared';
 import { dayStats } from './model';
@@ -24,8 +24,8 @@ const vendorOf = (model: string) => lookupCard(model)?.vendor ?? inferVendor(mod
 
 export default function UnusualDays() {
   const { analysis, store } = useAnalysis();
-  const { anomalies, agg } = analysis;
-  const selectUser = useApp((s) => s.selectUser);
+  const { anomalies, agg: aggregates } = analysis;
+  const selectUser = useApp((state) => state.selectUser);
 
   const columns = useMemo<Column<AnomalyDay>[]>(() => {
     const userName = (id: number) => dimLabel(store, 'user', id);
@@ -34,22 +34,22 @@ export default function UnusualDays() {
       {
         key: 'date',
         header: t('Date'),
-        value: (a) => isoDate(a.day),
-        render: (a) => (
+        value: (anomaly) => isoDate(anomaly.day),
+        render: (anomaly) => (
           <span className="whitespace-nowrap">
-            <span className="font-medium">{fmtDay(a.day, true)}</span> <span className="text-fg-muted">{DOW_NAMES[dowOf(a.day)]}</span>
+            <span className="font-medium">{fmtDay(anomaly.day, true)}</span> <span className="text-fg-muted">{WEEKDAY_NAMES[dowOf(anomaly.day)]}</span>
           </span>
         ),
       },
-      { key: 'gross', header: t('Usage'), align: 'end', calc: 'usage', value: (a) => a.gross, render: (a) => fmtUSD(a.gross) },
+      { key: 'gross', header: t('Usage'), align: 'end', calc: 'usage', value: (anomaly) => anomaly.gross, render: (anomaly) => fmtUSD(anomaly.gross) },
       {
         key: 'baseline',
         header: t('Typical day'),
         align: 'end',
         hint: t('The middle day (median) of the days with usage in this range'),
         calc: 'typical-day',
-        value: (a) => a.baseline,
-        render: (a) => fmtUSD(a.baseline),
+        value: (anomaly) => anomaly.baseline,
+        render: (anomaly) => fmtUSD(anomaly.baseline),
       },
       {
         key: 'multiple',
@@ -57,8 +57,8 @@ export default function UnusualDays() {
         align: 'end',
         hint: t('Usage on the day divided by the typical day'),
         calc: 'unusual-day-multiple',
-        value: (a) => a.multiple,
-        render: (a) => fmtMultiple(a.multiple),
+        value: (anomaly) => anomaly.multiple,
+        render: (anomaly) => fmtMultiple(anomaly.multiple),
       },
       {
         key: 'users',
@@ -66,22 +66,22 @@ export default function UnusualDays() {
         hint: t('The users with the most usage on that day. Click one to open the user.'),
         calc: 'unusual-day-users',
         sortable: false,
-        value: (a) => a.topUsers.map((u) => `${userName(u.id)} ${fmtUSD(u.gross)}`).join(', '),
-        render: (a) => (
+        value: (anomaly) => anomaly.topUsers.map((user) => `${userName(user.id)} ${fmtUSD(user.gross)}`).join(', '),
+        render: (anomaly) => (
           <div className="flex max-w-[16rem] flex-wrap gap-1">
-            {a.topUsers.map((u) => {
+            {anomaly.topUsers.map((user) => {
               const body = (
                 <>
-                  <span className="max-w-[9rem] truncate">{userName(u.id)}</span>
-                  <span className="num text-fg-muted">{fmtUSD(u.gross, 0)}</span>
+                  <span className="max-w-[9rem] truncate">{userName(user.id)}</span>
+                  <span className="num text-fg-muted">{fmtUSD(user.gross, 0)}</span>
                 </>
               );
-              return u.id === BLANK_ID ? (
-                <span key={u.id} className="chip" title={t('Usage not tied to a user')}>
+              return user.id === BLANK_ID ? (
+                <span key={user.id} className="chip" title={t('Usage not tied to a user')}>
                   {body}
                 </span>
               ) : (
-                <button key={u.id} type="button" className="chip hover:border-accent hover:text-accent" title={t('Open this user')} onClick={() => selectUser(u.id)}>
+                <button key={user.id} type="button" className="chip hover:border-accent hover:text-accent" title={t('Open this user')} onClick={() => selectUser(user.id)}>
                   {body}
                 </button>
               );
@@ -95,13 +95,13 @@ export default function UnusualDays() {
         hint: t('The models with the most usage on that day, with their share of the day'),
         calc: 'unusual-day-models',
         sortable: false,
-        value: (a) => a.topModels.map((m) => `${modelName(m.id)} ${fmtPct(m.gross / a.gross, 0)}`).join(', '),
-        render: (a) => (
+        value: (anomaly) => anomaly.topModels.map((model) => `${modelName(model.id)} ${fmtPct(model.gross / anomaly.gross, 0)}`).join(', '),
+        render: (anomaly) => (
           <div className="flex max-w-[14rem] flex-wrap gap-x-3 gap-y-0.5 text-xs">
-            {a.topModels.map((m) => (
-              <span key={m.id} className="inline-flex items-center gap-1 whitespace-nowrap">
-                {m.id === BLANK_ID ? null : <VendorIcon vendor={vendorOf(dimValue(store, 'model', m.id))} size={12} className="shrink-0 text-fg-muted" />}
-                {modelName(m.id)} <span className="num text-fg-muted">{fmtPct(m.gross / a.gross, 0)}</span>
+            {anomaly.topModels.map((model) => (
+              <span key={model.id} className="inline-flex items-center gap-1 whitespace-nowrap">
+                {model.id === BLANK_ID ? null : <VendorIcon vendor={vendorOf(dimValue(store, 'model', model.id))} size={12} className="shrink-0 text-fg-muted" />}
+                {modelName(model.id)} <span className="num text-fg-muted">{fmtPct(model.gross / anomaly.gross, 0)}</span>
               </span>
             ))}
           </div>
@@ -114,12 +114,12 @@ export default function UnusualDays() {
         sortable: false,
         noCsv: true,
         value: () => '',
-        render: (a) => (
+        render: (anomaly) => (
           <button
             type="button"
             className="btn btn-sm whitespace-nowrap"
             title={t('Filter the whole report to this day')}
-            onClick={() => drill({ dateFrom: a.day, dateTo: a.day }, { merge: true })}
+            onClick={() => drill({ dateFrom: anomaly.day, dateTo: anomaly.day }, { merge: true })}
           >
             {t('Only this day')}
           </button>
@@ -130,9 +130,9 @@ export default function UnusualDays() {
 
   const { usageDays, typical } = useMemo(() => {
     const dayUsage: number[] = [];
-    for (let i = 0; i < agg.days.gross.length; i++) if (agg.days.gross[i] > 0) dayUsage.push(agg.days.gross[i]);
-    return { usageDays: dayStats(agg.days).usageDays, typical: median(dayUsage) };
-  }, [agg]);
+    for (let i = 0; i < aggregates.days.gross.length; i++) if (aggregates.days.gross[i] > 0) dayUsage.push(aggregates.days.gross[i]);
+    return { usageDays: dayStats(aggregates.days).usageDays, typical: median(dayUsage) };
+  }, [aggregates]);
 
   const rule = t(
     'A day is unusual when its usage is at least {multiple} times the typical day and far above the normal ups and downs between days (a z-score of {z} or more). The typical day is the middle day (median) of the days with usage. The check needs at least {min} days with usage and lists up to {limit} days.',
@@ -150,7 +150,7 @@ export default function UnusualDays() {
         <DataTable
           rows={anomalies}
           columns={columns}
-          rowKey={(a) => a.day}
+          rowKey={(anomaly) => anomaly.day}
           defaultSort={{ key: 'gross', dir: 'desc' }}
           exportName="github-copilot-unusual-days"
           fixedColumns

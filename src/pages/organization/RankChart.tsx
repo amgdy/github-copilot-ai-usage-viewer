@@ -58,32 +58,32 @@ export function RankChart({ spec, groups, height }: { spec: DimSpec; groups: Gro
   const metric: Metric = !billing && picked === 'billed' ? 'usage' : picked;
 
   const { bars, format, total } = useMemo(() => {
-    const note = (g: Group) =>
+    const note = (group: Group) =>
       [
-        t('{pct} of usage', { pct: fmtPct(g.share, 1) }),
-        billing ? t('{usd} billed', { usd: fmtUSD(g.net) }) : null,
-        tp(g.users, '1 user', '{n} users', { n: fmtInt(g.users) }),
+        t('{pct} of usage', { pct: fmtPct(group.share, 1) }),
+        billing ? t('{usd} billed', { usd: fmtUSD(group.net) }) : null,
+        tp(group.users, '1 user', '{n} users', { n: fmtInt(group.users) }),
       ]
         .filter(Boolean)
         .join(' · ');
     const additive = metric === 'usage' || metric === 'billed';
-    const value = (g: Group): number => (metric === 'usage' ? g.gross : metric === 'billed' ? g.net : metric === 'users' ? g.users : perUserMonth(g, perMonth));
-    const usable = (g: Group) => {
-      const v = value(g);
-      return Number.isFinite(v) && v > (metric === 'billed' ? 0.005 : 0);
+    const value = (group: Group): number => (metric === 'usage' ? group.gross : metric === 'billed' ? group.net : metric === 'users' ? group.users : perUserMonth(group, perMonth));
+    const usable = (group: Group) => {
+      const metricValue = value(group);
+      return Number.isFinite(metricValue) && metricValue > (metric === 'billed' ? 0.005 : 0);
     };
-    const bar = (g: Group): Bar => ({
-      item: { name: g.name, value: value(g), color: g.blank ? colors.muted : metric === 'billed' ? colors.warn : colors.accent, note: note(g) },
-      group: g,
+    const bar = (group: Group): Bar => ({
+      item: { name: group.name, value: value(group), color: group.blank ? colors.muted : metric === 'billed' ? colors.warn : colors.accent, note: note(group) },
+      group: group,
     });
     // The group without a value is not a real group, so it does not take part in the ranking. It gets its own bar at the end.
-    const eligible = groups.filter((g) => !g.blank && usable(g));
+    const eligible = groups.filter((group) => !group.blank && usable(group));
     const sorted = metric === 'usage' ? eligible : [...eligible].sort((a, b) => value(b) - value(a));
     const out: Bar[] = sorted.slice(0, TOP).map(bar);
     const rest = sorted.slice(TOP);
     if (additive && rest.length > 0) {
-      const sum = rest.reduce((a, g) => a + value(g), 0);
-      const grand = groups.reduce((a, g) => a + (Number.isFinite(value(g)) ? value(g) : 0), 0);
+      const sum = rest.reduce((restTotal, group) => restTotal + value(group), 0);
+      const grand = groups.reduce((grandTotal, group) => grandTotal + (Number.isFinite(value(group)) ? value(group) : 0), 0);
       const share = fmtPct(grand > 0 ? sum / grand : 0, 1);
       out.push({
         item: {
@@ -96,11 +96,11 @@ export function RankChart({ spec, groups, height }: { spec: DimSpec; groups: Gro
       });
     }
     // Every group without a value gets its own bar at the end.
-    for (const g of groups) if (g.blank && usable(g)) out.push(bar(g));
+    for (const group of groups) if (group.blank && usable(group)) out.push(bar(group));
     return { bars: out, format: metric === 'users' ? fmtInt : usd, total: sorted.length };
   }, [groups, metric, perMonth, colors, billing]);
 
-  const option = useMemo(() => rankBarOption(colors, { items: bars.map((b) => b.item), format, labelWidth: 140 }), [colors, bars, format]);
+  const option = useMemo(() => rankBarOption(colors, { items: bars.map((bar) => bar.item), format, labelWidth: 140 }), [colors, bars, format]);
 
   const scope =
     total > TOP ? t('Top {top} of {n} groups.', { top: TOP, n: fmtInt(total) }) : total === 1 ? t('The only group.') : t('All {n} groups.', { n: fmtInt(total) });
@@ -112,10 +112,10 @@ export function RankChart({ spec, groups, height }: { spec: DimSpec; groups: Gro
   ]
     .filter(Boolean)
     .join(' ');
-  const metricOptions: SegmentedOption<Metric>[] = METRICS.filter((o) => billing || o.value !== 'billed').map((o) => ({
-    value: o.value,
-    label: t(o.label),
-    title: t(o.title),
+  const metricOptions: SegmentedOption<Metric>[] = METRICS.filter((metricOption) => billing || metricOption.value !== 'billed').map((metricOption) => ({
+    value: metricOption.value,
+    label: t(metricOption.label),
+    title: t(metricOption.title),
   }));
 
   return (
@@ -137,9 +137,9 @@ export function RankChart({ spec, groups, height }: { spec: DimSpec; groups: Gro
       exportName={`github-copilot-organization-${spec.id}-ranking`}
       label={t(CHART_LABEL[metric])}
       empty={bars.length === 0 ? t(EMPTY[metric]) : false}
-      onClick={(p) => {
-        const g = bars[p.dataIndex]?.group;
-        if (g) filterToGroup(g);
+      onClick={(event) => {
+        const group = bars[event.dataIndex]?.group;
+        if (group) filterToGroup(group);
       }}
     />
   );

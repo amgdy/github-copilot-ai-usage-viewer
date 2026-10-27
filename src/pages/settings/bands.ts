@@ -6,7 +6,7 @@ import { numText, toPct } from './numbers';
 
 const pct = (fraction: number) => `${numText(toPct(fraction), 2)}%`;
 
-const colorMap = <T extends string>(items: { id: string; color: string }[]) => Object.fromEntries(items.map((i) => [i.id, i.color])) as Record<T, string>;
+const colorMap = <T extends string>(items: { id: string; color: string }[]) => Object.fromEntries(items.map((item) => [item.id, item.color])) as Record<T, string>;
 
 // Colors do not depend on the thresholds, so they are read once from the defaults.
 export const TIER_COLOR = colorMap<TierId>(tierItems(DEFAULT_SETTINGS));
@@ -23,19 +23,19 @@ export function tierBands(tiers: Settings['tiers']): Band[] {
   ];
 }
 
-export function engagementBands(e: Settings['engagement']): Band[] {
+export function engagementBands(engagement: Settings['engagement']): Band[] {
   return [
-    { id: 'daily', label: t('Daily'), range: t('{value} or more', { value: pct(e.daily) }), color: ENGAGEMENT_COLOR.daily },
-    { id: 'regular', label: t('Regular'), range: t('{from} to {to}', { from: pct(e.regular), to: pct(e.daily) }), color: ENGAGEMENT_COLOR.regular },
-    { id: 'occasional', label: t('Occasional'), range: t('{from} to {to}', { from: pct(e.occasional), to: pct(e.regular) }), color: ENGAGEMENT_COLOR.occasional },
-    { id: 'rare', label: t('Rare'), range: t('Under {value}', { value: pct(e.occasional) }), color: ENGAGEMENT_COLOR.rare },
+    { id: 'daily', label: t('Daily'), range: t('{value} or more', { value: pct(engagement.daily) }), color: ENGAGEMENT_COLOR.daily },
+    { id: 'regular', label: t('Regular'), range: t('{from} to {to}', { from: pct(engagement.regular), to: pct(engagement.daily) }), color: ENGAGEMENT_COLOR.regular },
+    { id: 'occasional', label: t('Occasional'), range: t('{from} to {to}', { from: pct(engagement.occasional), to: pct(engagement.regular) }), color: ENGAGEMENT_COLOR.occasional },
+    { id: 'rare', label: t('Rare'), range: t('Under {value}', { value: pct(engagement.occasional) }), color: ENGAGEMENT_COLOR.rare },
   ];
 }
 
-export function paretoBands(p: Settings['pareto']): Band[] {
+export function paretoBands(pareto: Settings['pareto']): Band[] {
   return [
-    { id: 'A', label: t('A: top users'), range: t('First {value} of usage', { value: pct(p.a) }), color: PARETO_COLOR.A },
-    { id: 'B', label: t('B: middle'), range: t('Next {value}', { value: pct(p.b - p.a) }), color: PARETO_COLOR.B },
-    { id: 'C', label: t('C: long tail'), range: t('Last {value}', { value: pct(1 - p.b) }), color: PARETO_COLOR.C },
+    { id: 'A', label: t('A: top users'), range: t('First {value} of usage', { value: pct(pareto.a) }), color: PARETO_COLOR.A },
+    { id: 'B', label: t('B: middle'), range: t('Next {value}', { value: pct(pareto.b - pareto.a) }), color: PARETO_COLOR.B },
+    { id: 'C', label: t('C: long tail'), range: t('Last {value}', { value: pct(1 - pareto.b) }), color: PARETO_COLOR.C },
   ];
 }

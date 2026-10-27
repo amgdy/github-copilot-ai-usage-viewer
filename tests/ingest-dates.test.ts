@@ -3,17 +3,17 @@ import { buildStore, parseDay } from '../src/lib/csv/ingest';
 import { isoDate } from '../src/lib/utils/date';
 import { analyzeCsv, dayNum, makeCsv, type RowSpec } from './helpers';
 
-const iso = (s: string): string => {
-  const d = parseDay(s);
-  return Number.isNaN(d) ? 'NaN' : isoDate(d);
+const iso = (text: string): string => {
+  const day = parseDay(text);
+  return Number.isNaN(day) ? 'NaN' : isoDate(day);
 };
 
 /** Runs `fn` with the process time zone changed (Node picks up a new TZ at once). */
-function withTZ<T>(tz: string, fn: () => T): T {
+function withTZ<T>(timeZone: string, callback: () => T): T {
   const prev = process.env.TZ;
-  process.env.TZ = tz;
+  process.env.TZ = timeZone;
   try {
-    return fn();
+    return callback();
   } finally {
     if (prev === undefined) delete process.env.TZ;
     else process.env.TZ = prev;
@@ -52,10 +52,10 @@ describe('parseDay: formats it reads correctly', () => {
   });
 
   it('reads ISO and US dates the same way in every time zone', () => {
-    for (const tz of ZONES) {
-      withTZ(tz, () => {
+    for (const timeZone of ZONES) {
+      withTZ(timeZone, () => {
         for (const [input, want] of [['2026-10-03', '2026-10-03'], ['2026-10-03T23:59:59Z', '2026-10-03'], ['10/3/2026', '2026-10-03'], ['2028-02-29', '2028-02-29'], ['2026-01-01', '2026-01-01']]) {
-          expect(iso(input), `${tz}: ${input}`).toBe(want);
+          expect(iso(input), `${timeZone}: ${input}`).toBe(want);
         }
       });
     }
@@ -75,8 +75,8 @@ describe('parseDay: formats it reads correctly', () => {
 
 describe('parseDay: text that is not a date', () => {
   it('returns NaN, so the row is counted as a bad date', () => {
-    for (const s of ['', ' ', 'bad', 'not a date', 'abcd-ef-gh', '2026-13-01', '2026-00-10', '2026-10-32', '2026-10-00', '26-10-03', '0000-00-00', '1900-01-01', 'N/A', 'null', 'undefined']) {
-      expect(iso(s), JSON.stringify(s)).toBe('NaN');
+    for (const text of ['', ' ', 'bad', 'not a date', 'abcd-ef-gh', '2026-13-01', '2026-00-10', '2026-10-32', '2026-10-00', '26-10-03', '0000-00-00', '1900-01-01', 'N/A', 'null', 'undefined']) {
+      expect(iso(text), JSON.stringify(text)).toBe('NaN');
     }
   });
 });
@@ -106,9 +106,9 @@ describe('parseDay: other formats', () => {
   ];
 
   it('reads them as the date written, in every time zone', () => {
-    for (const tz of ZONES) {
-      withTZ(tz, () => {
-        for (const [input, want] of FORMATS) expect(iso(input), `${tz}: ${input}`).toBe(want);
+    for (const timeZone of ZONES) {
+      withTZ(timeZone, () => {
+        for (const [input, want] of FORMATS) expect(iso(input), `${timeZone}: ${input}`).toBe(want);
       });
     }
   });
@@ -171,17 +171,17 @@ describe('dates in a file', () => {
     const store = await buildStore([{ name: 'a.csv', data: csv }]);
     expect(store.n).toBe(0);
     expect(store.files[0]).toMatchObject({ rowsRead: 3, rowsKept: 0, badDateRows: 3 });
-    const p = await analyzeCsv(csv);
-    expect(p.analysis.agg.totals.rows).toBe(0);
-    expect(p.analysis.recs).toEqual([]);
-    expect(p.analysis.headline.title).toBe('No rows match the current filters');
+    const result = await analyzeCsv(csv);
+    expect(result.analysis.agg.totals.rows).toBe(0);
+    expect(result.analysis.recs).toEqual([]);
+    expect(result.analysis.headline.title).toBe('No rows match the current filters');
   });
 
   it('reads the same dates in every time zone', async () => {
     const csv = makeCsv([spec('2026-10-03'), spec('10/4/2026'), spec('2026-10-05T23:59:59Z')]);
     const days: number[][] = [];
-    for (const tz of ['UTC', 'Pacific/Pago_Pago', 'Pacific/Kiritimati']) {
-      const store = await withTZAsync(tz, () => buildStore([{ name: 'a.csv', data: csv }]));
+    for (const timeZone of ['UTC', 'Pacific/Pago_Pago', 'Pacific/Kiritimati']) {
+      const store = await withTZAsync(timeZone, () => buildStore([{ name: 'a.csv', data: csv }]));
       days.push([...store.day].sort((a, b) => a - b));
     }
     expect(days[0]).toEqual([dayNum('2026-10-03'), dayNum('2026-10-04'), dayNum('2026-10-05')]);
@@ -190,11 +190,11 @@ describe('dates in a file', () => {
   });
 });
 
-async function withTZAsync<T>(tz: string, fn: () => Promise<T>): Promise<T> {
+async function withTZAsync<T>(timeZone: string, callback: () => Promise<T>): Promise<T> {
   const prev = process.env.TZ;
-  process.env.TZ = tz;
+  process.env.TZ = timeZone;
   try {
-    return await fn();
+    return await callback();
   } finally {
     if (prev === undefined) delete process.env.TZ;
     else process.env.TZ = prev;

@@ -10,14 +10,14 @@ export function LensKpis({ data, perMonth }: { data: LensData; perMonth: number 
   const { lens, rows, total, used } = data;
   const best = useMemo(
     () => ({
-      largest: maxRow(rows, (r) => r.users),
-      usage: maxRow(rows, (r) => r.usageShare),
-      perUser: maxRow(rows, (r) => r.perUserMonth),
-      potential: maxRow(rows, (r) => r.potential),
+      largest: maxRow(rows, (row) => row.users),
+      usage: maxRow(rows, (row) => row.usageShare),
+      perUser: maxRow(rows, (row) => row.perUserMonth),
+      potential: maxRow(rows, (row) => row.potential),
     }),
     [rows],
   );
-  const open = (r: GroupRow | null) => (r ? () => showGroup(lens, r.id) : undefined);
+  const open = (row: GroupRow | null) => (row ? () => showGroup(lens, row.id) : undefined);
   const traits = lens.id === 'trait';
   const potentialShare = best.potential && total.potential > 0 ? best.potential.potential / total.potential : 0;
 

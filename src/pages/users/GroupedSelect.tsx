@@ -20,19 +20,19 @@ export function GroupedSelect<T extends string>({
   ...rest
 }: {
   value: T;
-  onChange: (v: T) => void;
+  onChange: (value: T) => void;
   groups: SelectGroup<T>[];
   className?: string;
   order?: OptionOrder;
   'aria-label'?: string;
 }) {
   const sorted = useMemo(() => {
-    const inner = groups.map((g, i) => ({ key: g.label ?? String(i), label: g.label, options: sortOptions(g.options, (o) => o.label, order) }));
+    const inner = groups.map((group, index) => ({ key: group.label ?? String(index), label: group.label, options: sortOptions(group.options, (option) => option.label, order) }));
     if (order === 'given') return inner;
-    const plain = inner.filter((g) => !g.label);
+    const plain = inner.filter((group) => !group.label);
     const named = sortOptions(
-      inner.filter((g) => g.label).map((g) => ({ ...g, value: g.key })),
-      (g) => g.label ?? '',
+      inner.filter((group) => group.label).map((group) => ({ ...group, value: group.key })),
+      (group) => group.label ?? '',
       order,
       [],
     );
@@ -44,28 +44,28 @@ export function GroupedSelect<T extends string>({
       className={cx('input w-auto max-w-full pe-7', className)}
       value={value}
       aria-label={rest['aria-label']}
-      onChange={(e) => {
-        for (const g of groups) {
-          const o = g.options.find((x) => x.value === e.target.value);
-          if (o) {
-            onChange(o.value);
+      onChange={(event) => {
+        for (const group of groups) {
+          const selected = group.options.find((option) => option.value === event.target.value);
+          if (selected) {
+            onChange(selected.value);
             return;
           }
         }
       }}
     >
-      {sorted.map((g) => {
-        const options = g.options.map((o) => (
-          <option key={o.value} value={o.value} disabled={o.disabled} title={o.title}>
-            {o.label}
+      {sorted.map((group) => {
+        const options = group.options.map((option) => (
+          <option key={option.value} value={option.value} disabled={option.disabled} title={option.title}>
+            {option.label}
           </option>
         ));
-        return g.label ? (
-          <optgroup key={g.key} label={g.label}>
+        return group.label ? (
+          <optgroup key={group.key} label={group.label}>
             {options}
           </optgroup>
         ) : (
-          <Fragment key={g.key}>{options}</Fragment>
+          <Fragment key={group.key}>{options}</Fragment>
         );
       })}
     </select>

@@ -1,7 +1,7 @@
 import type { Dict } from '../core';
 
 /** Arabic for the explanations in `lib/metrics/docs/users.ts` (titles, meanings, formulas, steps, notes and examples). */
-const ar: Dict = {
+const arabic: Dict = {
   // user-tokens
   'The four kinds of tokens of one user: input, cache read, cache write and output. It also shows how the user compares with everyone else on tokens, how much of the prompt came from the cache and how the usage divides over the four kinds.':
     'الأنواع الأربعة لرموز مستخدم واحد: الإدخال والقراءة من الذاكرة المؤقتة والكتابة فيها والإخراج. ويبيّن أيضًا كيف يقارَن المستخدم بالجميع في الرموز، وكم من الطلب جاء من الذاكرة المؤقتة، وكيف يتوزع الاستخدام على الأنواع الأربعة.',
@@ -558,4 +558,4 @@ const ar: Dict = {
     'لدى مستخدم استخدام بقيمة 200 دولار. يوفّر «اختيار النموذج المناسب» 20 دولارًا. ويوفّر «استخدام الاختيار التلقائي للنموذج (Auto)» 7.50 دولار بمفرده (150 دولارًا من الاستخدام المختار يدويًا × 50% × معدل 10%). وهو يعمل على 180 دولارًا المتبقية، لذلك يُحتسب 7.50 × 180 ÷ 200 = 6.75 دولار.',
 };
 
-export default ar;
+export default arabic;

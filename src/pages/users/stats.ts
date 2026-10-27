@@ -5,7 +5,7 @@ export const LOW_UTILIZATION = 0.2;
 
 const MAX_CURVE_POINTS = 400;
 
-const finite = (xs: readonly number[]): number[] => xs.filter((x) => Number.isFinite(x));
+const finite = (values: readonly number[]): number[] => values.filter((value) => Number.isFinite(value));
 
 export interface TopShare {
   /** Users in the top group and the number of users compared. */
@@ -17,14 +17,14 @@ export interface TopShare {
 
 /** Share of usage made by the largest `fraction` of users (at least one user). */
 export function topShare(gross: readonly number[], fraction: number): TopShare {
-  const v = finite(gross).sort((a, b) => b - a);
-  const n = v.length;
-  const total = v.reduce((a, b) => a + b, 0);
-  if (n === 0 || total <= 0) return { k: 0, n, share: Number.NaN };
-  const k = Math.min(n, Math.max(1, Math.ceil(n * fraction - 1e-9)));
+  const sortedGross = finite(gross).sort((a, b) => b - a);
+  const userCount = sortedGross.length;
+  const total = sortedGross.reduce((a, b) => a + b, 0);
+  if (userCount === 0 || total <= 0) return { k: 0, n: userCount, share: Number.NaN };
+  const topCount = Math.min(userCount, Math.max(1, Math.ceil(userCount * fraction - 1e-9)));
   let top = 0;
-  for (let i = 0; i < k; i++) top += v[i];
-  return { k, n, share: top / total };
+  for (let i = 0; i < topCount; i++) top += sortedGross[i];
+  return { k: topCount, n: userCount, share: top / total };
 }
 
 export interface ClassSummary {
@@ -50,59 +50,59 @@ export interface Concentration {
  * cumulative share before adding the user, as in the user profiles, so the user who crosses a cut-off stays in the higher class.
  */
 export function concentration(gross: readonly number[], pareto: { a: number; b: number }): Concentration | null {
-  const v = finite(gross)
-    .filter((g) => g >= 0)
+  const sortedGross = finite(gross)
+    .filter((amount) => amount >= 0)
     .sort((a, b) => b - a);
-  const n = v.length;
-  const total = v.reduce((a, b) => a + b, 0);
-  if (n === 0 || total <= 0) return null;
+  const userCount = sortedGross.length;
+  const total = sortedGross.reduce((a, b) => a + b, 0);
+  if (userCount === 0 || total <= 0) return null;
 
   // cum[i] is the share of usage made by the i biggest users.
-  const cum = new Float64Array(n + 1);
+  const cumulativeShare = new Float64Array(userCount + 1);
   let run = 0;
-  for (let i = 0; i < n; i++) {
-    cum[i] = run / total;
-    run += v[i];
+  for (let i = 0; i < userCount; i++) {
+    cumulativeShare[i] = run / total;
+    run += sortedGross[i];
   }
-  cum[n] = 1;
+  cumulativeShare[userCount] = 1;
 
-  const step = Math.max(1, Math.ceil(n / MAX_CURVE_POINTS));
+  const step = Math.max(1, Math.ceil(userCount / MAX_CURVE_POINTS));
   const curve: [number, number][] = [];
-  for (let i = 0; i < n; i += step) curve.push([i / n, cum[i]]);
+  for (let i = 0; i < userCount; i += step) curve.push([i / userCount, cumulativeShare[i]]);
   curve.push([1, 1]);
 
-  let a = 0;
-  while (a < n && cum[a] < pareto.a) a++;
-  let b = a;
-  while (b < n && cum[b] < pareto.b) b++;
+  let classAEnd = 0;
+  while (classAEnd < userCount && cumulativeShare[classAEnd] < pareto.a) classAEnd++;
+  let classBEnd = classAEnd;
+  while (classBEnd < userCount && cumulativeShare[classBEnd] < pareto.b) classBEnd++;
 
   // Gini on the ascending order: sum((2i - n - 1) x_i) / (n * sum(x)), scaled so that one user holding everything gives 1.
   let weighted = 0;
-  for (let i = 0; i < n; i++) weighted += (2 * (n - i) - n - 1) * v[i];
-  const gini = n > 1 ? Math.max(0, Math.min(1, (weighted / (n * total)) * (n / (n - 1)))) : Number.NaN;
+  for (let i = 0; i < userCount; i++) weighted += (2 * (userCount - i) - userCount - 1) * sortedGross[i];
+  const gini = userCount > 1 ? Math.max(0, Math.min(1, (weighted / (userCount * total)) * (userCount / (userCount - 1)))) : Number.NaN;
 
   return {
-    n,
+    n: userCount,
     curve,
     gini,
-    edges: { a: a / n, b: b / n },
+    edges: { a: classAEnd / userCount, b: classBEnd / userCount },
     classes: {
-      A: { users: a, share: cum[a] },
-      B: { users: b - a, share: cum[b] - cum[a] },
-      C: { users: n - b, share: 1 - cum[b] },
+      A: { users: classAEnd, share: cumulativeShare[classAEnd] },
+      B: { users: classBEnd - classAEnd, share: cumulativeShare[classBEnd] - cumulativeShare[classAEnd] },
+      C: { users: userCount - classBEnd, share: 1 - cumulativeShare[classBEnd] },
     },
     top: (fraction) => {
-      const k = Math.min(n, Math.max(1, Math.ceil(n * fraction - 1e-9)));
-      return { k, n, share: cum[k] };
+      const topCount = Math.min(userCount, Math.max(1, Math.ceil(userCount * fraction - 1e-9)));
+      return { k: topCount, n: userCount, share: cumulativeShare[topCount] };
     },
   };
 }
 
 /** The strength of the concentration a Gini coefficient stands for, in the reader's language. '' when it is not a number. */
-export function giniLabel(g: number): string {
-  if (!Number.isFinite(g)) return '';
-  if (g < 0.3) return t('Low concentration');
-  if (g < 0.5) return t('Moderate concentration');
-  if (g < 0.7) return t('High concentration');
+export function giniLabel(gini: number): string {
+  if (!Number.isFinite(gini)) return '';
+  if (gini < 0.3) return t('Low concentration');
+  if (gini < 0.5) return t('Moderate concentration');
+  if (gini < 0.7) return t('High concentration');
   return t('Very high concentration');
 }

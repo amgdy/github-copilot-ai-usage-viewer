@@ -1,7 +1,7 @@
 import type { Dict } from '../core';
 
 /** Arabic for the recommendation and simulator docs in `lib/metrics/docs/recommendations.ts`. */
-const ar: Dict = {
+const arabic: Dict = {
   // What-if simulator: usage reduction, usage after, cash saving
   'The share of the usage of the period that the six levers would avoid. It does not depend on the size of the pool, and the seat actions do not change it.':
     'حصة استخدام الفترة التي ستتجنبها الإجراءات الستة. وهي لا تتوقف على حجم الرصيد المشترك، ولا تغيّرها إجراءات التراخيص.',
@@ -1325,4 +1325,4 @@ const ar: Dict = {
     'تقرير مدته 9 أيام فيه $120 من الاستخدام على نموذج غير موجود في قائمة الأسعار. وتكون الملاحظات «9 أيام فقط من البيانات: التوقعات والاتجاهات استرشادية.» و«$120 على نماذج غير موجودة في قائمة الأسعار المدمجة. تستثنيها وفورات "ماذا لو"؛ أضف تعديلات الأسعار في الإعدادات.» والسطر الخاص باستخدام أرصدة الذكاء الاصطناعي فقط.',
 };
 
-export default ar;
+export default arabic;

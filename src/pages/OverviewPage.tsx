@@ -23,7 +23,7 @@ import { isActionable, sortRecs } from './recommendations/recFilters';
 import { NarrowedNotice, clearNarrowing } from './shared';
 import { poolGap } from './spend/helpers';
 
-const signedPct = (v: number): string => `${v >= 0 ? '+' : ''}${fmtPctAuto(v)}`;
+const signedPct = (change: number): string => `${change >= 0 ? '+' : ''}${fmtPctAuto(change)}`;
 const FORWARD = 'rtl:-scale-x-100';
 
 const STATUS = {
@@ -41,19 +41,19 @@ function poolColumnsNote(coverage: Pick<DataCoverage, 'quota'>): string {
 
 function HeadlineBanner() {
   const { analysis } = useAnalysis();
-  const h = analysis.headline;
-  const s = STATUS[h.status];
+  const headline = analysis.headline;
+  const status = STATUS[headline.status];
   const actionable = analysis.recs.filter(isActionable).length;
   return (
-    <div className={cx('card flex flex-wrap items-end gap-x-6 gap-y-3 border-s-[3px] px-5 py-4', s.border)}>
+    <div className={cx('card flex flex-wrap items-end gap-x-6 gap-y-3 border-s-[3px] px-5 py-4', status.border)}>
       <div className="min-w-0 flex-1 basis-64">
-        <div className={cx('eyebrow flex items-center gap-1.5', TONE_TEXT[s.tone])}>
-          <s.Icon size={13} aria-hidden />
-          {t(s.label)}
+        <div className={cx('eyebrow flex items-center gap-1.5', TONE_TEXT[status.tone])}>
+          <status.Icon size={13} aria-hidden />
+          {t(status.label)}
           <CalcInfo id="headline-status" />
         </div>
-        <h2 className="font-display mt-1.5 text-lg leading-snug text-fg sm:text-xl">{h.title}</h2>
-        <p className="mt-1 max-w-3xl text-sm text-fg-muted">{h.detail}</p>
+        <h2 className="font-display mt-1.5 text-lg leading-snug text-fg sm:text-xl">{headline.title}</h2>
+        <p className="mt-1 max-w-3xl text-sm text-fg-muted">{headline.detail}</p>
       </div>
       {actionable > 0 ? (
         <button type="button" className="btn btn-primary w-full sm:w-auto" onClick={() => navigate('recommendations')}>
@@ -66,8 +66,8 @@ function HeadlineBanner() {
 
 function KpiRows() {
   const { analysis, store, settings } = useAnalysis();
-  const { agg, pool, plan, narrowed, range, trend, users, population, auto } = analysis;
-  const tot = agg.totals;
+  const { agg: aggregates, pool, plan, narrowed, range, trend, users, population, auto } = analysis;
+  const totals = aggregates.totals;
   const prev = analysis.previous?.totals ?? null;
   const perMonth = DAYS_PER_MONTH / Math.max(1, range.length);
   const poolKnown = !narrowed && !pool.capacityExceeded && Number.isFinite(pool.utilization);
@@ -75,33 +75,33 @@ function KpiRows() {
   // Cash figures need the covered/billed split and the whole pool, so they are off in a filtered view and for files without a billing split.
   const cashKnown = !narrowed && billingKnown;
   const latest = pool.latest;
-  const proj = latest?.projection ?? null;
+  const projection = latest?.projection ?? null;
 
-  const avgPerUser = tot.users > 0 ? tot.gross / tot.users : 0;
+  const avgPerUser = totals.users > 0 ? totals.gross / totals.users : 0;
   const prevAvgPerUser = prev && prev.users > 0 ? prev.gross / prev.users : 0;
-  const prompt = tot.input + tot.cacheRead + tot.cacheWrite;
-  const cacheHit = store.hasTokens && prompt > 0 ? tot.cacheRead / prompt : Number.NaN;
+  const prompt = totals.input + totals.cacheRead + totals.cacheWrite;
+  const cacheHit = store.hasTokens && prompt > 0 ? totals.cacheRead / prompt : Number.NaN;
   const notInFile = t('Not in this file');
-  const ofUsage = (v: number): string | undefined => (tot.gross > 0 ? t('{pct} of usage', { pct: fmtPct(v / tot.gross, 0) }) : undefined);
+  const ofUsage = (amount: number): string | undefined => (totals.gross > 0 ? t('{pct} of usage', { pct: fmtPct(amount / totals.gross, 0) }) : undefined);
 
   const top = useMemo(() => {
-    const sorted = users.profiles.map((p) => p.gross).sort((a, b) => b - a);
+    const sorted = users.profiles.map((user) => user.gross).sort((a, b) => b - a);
     const total = sorted.reduce((a, b) => a + b, 0);
-    const k = Math.max(1, Math.ceil(sorted.length * 0.1));
-    return { k, n: sorted.length, share: total > 0 ? sorted.slice(0, k).reduce((a, b) => a + b, 0) / total : 0 };
+    const topCount = Math.max(1, Math.ceil(sorted.length * 0.1));
+    return { k: topCount, n: sorted.length, share: total > 0 ? sorted.slice(0, topCount).reduce((a, b) => a + b, 0) / total : 0 };
   }, [users]);
 
-  const dau = useMemo(() => {
+  const averageDailyUsers = useMemo(() => {
     let sum = 0;
-    let n = 0;
-    for (let i = 0; i < agg.days.rows.length; i++) {
-      if (agg.days.rows[i] > 0) {
-        sum += agg.days.activeUsers[i];
-        n++;
+    let activeDayCount = 0;
+    for (let i = 0; i < aggregates.days.rows.length; i++) {
+      if (aggregates.days.rows[i] > 0) {
+        sum += aggregates.days.activeUsers[i];
+        activeDayCount++;
       }
     }
-    return n ? sum / n : 0;
-  }, [agg]);
+    return activeDayCount ? sum / activeDayCount : 0;
+  }, [aggregates]);
 
   const usageAvoided = plan.levers.total * perMonth;
   const idleRoster = narrowed ? 0 : population.inactive.length;
@@ -111,12 +111,12 @@ function KpiRows() {
       <KpiGrid>
         <Kpi
           label={t('Billed on top of seats')}
-          value={billingKnown ? fmtUSD(tot.net) : '–'}
-          delta={billingKnown && prev ? fmtDelta(tot.net, prev.net) : null}
+          value={billingKnown ? fmtUSD(totals.net) : '–'}
+          delta={billingKnown && prev ? fmtDelta(totals.net, prev.net) : null}
           goodWhen="down"
-          tone={!billingKnown ? 'neutral' : tot.net > 0.005 ? 'warn' : 'good'}
-          sub={!billingKnown ? notInFile : ofUsage(tot.net)}
-          spark={billingKnown ? agg.days.net : undefined}
+          tone={!billingKnown ? 'neutral' : totals.net > 0.005 ? 'warn' : 'good'}
+          sub={!billingKnown ? notInFile : ofUsage(totals.net)}
+          spark={billingKnown ? aggregates.days.net : undefined}
           hint={t('Usage that went beyond the included credits. It is charged on top of the seat fees.')}
           calc={['billed', 'previous-period']}
           onClick={() => navigate('spend')}
@@ -151,19 +151,19 @@ function KpiRows() {
         />
         <Kpi
           label={t('Usage')}
-          value={fmtUSD(tot.gross)}
-          delta={prev ? fmtDelta(tot.gross, prev.gross) : null}
-          sub={t('{n} AI credits', { n: fmtInt(tot.credits) })}
-          spark={agg.days.gross}
+          value={fmtUSD(totals.gross)}
+          delta={prev ? fmtDelta(totals.gross, prev.gross) : null}
+          sub={t('{n} AI credits', { n: fmtInt(totals.credits) })}
+          spark={aggregates.days.gross}
           hint={t('Value of all AI credits used in this period (1 credit = $0.01), including usage that included credits paid for. Auto usage is shown after the Auto discount.')}
           calc={['usage', 'previous-period']}
           onClick={() => navigate('spend')}
         />
-        {proj && latest ? (
+        {projection && latest ? (
           <Kpi
             label={t('Projected {month}', { month: latest.label })}
-            value={fmtUSD(proj.projGross)}
-            sub={!cashKnown ? t('month-end usage') : t('≈ {amount} billed', { amount: fmtUSD(proj.projNet) })}
+            value={fmtUSD(projection.projGross)}
+            sub={!cashKnown ? t('month-end usage') : t('≈ {amount} billed', { amount: fmtUSD(projection.projNet) })}
             hint={t('Month-end estimate from the recent daily rate. The Usage and pool page shows the range.')}
             calc="projection"
             onClick={() => navigate('spend')}
@@ -171,7 +171,7 @@ function KpiRows() {
         ) : (
           <Kpi
             label={t('Average per month')}
-            value={fmtUSD(tot.gross * perMonth)}
+            value={fmtUSD(totals.gross * perMonth)}
             sub={t('usage per month')}
             hint={t('Usage in the selected period, scaled to a month of 30.4 days.')}
             calc="per-month"
@@ -180,10 +180,10 @@ function KpiRows() {
         )}
         <Kpi
           label={t('Covered by included credits')}
-          value={billingKnown ? fmtUSD(tot.discount) : '–'}
-          delta={billingKnown && prev ? fmtDelta(tot.discount, prev.discount) : null}
-          sub={!billingKnown ? notInFile : ofUsage(tot.discount)}
-          spark={billingKnown ? agg.days.discount : undefined}
+          value={billingKnown ? fmtUSD(totals.discount) : '–'}
+          delta={billingKnown && prev ? fmtDelta(totals.discount, prev.discount) : null}
+          sub={!billingKnown ? notInFile : ofUsage(totals.discount)}
+          spark={billingKnown ? aggregates.days.discount : undefined}
           hint={t('Usage paid for by the AI credits that come with each GitHub Copilot seat. They are shared across the organization and reset on the 1st of each month (UTC).')}
           calc={['covered', 'previous-period']}
           onClick={() => navigate('spend')}
@@ -243,15 +243,15 @@ function KpiRows() {
         />
         <Kpi
           label={t('Active users')}
-          value={fmtInt(tot.users)}
-          delta={prev ? fmtDelta(tot.users, prev.users) : null}
+          value={fmtInt(totals.users)}
+          delta={prev ? fmtDelta(totals.users, prev.users) : null}
           goodWhen="up"
           sub={
             idleRoster > 0
               ? tp(idleRoster, '{n} roster seat has no usage in the report', '{n} roster seats have no usage in the report', { n: fmtInt(idleRoster) })
-              : t('{n} active on a typical day', { n: fmtNum(dau, 1) })
+              : t('{n} active on a typical day', { n: fmtNum(averageDailyUsers, 1) })
           }
-          spark={agg.days.activeUsers}
+          spark={aggregates.days.activeUsers}
           hint={t('Users with usage in this period. Rows without a username (repository-level products) are not counted.')}
           calc={['active-users', 'previous-period']}
           onClick={() => navigate('users')}
@@ -262,7 +262,7 @@ function KpiRows() {
           tone={Number.isFinite(cacheHit) ? (cacheHit < settings.lowCacheHit ? 'warn' : 'good') : 'neutral'}
           sub={
             Number.isFinite(cacheHit)
-              ? t('Tokens: {read} cache read, {write} cache write', { read: fmtCompact(tot.cacheRead), write: fmtCompact(tot.cacheWrite) })
+              ? t('Tokens: {read} cache read, {write} cache write', { read: fmtCompact(totals.cacheRead), write: fmtCompact(totals.cacheWrite) })
               : t('No token columns in the data')
           }
           hint={t('Cache read tokens ÷ (input + cache read + cache write tokens). Cache read tokens are text the model has seen before and reads again at a lower price. Cache write tokens are text the model stores so it can read it again later.')}
@@ -295,28 +295,28 @@ const BUCKET_OPTIONS: { value: Bucket; label: string }[] = [
 function UsageOverTime() {
   const { analysis, store, models } = useAnalysis();
   const colors = useChartColors();
-  const { agg, mask, range } = analysis;
+  const { agg: aggregates, mask, range } = analysis;
   const billing = analysis.coverage.billing;
   const stackOptions = useMemo(
-    () => (billing ? STACK_OPTIONS : [TOTAL_OPTION, ...STACK_OPTIONS.filter((o) => o.value !== 'coverage')]).map((o) => ({ ...o, label: t(o.label), title: t(o.title) })),
+    () => (billing ? STACK_OPTIONS : [TOTAL_OPTION, ...STACK_OPTIONS.filter((stackOption) => stackOption.value !== 'coverage')]).map((stackOption) => ({ ...stackOption, label: t(stackOption.label), title: t(stackOption.title) })),
     [billing],
   );
-  const bucketOptions = useMemo(() => BUCKET_OPTIONS.map((o) => ({ ...o, label: t(o.label) })), []);
+  const bucketOptions = useMemo(() => BUCKET_OPTIONS.map((bucketOption) => ({ ...bucketOption, label: t(bucketOption.label) })), []);
   const [bucket, setBucket] = useState<Bucket>(() => (range.length > 120 ? 'week' : 'day'));
   const [chosen, setStack] = useState<StackBy>(billing ? 'coverage' : 'total');
-  const stack = stackOptions.some((o) => o.value === chosen) ? chosen : stackOptions[0].value;
+  const stack = stackOptions.some((stackOption) => stackOption.value === chosen) ? chosen : stackOptions[0].value;
 
   const view = useMemo(() => {
     if (stack === 'coverage' || stack === 'total') {
-      const b = makeBucketer(range.start, range.end, bucket);
-      const covered = new Float64Array(b.count);
-      const billed = new Float64Array(b.count);
-      const total = new Float64Array(b.count);
-      for (let i = 0; i < agg.days.gross.length; i++) {
-        const k = b.indexOf(range.start + i);
-        covered[k] += agg.days.discount[i];
-        billed[k] += agg.days.net[i];
-        total[k] += agg.days.gross[i];
+      const bucketer = makeBucketer(range.start, range.end, bucket);
+      const covered = new Float64Array(bucketer.count);
+      const billed = new Float64Array(bucketer.count);
+      const total = new Float64Array(bucketer.count);
+      for (let i = 0; i < aggregates.days.gross.length; i++) {
+        const bucketIndex = bucketer.indexOf(range.start + i);
+        covered[bucketIndex] += aggregates.days.discount[i];
+        billed[bucketIndex] += aggregates.days.net[i];
+        total[bucketIndex] += aggregates.days.gross[i];
       }
       const series: TimeSeriesInput[] =
         stack === 'total'
@@ -325,33 +325,33 @@ function UsageOverTime() {
               { name: t('Covered by included credits'), data: covered, color: colors.accent },
               { name: t('Billed on top'), data: billed, color: colors.warn },
             ];
-      return { bucketer: b, labels: Array.from({ length: b.count }, (_, i) => b.label(i)), series, other: null as Float64Array | null };
+      return { bucketer: bucketer, labels: Array.from({ length: bucketer.count }, (_, bucketIndex) => bucketer.label(bucketIndex)), series, other: null as Float64Array | null };
     }
     let ids: number[];
     let names: string[];
-    let groupOf: ((s: typeof store, i: number) => number) | undefined;
+    let groupOf: ((dataStore: typeof store, rowIndex: number) => number) | undefined;
     let paint: (id: number) => string | undefined = () => undefined;
     if (stack === 'tier') {
-      ids = CATEGORIES.map((_, i) => i);
-      names = CATEGORIES.map((c) => t(c));
-      groupOf = (s, i) => models.cat[s.model[i]];
+      ids = CATEGORIES.map((_, index) => index);
+      names = CATEGORIES.map((category) => t(category));
+      groupOf = (dataStore, rowIndex) => models.cat[dataStore.model[rowIndex]];
       paint = (id) => CATEGORY_COLORS[CATEGORIES[id]];
     } else if (stack === 'vendor') {
-      ids = VENDORS.map((_, i) => i);
-      names = VENDORS.map((v) => (v === 'Other' ? t('Other') : v));
-      groupOf = (s, i) => models.vendor[s.model[i]];
+      ids = VENDORS.map((_, index) => index);
+      names = VENDORS.map((vendor) => (vendor === 'Other' ? t('Other') : vendor));
+      groupOf = (dataStore, rowIndex) => models.vendor[dataStore.model[rowIndex]];
     } else {
-      const gross = agg.product.gross;
-      ids = Array.from({ length: gross.length }, (_, i) => i)
-        .filter((i) => gross[i] > 0)
+      const gross = aggregates.product.gross;
+      ids = Array.from({ length: gross.length }, (_, productId) => productId)
+        .filter((productId) => gross[productId] > 0)
         .sort((a, b) => gross[b] - gross[a])
         .slice(0, 6);
-      names = ids.map((i) => labelOf('product', store.dicts.product.values[i]));
+      names = ids.map((productId) => labelOf('product', store.dicts.product.values[productId]));
     }
-    const s = stackedSeries(store, mask, range, stack === 'product' ? 'product' : 'model', ids, 'gross', bucket, names, groupOf);
-    const series: TimeSeriesInput[] = s.series.filter((x) => x.data.some((v) => v !== 0)).map((x) => ({ name: x.name, data: x.data, color: paint(x.id) }));
-    return { bucketer: s.bucketer, labels: s.labels, series, other: s.other };
-  }, [stack, bucket, agg, mask, range, store, models, colors]);
+    const stacked = stackedSeries(store, mask, range, stack === 'product' ? 'product' : 'model', ids, 'gross', bucket, names, groupOf);
+    const series: TimeSeriesInput[] = stacked.series.filter((group) => group.data.some((value) => value !== 0)).map((group) => ({ name: group.name, data: group.data, color: paint(group.id) }));
+    return { bucketer: stacked.bucketer, labels: stacked.labels, series, other: stacked.other };
+  }, [stack, bucket, aggregates, mask, range, store, models, colors]);
 
   const option = useMemo(
     () => stackedTimeOption(colors, { labels: view.labels, series: view.series, other: view.other, kind: 'bar', zoom: view.labels.length > 60 }),
@@ -366,11 +366,11 @@ function UsageOverTime() {
       option={option}
       height={320}
       empty={view.labels.length === 0 ? t('No usage in this period') : false}
-      onClick={(p) => {
-        const i = p.dataIndex;
-        const b = view.bucketer;
-        if (i < 0 || i >= b.count) return;
-        drill({ dateFrom: b.start(i), dateTo: i + 1 < b.count ? b.start(i + 1) - 1 : range.end }, { merge: true });
+      onClick={(event) => {
+        const bucketIndex = event.dataIndex;
+        const bucketer = view.bucketer;
+        if (bucketIndex < 0 || bucketIndex >= bucketer.count) return;
+        drill({ dateFrom: bucketer.start(bucketIndex), dateTo: bucketIndex + 1 < bucketer.count ? bucketer.start(bucketIndex + 1) - 1 : range.end }, { merge: true });
       }}
       actions={
         <>
@@ -434,21 +434,21 @@ function PoolCard() {
       </Callout>
     );
   } else {
-    const p = latest.projection;
-    const util = latest.utilization;
-    const ghost = p && latest.capacity > 0 ? Math.min(1, p.projGross / latest.capacity) : undefined;
-    const tone: Tone = latest.exhaustedOn !== null ? 'warn' : util < 0.4 ? 'info' : 'good';
-    const strong = (v: string) => <b className="text-fg">{v}</b>;
+    const projection = latest.projection;
+    const utilization = latest.utilization;
+    const ghost = projection && latest.capacity > 0 ? Math.min(1, projection.projGross / latest.capacity) : undefined;
+    const tone: Tone = latest.exhaustedOn !== null ? 'warn' : utilization < 0.4 ? 'info' : 'good';
+    const strong = (text: string) => <b className="text-fg">{text}</b>;
     body = (
       <div>
         <div className="flex items-baseline justify-between gap-2">
-          <div className="num text-2xl font-semibold">{fmtPct(util, 0)}</div>
+          <div className="num text-2xl font-semibold">{fmtPct(utilization, 0)}</div>
           <div className="num text-xs text-fg-muted">
             {t('{used} of {size}', { used: fmtUSD(latest.discount), size: fmtUSD(latest.capacity) })}
             {pool.capacityIsLowerBound ? '*' : ''}
           </div>
         </div>
-        <ProgressBar className="mt-2" value={util} ghost={ghost} tone={tone} height={10} label={t('Included credits used')} />
+        <ProgressBar className="mt-2" value={utilization} ghost={ghost} tone={tone} height={10} label={t('Included credits used')} />
         <ul className="mt-3 space-y-1 text-xs text-fg-muted">
           <li>
             {latest.exhaustedOn !== null ? (
@@ -460,13 +460,13 @@ function PoolCard() {
           <li>
             <T text="Billed so far: {amount}" values={{ amount: strong(fmtUSD(latest.net)) }} />
           </li>
-          {p ? (
+          {projection ? (
             <li>
-              <T text="Month-end estimate: {usage} of usage, about {billed} billed." values={{ usage: strong(fmtUSD(p.projGross)), billed: strong(fmtUSD(p.projNet)) }} />
-              {p.exhaustionDate !== null ? (
+              <T text="Month-end estimate: {usage} of usage, about {billed} billed." values={{ usage: strong(fmtUSD(projection.projGross)), billed: strong(fmtUSD(projection.projNet)) }} />
+              {projection.exhaustionDate !== null ? (
                 <>
                   {' '}
-                  <T text="On track to run out around {date}." values={{ date: strong(fmtDay(p.exhaustionDate)) }} />
+                  <T text="On track to run out around {date}." values={{ date: strong(fmtDay(projection.exhaustionDate)) }} />
                 </>
               ) : null}
             </li>
@@ -494,15 +494,15 @@ function PoolCard() {
               </tr>
             </thead>
             <tbody>
-              {pool.months.slice(-6).map((m) => (
-                <tr key={m.key} className="border-t border-border-muted">
+              {pool.months.slice(-6).map((month) => (
+                <tr key={month.key} className="border-t border-border-muted">
                   <td className="py-1">
-                    {m.label}
-                    {m.complete ? '' : <span className="text-fg-subtle"> · {t('so far')}</span>}
+                    {month.label}
+                    {month.complete ? '' : <span className="text-fg-subtle"> · {t('so far')}</span>}
                   </td>
-                  <td className="num py-1 text-end">{fmtUSD(m.gross, 0)}</td>
-                  <td className="num py-1 text-end">{fmtUSD(m.net, 0)}</td>
-                  <td className="num py-1 text-end">{Number.isFinite(m.utilization) ? fmtPct(m.utilization, 0) : '–'}</td>
+                  <td className="num py-1 text-end">{fmtUSD(month.gross, 0)}</td>
+                  <td className="num py-1 text-end">{fmtUSD(month.net, 0)}</td>
+                  <td className="num py-1 text-end">{Number.isFinite(month.utilization) ? fmtPct(month.utilization, 0) : '–'}</td>
                 </tr>
               ))}
             </tbody>
@@ -536,7 +536,7 @@ function TopRecommendations() {
   const actionable = sortRecs(analysis.recs.filter(isActionable), 'value');
   const shown = actionable.slice(0, 4);
   const good = sortRecs(
-    analysis.recs.filter((r) => !isActionable(r)),
+    analysis.recs.filter((recommendation) => !isActionable(recommendation)),
     'value',
   ).slice(0, 2);
   return (
@@ -554,14 +554,14 @@ function TopRecommendations() {
         ) : null}
       </div>
       {shown.length ? (
-        shown.map((r, i) => <RecommendationCard key={r.id} rec={r} defaultOpen={i === 0} />)
+        shown.map((recommendation, index) => <RecommendationCard key={recommendation.id} rec={recommendation} defaultOpen={index === 0} />)
       ) : (
         <Card>
           <EmptyState icon={<CheckCircle2 size={22} />} title={t('Nothing needs action')} description={t('No recommendation crossed its threshold for the selected scope.')} />
         </Card>
       )}
-      {good.map((r) => (
-        <RecommendationCard key={r.id} rec={r} />
+      {good.map((recommendation) => (
+        <RecommendationCard key={recommendation.id} rec={recommendation} />
       ))}
     </div>
   );
@@ -576,19 +576,19 @@ interface SavingsRow {
 
 function SavingsCard() {
   const { analysis } = useAnalysis();
-  const { plan, seats, pool, narrowed, range, agg } = analysis;
+  const { plan, seats, pool, narrowed, range, agg: aggregates } = analysis;
   const perMonth = DAYS_PER_MONTH / Math.max(1, range.length);
   const months = plan.months.length;
   const cash = !narrowed && months > 0 && analysis.coverage.billing;
   // Seat findings need the real pool size, which a filtered view or an incomplete file cannot give.
   const seatsKnown = !narrowed && !pool.capacityExceeded;
   // Billed overage in a filtered view is cash that usage cuts here save first.
-  const billed = agg.totals.net * perMonth;
+  const billed = aggregates.totals.net * perMonth;
   const billedFloor = Math.min(billed, plan.levers.total * perMonth);
 
   const levers: SavingsRow[] = plan.levers.steps
-    .map((s) => ({ id: s.id, label: s.label, hint: s.description, value: s.savings * perMonth }))
-    .filter((x) => x.value >= 0.5)
+    .map((step) => ({ id: step.id, label: step.label, hint: step.description, value: step.savings * perMonth }))
+    .filter((lever) => lever.value >= 0.5)
     .sort((a, b) => b.value - a.value);
   const seatRows: SavingsRow[] = !seatsKnown
     ? []
@@ -615,17 +615,17 @@ function SavingsCard() {
           count: seats.unused.length,
         },
       ]
-        .filter((x) => x.count > 0 && x.value > 0)
+        .filter((seatRow) => seatRow.count > 0 && seatRow.value > 0)
         .sort((a, b) => b.value - a.value);
-  const max = Math.max(1, ...levers.map((l) => l.value), ...seatRows.map((s) => s.value));
+  const max = Math.max(1, ...levers.map((lever) => lever.value), ...seatRows.map((seatRow) => seatRow.value));
   const base = months ? plan.baseCost / months : 0;
   // The group with the larger monthly value comes first.
   const groups = [
     { id: 'levers', title: t('Usage levers, per month'), rows: levers, tone: 'bg-accent' },
     { id: 'seats', title: t('Seat changes, per month'), rows: seatRows, tone: 'bg-info' },
   ]
-    .filter((g) => g.rows.length > 0)
-    .sort((a, b) => b.rows.reduce((s, r) => s + r.value, 0) - a.rows.reduce((s, r) => s + r.value, 0));
+    .filter((group) => group.rows.length > 0)
+    .sort((a, b) => b.rows.reduce((total, row) => total + row.value, 0) - a.rows.reduce((total, row) => total + row.value, 0));
 
   const bar = (value: number, tone: string) => (
     <div className="mt-1 h-1.5 overflow-hidden rounded-xs bg-surface-3">
@@ -682,17 +682,17 @@ function SavingsCard() {
 
       {groups.length ? (
         <div className="mt-4 space-y-3 text-sm">
-          {groups.map((g) => (
-            <div key={g.id}>
-              <div className="label">{g.title}</div>
+          {groups.map((group) => (
+            <div key={group.id}>
+              <div className="label">{group.title}</div>
               <ul className="space-y-2">
-                {g.rows.map((l) => (
-                  <li key={l.id} title={l.hint}>
+                {group.rows.map((row) => (
+                  <li key={row.id} title={row.hint}>
                     <div className="flex justify-between gap-2">
-                      <span>{l.label}</span>
-                      <span className="num text-fg-muted">{fmtUSD(l.value, 0)}</span>
+                      <span>{row.label}</span>
+                      <span className="num text-fg-muted">{fmtUSD(row.value, 0)}</span>
                     </div>
-                    {bar(l.value, g.tone)}
+                    {bar(row.value, group.tone)}
                   </li>
                 ))}
               </ul>
@@ -716,7 +716,7 @@ function PersonaCard() {
   const colors = useChartColors();
   const groups = analysis.population.groups.persona;
   const items = useMemo(
-    () => taxonomy.personas.map((p) => ({ id: p.id, name: p.label, value: groups[p.id]?.users ?? 0, color: p.color })).filter((x) => x.value > 0),
+    () => taxonomy.personas.map((persona) => ({ id: persona.id, name: persona.label, value: groups[persona.id]?.users ?? 0, color: persona.color })).filter((item) => item.value > 0),
     [taxonomy, groups],
   );
   const total = items.reduce((a, b) => a + b.value, 0);
@@ -729,8 +729,8 @@ function PersonaCard() {
       option={option}
       height={250}
       empty={total === 0 ? t('No users in this scope') : false}
-      onClick={(p) => {
-        const item = items[p.dataIndex];
+      onClick={(event) => {
+        const item = items[event.dataIndex];
         if (item) drill({ segments: [item.id] }, { page: 'users', merge: true });
       }}
       footer={
@@ -745,21 +745,21 @@ function PersonaCard() {
 function TopSpenders() {
   const { analysis, taxonomy, settings } = useAnalysis();
   const colors = useChartColors();
-  const selectUser = useApp((s) => s.selectUser);
+  const selectUser = useApp((state) => state.selectUser);
   const personas = useMemo(() => taxLookup(taxonomy.personas), [taxonomy]);
   const top = useMemo(() => [...analysis.users.profiles].sort((a, b) => b.gross - a.gross).slice(0, Math.max(3, settings.topN)), [analysis, settings.topN]);
   const option = useMemo(
     () =>
       rankBarOption(colors, {
         labelWidth: 120,
-        items: top.map((p) => ({
-          name: p.name,
-          value: p.gross,
-          color: personas[p.persona]?.color,
+        items: top.map((user) => ({
+          name: user.name,
+          value: user.gross,
+          color: personas[user.persona]?.color,
           note: t('{persona} · {share} of usage · {used} of included credits', {
-            persona: personas[p.persona]?.label ?? '',
-            share: fmtPct(p.share),
-            used: Number.isFinite(p.utilization) ? fmtPct(p.utilization, 0) : '–',
+            persona: personas[user.persona]?.label ?? '',
+            share: fmtPct(user.share),
+            used: Number.isFinite(user.utilization) ? fmtPct(user.utilization, 0) : '–',
           }),
         })),
       }),
@@ -773,9 +773,9 @@ function TopSpenders() {
       option={option}
       height={Math.max(200, top.length * 27 + 16)}
       empty={top.length === 0 ? t('No users in this scope') : false}
-      onClick={(p) => {
-        const u = top[p.dataIndex];
-        if (u) selectUser(u.id);
+      onClick={(event) => {
+        const user = top[event.dataIndex];
+        if (user) selectUser(user.id);
       }}
       footer={
         <button type="button" className="inline-flex items-center gap-1 text-accent hover:underline" onClick={() => navigate('users')}>
@@ -791,7 +791,7 @@ function TierCard() {
   const colors = useChartColors();
   const items = useMemo(() => {
     const gross = rollupByCategory(models, analysis.agg.model).gross;
-    return CATEGORIES.map((c, i) => ({ id: c, name: t(c), value: gross[i], color: CATEGORY_COLORS[c] })).filter((x) => x.value > 0);
+    return CATEGORIES.map((category, index) => ({ id: category, name: t(category), value: gross[index], color: CATEGORY_COLORS[category] })).filter((item) => item.value > 0);
   }, [analysis, models]);
   const total = items.reduce((a, b) => a + b.value, 0);
   const option = useMemo(() => donutOption(colors, { items, center: { value: fmtUSD(total, 0), caption: t('Usage') }, legend: 'right' }), [colors, items, total]);
@@ -803,8 +803,8 @@ function TierCard() {
       option={option}
       height={250}
       empty={total === 0 ? t('No model usage in this scope') : false}
-      onClick={(p) => {
-        const item = items[p.dataIndex];
+      onClick={(event) => {
+        const item = items[event.dataIndex];
         if (item) drill({ categories: [item.id] }, { page: 'models', merge: true });
       }}
       footer={
@@ -821,9 +821,9 @@ function TierCard() {
 
 export default function OverviewPage() {
   const { analysis } = useAnalysis();
-  const { range, agg } = analysis;
+  const { range, agg: aggregates } = analysis;
 
-  if (agg.totals.rows === 0) {
+  if (aggregates.totals.rows === 0) {
     return (
       <>
         <PageHeader title={t('Overview')} description={t('How much GitHub Copilot is used, what it costs, and what to do about it.')} />
@@ -840,7 +840,7 @@ export default function OverviewPage() {
           from: fmtDay(range.start, true),
           to: fmtDay(range.end, true),
           days: pluralize(range.length, 'day'),
-          users: pluralize(agg.totals.users, 'user'),
+          users: pluralize(aggregates.totals.users, 'user'),
         })}
       />
       <div className="space-y-4">

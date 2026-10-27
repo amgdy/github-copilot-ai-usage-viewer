@@ -33,18 +33,18 @@ function selectValue(plan: string | undefined): string {
 }
 
 function optionsFor(plan: string | undefined) {
-  const v = selectValue(plan);
+  const planValue = selectValue(plan);
   const base = baseOptions();
-  return base.some((o) => o.value === v) ? base : [...base, { value: v, label: planText(plan) }];
+  return base.some((option) => option.value === planValue) ? base : [...base, { value: planValue, label: planText(plan) }];
 }
 
 /** Name, organization, team and last activity from an imported license file, when the entry has them. */
-function details(e: RosterEntry): string {
+function details(entry: RosterEntry): string {
   return [
-    e.name ?? '',
-    e.org ? t('Organization: {org}', { org: e.org }) : '',
-    e.team ? t('Team: {team}', { team: e.team }) : '',
-    e.lastActivityAt ? t('Last activity {date}', { date: fmtIsoDay(e.lastActivityAt) }) : '',
+    entry.name ?? '',
+    entry.org ? t('Organization: {org}', { org: entry.org }) : '',
+    entry.team ? t('Team: {team}', { team: entry.team }) : '',
+    entry.lastActivityAt ? t('Last activity {date}', { date: fmtIsoDay(entry.lastActivityAt) }) : '',
   ]
     .filter(Boolean)
     .join(t(', '));
@@ -65,12 +65,12 @@ export function RosterList({ roster, inReport, onChange }: RosterListProps) {
   const [page, setPage] = useState(0);
 
   const rows = useMemo(() => {
-    const q = deferred.trim().toLowerCase();
+    const searchTerm = deferred.trim().toLowerCase();
     const out: Row[] = [];
     roster.forEach((entry, index) => {
       const present = inReport ? inReport.has(rosterKey(entry.user)) : null;
       if (show === 'missing' && present !== false) return;
-      if (q && !entry.user.toLowerCase().includes(q) && !(entry.name ?? '').toLowerCase().includes(q)) return;
+      if (searchTerm && !entry.user.toLowerCase().includes(searchTerm) && !(entry.name ?? '').toLowerCase().includes(searchTerm)) return;
       out.push({ entry, index, present });
     });
     return out;
@@ -90,7 +90,7 @@ export function RosterList({ roster, inReport, onChange }: RosterListProps) {
     next[index] = entry;
     onChange(next);
   };
-  const remove = (index: number) => onChange(roster.filter((_, i) => i !== index));
+  const remove = (index: number) => onChange(roster.filter((_, entryIndex) => entryIndex !== index));
 
   if (roster.length === 0) {
     return <p className="py-6 text-center text-sm text-fg-muted">{t('The license list is empty. Import a license file, paste users above, or use the users in the loaded report.')}</p>;
@@ -104,8 +104,8 @@ export function RosterList({ roster, inReport, onChange }: RosterListProps) {
           placeholder={t('Search users')}
           aria-label={t('Search the license list')}
           value={query}
-          onChange={(v) => {
-            setQuery(v);
+          onChange={(nextQuery) => {
+            setQuery(nextQuery);
             setPage(0);
           }}
         />
@@ -114,8 +114,8 @@ export function RosterList({ roster, inReport, onChange }: RosterListProps) {
             label={t('Show seats')}
             size="sm"
             value={show}
-            onChange={(v) => {
-              setShow(v);
+            onChange={(nextShow) => {
+              setShow(nextShow);
               setPage(0);
             }}
             options={[
@@ -150,7 +150,7 @@ export function RosterList({ roster, inReport, onChange }: RosterListProps) {
                   className="w-44"
                   value={selectValue(entry.plan)}
                   options={optionsFor(entry.plan)}
-                  onChange={(v) => setPlan(index, v)}
+                  onChange={(plan) => setPlan(index, plan)}
                 />
                 <button
                   type="button"

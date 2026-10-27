@@ -99,9 +99,9 @@ export function RecFilterBar({
           ))}
         </ChipGroup>
         <ChipGroup label={t('Severity')} calc="rec-severity">
-          {SEVERITIES.map((s) => (
-            <FilterChip key={s} tone={severityTone(s)} pressed={filters.severities.includes(s)} count={counts.severity[s]} onClick={() => set({ severities: toggleIn(filters.severities, s) })}>
-              {severityLabel(s)}
+          {SEVERITIES.map((severity) => (
+            <FilterChip key={severity} tone={severityTone(severity)} pressed={filters.severities.includes(severity)} count={counts.severity[severity]} onClick={() => set({ severities: toggleIn(filters.severities, severity) })}>
+              {severityLabel(severity)}
             </FilterChip>
           ))}
         </ChipGroup>

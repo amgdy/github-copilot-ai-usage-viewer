@@ -3,7 +3,7 @@ import { msg, t, tp } from '../../i18n';
 import { dataCoverage } from '../../lib/analytics/coverage';
 import type { ModelTable } from '../../lib/pricing/models';
 import { labelOf, type DataStore, type FileInfo } from '../../lib/types';
-import { DOW_NAMES, dowOf, fmtDay, monthEndDay, monthIndexOf, monthLabel, monthStartDay, ymd } from '../../lib/utils/date';
+import { WEEKDAY_NAMES, dowOf, fmtDay, monthEndDay, monthIndexOf, monthLabel, monthStartDay, dateParts } from '../../lib/utils/date';
 import { fmtInt, fmtUSD } from '../../lib/utils/format';
 import { topIds } from '../shared';
 import type { StoreScan } from './scan';
@@ -85,23 +85,23 @@ const BILLING_IMPACT = msg(
   'The file does not say what was billed, so covered and billed amounts are left at $0 and overage, pool and seat findings are hidden.',
 );
 
-const lacks = (f: FileInfo, c: string): boolean => f.missingColumns.includes(c);
-const noBilling = (f: FileInfo): boolean => lacks(f, 'discount_amount') && lacks(f, 'net_amount');
+const lacks = (file: FileInfo, column: string): boolean => file.missingColumns.includes(column);
+const noBilling = (file: FileInfo): boolean => lacks(file, 'discount_amount') && lacks(file, 'net_amount');
 
 export function sumFiles(files: FileInfo[]): FileTotals {
-  const t: FileTotals = { read: 0, kept: 0, duplicates: 0, badDates: 0, badNumbers: 0, balance: 0, price: 0, negative: 0, dated: 0 };
-  for (const f of files) {
-    t.read += f.rowsRead;
-    t.kept += f.rowsKept;
-    t.duplicates += f.duplicatesDropped;
-    t.badDates += f.badDateRows;
-    t.badNumbers += f.badNumberCells;
-    t.balance += f.balanceMismatchRows;
-    t.price += f.priceMismatchRows;
-    t.negative += f.negativeRows;
+  const totals: FileTotals = { read: 0, kept: 0, duplicates: 0, badDates: 0, badNumbers: 0, balance: 0, price: 0, negative: 0, dated: 0 };
+  for (const file of files) {
+    totals.read += file.rowsRead;
+    totals.kept += file.rowsKept;
+    totals.duplicates += file.duplicatesDropped;
+    totals.badDates += file.badDateRows;
+    totals.badNumbers += file.badNumberCells;
+    totals.balance += file.balanceMismatchRows;
+    totals.price += file.priceMismatchRows;
+    totals.negative += file.negativeRows;
   }
-  t.dated = t.read - t.badDates;
-  return t;
+  totals.dated = totals.read - totals.badDates;
+  return totals;
 }
 
 /** Runs of days without rows inside the date span. */
@@ -110,19 +110,19 @@ export function findGaps(store: DataStore, scan: StoreScan): Gaps {
   const runs: GapRun[] = [];
   let missingWeekdays = 0;
   let missingWeekendDays = 0;
-  let k = 0;
-  while (k < span) {
-    if (scan.daysSeen[k]) {
-      k++;
+  let dayIndex = 0;
+  while (dayIndex < span) {
+    if (scan.daysSeen[dayIndex]) {
+      dayIndex++;
       continue;
     }
-    let end = k;
+    let end = dayIndex;
     while (end + 1 < span && !scan.daysSeen[end + 1]) end++;
-    let from = store.minDay + k;
+    let from = store.minDay + dayIndex;
     let to = store.minDay + end;
     let weekdays = 0;
-    for (let d = from; d <= to; d++) {
-      if (dowOf(d) < 5) weekdays++;
+    for (let day = from; day <= to; day++) {
+      if (dowOf(day) < 5) weekdays++;
       else missingWeekendDays++;
     }
     missingWeekdays += weekdays;
@@ -131,14 +131,14 @@ export function findGaps(store: DataStore, scan: StoreScan): Gaps {
       while (dowOf(to) >= 5) to--;
       runs.push({ from, to, weekdays });
     }
-    k = end + 1;
+    dayIndex = end + 1;
   }
   return { runs, missingWeekdays, missingWeekendDays };
 }
 
 export function describeGap(run: GapRun, withYear: boolean): string {
   const from = fmtDay(run.from, withYear);
-  if (run.from === run.to) return `${DOW_NAMES[dowOf(run.from)]} ${from}`;
+  if (run.from === run.to) return `${WEEKDAY_NAMES[dowOf(run.from)]} ${from}`;
   return tp(run.weekdays, '{from} to {to} ({n} weekday)', '{from} to {to} ({n} weekdays)', {
     from,
     to: fmtDay(run.to, withYear),
@@ -146,18 +146,18 @@ export function describeGap(run: GapRun, withYear: boolean): string {
   });
 }
 
-const share = (n: number, total: number): string => fmtShare(total > 0 ? n / total : 0);
-const more = (n: number): string => tp(n, 'and {n} more', 'and {n} more', { n: fmtInt(n) });
+const share = (count: number, total: number): string => fmtShare(total > 0 ? count / total : 0);
+const more = (remaining: number): string => tp(remaining, 'and {n} more', 'and {n} more', { n: fmtInt(remaining) });
 
 function missingLines(files: FileInfo[]): string[] {
-  const line = (column: string, n: number, impact: string): string =>
+  const line = (column: string, fileCount: number, impact: string): string =>
     files.length > 1
-      ? t('{column} ({n} of {total} files): {impact}', { column, n: fmtInt(n), total: fmtInt(files.length), impact: t(impact) })
+      ? t('{column} ({n} of {total} files): {impact}', { column, n: fmtInt(fileCount), total: fmtInt(files.length), impact: t(impact) })
       : t('{column}: {impact}', { column, impact: t(impact) });
   const lines: string[] = [];
-  for (const c of COLUMN_ORDER) {
-    const n = files.filter((f) => lacks(f, c) && !(noBilling(f) && (c === 'discount_amount' || c === 'net_amount'))).length;
-    if (n) lines.push(line(c, n, IMPACT[c]));
+  for (const columnName of COLUMN_ORDER) {
+    const missingCount = files.filter((file) => lacks(file, columnName) && !(noBilling(file) && (columnName === 'discount_amount' || columnName === 'net_amount'))).length;
+    if (missingCount) lines.push(line(columnName, missingCount, IMPACT[columnName]));
   }
   const billing = files.filter(noBilling).length;
   if (billing) lines.push(line(t('{a} and {b}', { a: 'discount_amount', b: 'net_amount' }), billing, BILLING_IMPACT));
@@ -166,8 +166,8 @@ function missingLines(files: FileInfo[]): string[] {
 
 function columnsCheck(files: FileInfo[], quotaKnown: boolean): Check {
   const title = t('Expected columns are present');
-  const affected = files.filter((f) => f.missingColumns.some((c) => !TOKEN_COLUMNS.includes(c)));
-  const quotaEmpty = !quotaKnown && files.every((f) => !lacks(f, 'total_monthly_quota'));
+  const affected = files.filter((file) => file.missingColumns.some((column) => !TOKEN_COLUMNS.includes(column)));
+  const quotaEmpty = !quotaKnown && files.every((file) => !lacks(file, 'total_monthly_quota'));
   if (!affected.length && !quotaEmpty) {
     return {
       id: 'columns',
@@ -177,10 +177,10 @@ function columnsCheck(files: FileInfo[], quotaKnown: boolean): Check {
       result: t('Every file has all the optional columns, apart from the token columns checked below.'),
     };
   }
-  const missing = [...new Set(affected.flatMap((f) => f.missingColumns.filter((c) => !TOKEN_COLUMNS.includes(c))))].sort((a, b) => {
-    const ia = COLUMN_ORDER.indexOf(a);
-    const ib = COLUMN_ORDER.indexOf(b);
-    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+  const missing = [...new Set(affected.flatMap((file) => file.missingColumns.filter((column) => !TOKEN_COLUMNS.includes(column))))].sort((a, b) => {
+    const positionA = COLUMN_ORDER.indexOf(a);
+    const positionB = COLUMN_ORDER.indexOf(b);
+    return (positionA < 0 ? 99 : positionA) - (positionB < 0 ? 99 : positionB);
   });
   const details = missingLines(files);
   const result: string[] = [];
@@ -211,27 +211,27 @@ function columnsCheck(files: FileInfo[], quotaKnown: boolean): Check {
   };
 }
 
-function datesCheck(tot: FileTotals): Check {
+function datesCheck(totals: FileTotals): Check {
   const title = t('Dates can be read');
-  if (tot.badDates === 0) return { id: 'dates', title, calc: 'data-bad-dates', status: 'pass', result: t('Every row has a readable date.') };
+  if (totals.badDates === 0) return { id: 'dates', title, calc: 'data-bad-dates', status: 'pass', result: t('Every row has a readable date.') };
   return {
     id: 'dates',
     title,
     calc: 'data-bad-dates',
     status: 'warn',
     result: tp(
-      tot.badDates,
+      totals.badDates,
       '{n} row ({share}) has a date the app cannot read and was skipped.',
       '{n} rows ({share}) have a date the app cannot read and were skipped.',
-      { n: fmtInt(tot.badDates), share: share(tot.badDates, tot.read) },
+      { n: fmtInt(totals.badDates), share: share(totals.badDates, totals.read) },
     ),
     action: t('Dates such as 2026-03-05 or 3/5/2026 are read. Fix the date column in the file and load it again.'),
   };
 }
 
-function numbersCheck(tot: FileTotals): Check {
+function numbersCheck(totals: FileTotals): Check {
   const title = t('Numbers can be read');
-  if (tot.badNumbers === 0) {
+  if (totals.badNumbers === 0) {
     return {
       id: 'numbers',
       title,
@@ -246,16 +246,16 @@ function numbersCheck(tot: FileTotals): Check {
     calc: 'data-bad-numbers',
     status: 'warn',
     result: tp(
-      tot.badNumbers,
+      totals.badNumbers,
       '{n} cell could not be read as a number and was counted as 0. The row is kept.',
       '{n} cells could not be read as a number and were counted as 0. The rows are kept.',
-      { n: fmtInt(tot.badNumbers) },
+      { n: fmtInt(totals.badNumbers) },
     ),
     action: t('Numbers need a dot for decimals, and no thousands separators, currency signs or text such as N/A. Fix those cells and load the file again.'),
   };
 }
 
-function duplicatesCheck(files: FileInfo[], tot: FileTotals): Check {
+function duplicatesCheck(files: FileInfo[], totals: FileTotals): Check {
   const title = t('Duplicate rows');
   if (files.length < 2) {
     return {
@@ -266,7 +266,7 @@ function duplicatesCheck(files: FileInfo[], tot: FileTotals): Check {
       result: t('One file loaded. Duplicates are only looked for between different files, so identical rows inside one file are kept.'),
     };
   }
-  if (tot.duplicates === 0) {
+  if (totals.duplicates === 0) {
     return {
       id: 'duplicates',
       title,
@@ -275,17 +275,17 @@ function duplicatesCheck(files: FileInfo[], tot: FileTotals): Check {
       result: tp(files.length, 'No row appears in more than one file.', 'No row appears in more than one of the {n} files.', { n: fmtInt(files.length) }),
     };
   }
-  const empty = files.filter((f) => f.rowsKept === 0 && f.duplicatesDropped > 0).map((f) => f.name);
+  const empty = files.filter((file) => file.rowsKept === 0 && file.duplicatesDropped > 0).map((file) => file.name);
   return {
     id: 'duplicates',
     title,
     calc: 'data-duplicates',
     status: 'info',
     result: tp(
-      tot.duplicates,
+      totals.duplicates,
       '{n} row ({share}) is identical to a row from another file and was dropped.',
       '{n} rows ({share}) are identical to a row from another file and were dropped.',
-      { n: fmtInt(tot.duplicates), share: share(tot.duplicates, tot.dated) },
+      { n: fmtInt(totals.duplicates), share: share(totals.duplicates, totals.dated) },
     ),
     action: t('This is expected when exports overlap or the same file is loaded twice. Nothing to do unless you meant those rows to count twice.'),
     details: empty.length
@@ -294,9 +294,9 @@ function duplicatesCheck(files: FileInfo[], tot: FileTotals): Check {
   };
 }
 
-function balanceCheck(files: FileInfo[], tot: FileTotals): Check {
+function balanceCheck(files: FileInfo[], totals: FileTotals): Check {
   const title = t('Amounts add up (usage = covered + billed)');
-  const checked = files.filter((f) => !noBilling(f));
+  const checked = files.filter((file) => !noBilling(file));
   if (!checked.length) {
     return {
       id: 'balance',
@@ -318,7 +318,7 @@ function balanceCheck(files: FileInfo[], tot: FileTotals): Check {
         ),
       ]
     : undefined;
-  if (tot.balance === 0) {
+  if (totals.balance === 0) {
     return { id: 'balance', title, calc: 'data-balance-mismatches', status: 'pass', result: t('Usage equals covered plus billed on every row.'), details };
   }
   return {
@@ -326,9 +326,9 @@ function balanceCheck(files: FileInfo[], tot: FileTotals): Check {
     title,
     calc: 'data-balance-mismatches',
     status: 'warn',
-    result: tp(tot.balance, '{n} row ({share}) has usage that is not covered plus billed.', '{n} rows ({share}) have usage that is not covered plus billed.', {
-      n: fmtInt(tot.balance),
-      share: share(tot.balance, tot.dated),
+    result: tp(totals.balance, '{n} row ({share}) has usage that is not covered plus billed.', '{n} rows ({share}) have usage that is not covered plus billed.', {
+      n: fmtInt(totals.balance),
+      share: share(totals.balance, totals.dated),
     }),
     action: t(
       'On those rows usage is not covered plus billed, so the three totals will not tie out. Check the source export, or treat the affected totals with care.',
@@ -337,9 +337,9 @@ function balanceCheck(files: FileInfo[], tot: FileTotals): Check {
   };
 }
 
-function priceCheck(files: FileInfo[], tot: FileTotals): Check {
+function priceCheck(files: FileInfo[], totals: FileTotals): Check {
   const title = t('Usage matches the unit price (usage = quantity × unit price)');
-  if (files.every((f) => lacks(f, 'quantity'))) {
+  if (files.every((file) => lacks(file, 'quantity'))) {
     return {
       id: 'price',
       title,
@@ -348,7 +348,7 @@ function priceCheck(files: FileInfo[], tot: FileTotals): Check {
       result: t('Not checked. No file has a quantity column, so AI credits are worked out from usage.'),
     };
   }
-  if (tot.price === 0) {
+  if (totals.price === 0) {
     return { id: 'price', title, calc: 'data-price-mismatches', status: 'pass', result: t('Usage equals quantity × the unit price on every row.') };
   }
   return {
@@ -357,10 +357,10 @@ function priceCheck(files: FileInfo[], tot: FileTotals): Check {
     calc: 'data-price-mismatches',
     status: 'warn',
     result: tp(
-      tot.price,
+      totals.price,
       '{n} row ({share}) has usage that differs from quantity × the unit price.',
       '{n} rows ({share}) have usage that differs from quantity × the unit price.',
-      { n: fmtInt(tot.price), share: share(tot.price, tot.dated) },
+      { n: fmtInt(totals.price), share: share(totals.price, totals.dated) },
     ),
     action: t('AI credit counts follow quantity and dollar amounts follow usage, so the two disagree on those rows. Check the source export.'),
   };
@@ -368,9 +368,9 @@ function priceCheck(files: FileInfo[], tot: FileTotals): Check {
 
 function usernameCheck(store: DataStore, scan: StoreScan): Check {
   const title = t('Rows have a username');
-  const u = scan.dims.user;
-  if (u.blankRows === 0) return { id: 'username', title, calc: 'data-no-username', status: 'pass', result: t('Every row has a username.') };
-  if (u.blankRows === scan.rows) {
+  const userScan = scan.dims.user;
+  if (userScan.blankRows === 0) return { id: 'username', title, calc: 'data-no-username', status: 'pass', result: t('Every row has a username.') };
+  if (userScan.blankRows === scan.rows) {
     return {
       id: 'username',
       title,
@@ -381,14 +381,14 @@ function usernameCheck(store: DataStore, scan: StoreScan): Check {
     };
   }
   const products = topIds(scan.unattributedByProduct, 3).map(
-    (id) => `${labelOf('product', store.dicts.product.values[id])} (${fmtShare(scan.unattributedByProduct[id] / u.blankGross)})`,
+    (id) => `${labelOf('product', store.dicts.product.values[id])} (${fmtShare(scan.unattributedByProduct[id] / userScan.blankGross)})`,
   );
   const result = [
-    tp(u.blankRows, '{n} row ({share}) has no username.', '{n} rows ({share}) have no username.', {
-      n: fmtInt(u.blankRows),
-      share: share(u.blankRows, scan.rows),
+    tp(userScan.blankRows, '{n} row ({share}) has no username.', '{n} rows ({share}) have no username.', {
+      n: fmtInt(userScan.blankRows),
+      share: share(userScan.blankRows, scan.rows),
     }),
-    ...(scan.gross > 0 ? [t('That is {share} of usage.', { share: fmtShare(u.blankGross / scan.gross) })] : []),
+    ...(scan.gross > 0 ? [t('That is {share} of usage.', { share: fmtShare(userScan.blankGross / scan.gross) })] : []),
   ];
   return {
     id: 'username',
@@ -397,22 +397,22 @@ function usernameCheck(store: DataStore, scan: StoreScan): Check {
     status: 'info',
     result: result.join(' '),
     action: t('Normal for repository-level products such as code quality. This usage counts in the totals but cannot be linked to a person.'),
-    details: products.length && u.blankGross > 0 ? [t('Mostly from {names}.', { names: listNames(products) })] : undefined,
+    details: products.length && userScan.blankGross > 0 ? [t('Mostly from {names}.', { names: listNames(products) })] : undefined,
   };
 }
 
 function modelsCheck(store: DataStore, scan: StoreScan, models: ModelTable): Check {
   const title = t('Models with prices');
-  const m = scan.dims.model;
+  const modelScan = scan.dims.model;
   const unpriced: number[] = [];
   let named = 0;
   let unpricedGross = 0;
   for (let id = 0; id < store.dicts.model.values.length; id++) {
-    if (m.rows[id] === 0 || id === m.blankId) continue;
+    if (modelScan.rows[id] === 0 || id === modelScan.blankId) continue;
     named++;
     if (models.priced[id] === 0) {
       unpriced.push(id);
-      unpricedGross += m.gross[id];
+      unpricedGross += modelScan.gross[id];
     }
   }
   if (named === 0) {
@@ -434,8 +434,8 @@ function modelsCheck(store: DataStore, scan: StoreScan, models: ModelTable): Che
       result: tp(named, 'The model has a price on the price card.', 'All {n} models have a price on the price card.', { n: fmtInt(named) }),
     };
   }
-  unpriced.sort((a, b) => m.gross[b] - m.gross[a]);
-  const lines = unpriced.slice(0, 5).map((id) => `${labelOf('model', store.dicts.model.values[id])}: ${fmtUSD(m.gross[id], 2)}`);
+  unpriced.sort((a, b) => modelScan.gross[b] - modelScan.gross[a]);
+  const lines = unpriced.slice(0, 5).map((id) => `${labelOf('model', store.dicts.model.values[id])}: ${fmtUSD(modelScan.gross[id], 2)}`);
   if (unpriced.length > 5) lines.push(more(unpriced.length - 5));
   const result = [
     named === 1
@@ -473,7 +473,7 @@ function tokensCheck(store: DataStore, files: FileInfo[]): Check {
       ),
     };
   }
-  const lacking = files.filter((f) => TOKEN_COLUMNS.some((c) => lacks(f, c)));
+  const lacking = files.filter((file) => TOKEN_COLUMNS.some((column) => lacks(file, column)));
   if (!lacking.length) {
     return {
       id: 'tokens',
@@ -485,8 +485,8 @@ function tokensCheck(store: DataStore, files: FileInfo[]): Check {
   }
   const total = fmtInt(files.length);
   const details = TOKEN_COLUMNS.flatMap((column) => {
-    const n = files.filter((f) => lacks(f, column)).length;
-    return n ? [t('{column}: missing in {n} of {total} files.', { column, n: fmtInt(n), total })] : [];
+    const missingCount = files.filter((file) => lacks(file, column)).length;
+    return missingCount ? [t('{column}: missing in {n} of {total} files.', { column, n: fmtInt(missingCount), total })] : [];
   });
   return {
     id: 'tokens',
@@ -516,13 +516,13 @@ function gapsCheck(store: DataStore, scan: StoreScan, gaps: Gaps): Check {
       action: t('There is no range to check for gaps. Trends and month projections need more days.'),
     };
   }
-  const withYear = ymd(store.minDay).y !== ymd(store.maxDay).y;
+  const withYear = dateParts(store.minDay).y !== dateParts(store.maxDay).y;
   const range = { from: fmtDay(store.minDay, withYear), to: fmtDay(store.maxDay, withYear) };
   if (gaps.missingWeekdays === 0 && gaps.missingWeekendDays === 0) {
     return { id: 'gaps', title, calc: 'data-gaps', status: 'pass', result: t('Every day from {from} to {to} has rows.', range) };
   }
-  const weekend = (n: number) =>
-    tp(n, '{n} weekend day has none, which is normal for most teams.', '{n} weekend days have none, which is normal for most teams.', { n: fmtInt(n) });
+  const weekend = (weekendDays: number) =>
+    tp(weekendDays, '{n} weekend day has none, which is normal for most teams.', '{n} weekend days have none, which is normal for most teams.', { n: fmtInt(weekendDays) });
   if (gaps.missingWeekdays === 0) {
     return {
       id: 'gaps',
@@ -532,7 +532,7 @@ function gapsCheck(store: DataStore, scan: StoreScan, gaps: Gaps): Check {
       result: `${t('Every weekday from {from} to {to} has rows.', range)} ${weekend(gaps.missingWeekendDays)}`,
     };
   }
-  const details = gaps.runs.slice(0, 5).map((r) => describeGap(r, withYear));
+  const details = gaps.runs.slice(0, 5).map((run) => describeGap(run, withYear));
   if (gaps.runs.length > 5) details.push(more(gaps.runs.length - 5));
   const result = [
     tp(gaps.missingWeekdays, '{n} weekday from {from} to {to} has no rows.', '{n} weekdays from {from} to {to} have no rows.', {
@@ -599,35 +599,35 @@ function monthEndCheck(store: DataStore): Check {
       details,
     };
   }
-  const n = end - store.maxDay;
+  const daysLeft = end - store.maxDay;
   return {
     id: 'monthEnd',
     title,
     calc: 'data-month-end',
     status: 'info',
-    result: tp(n, 'The data ends on {date}, {n} day before the end of {month}.', 'The data ends on {date}, {n} days before the end of {month}.', {
+    result: tp(daysLeft, 'The data ends on {date}, {n} day before the end of {month}.', 'The data ends on {date}, {n} days before the end of {month}.', {
       date,
       month,
-      n: fmtInt(n),
+      n: fmtInt(daysLeft),
     }),
     action: t('The last month is projected from the days so far, so its month-end figures are estimates. Load the full month once it ends for final numbers.'),
     details,
   };
 }
 
-function negativesCheck(tot: FileTotals): Check {
+function negativesCheck(totals: FileTotals): Check {
   const title = t('Negative amounts');
-  if (tot.negative === 0) return { id: 'negatives', title, calc: 'data-negative-rows', status: 'pass', result: t('No row has a negative amount.') };
+  if (totals.negative === 0) return { id: 'negatives', title, calc: 'data-negative-rows', status: 'pass', result: t('No row has a negative amount.') };
   return {
     id: 'negatives',
     title,
     calc: 'data-negative-rows',
     status: 'info',
     result: tp(
-      tot.negative,
+      totals.negative,
       '{n} row ({share}) has a negative usage, covered or billed amount.',
       '{n} rows ({share}) have a negative usage, covered or billed amount.',
-      { n: fmtInt(tot.negative), share: share(tot.negative, tot.dated) },
+      { n: fmtInt(totals.negative), share: share(totals.negative, totals.dated) },
     ),
     action: t(
       'The app does not know why an amount is negative. A credit or a refund can look like this. The rows are included in every total, so totals can be lower than the sum of the positive rows.',

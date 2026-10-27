@@ -7,19 +7,19 @@ import { showGroup } from './actions';
 import { share, type GroupRow, type LensData } from './lenses';
 
 const DASH = '–';
-const money = (v: number): string => (Number.isFinite(v) ? fmtUSD(v, 0) : DASH);
-const cents = (v: number): number => Math.round(v * 100) / 100;
+const money = (amount: number): string => (Number.isFinite(amount) ? fmtUSD(amount, 0) : DASH);
+const cents = (amount: number): number => Math.round(amount * 100) / 100;
 const percent = (fraction: number): number => Math.round(fraction * 1000) / 10;
 
-function signedMoney(v: number): string {
-  const r = Math.round(v);
-  return `${r > 0 ? '+' : r < 0 ? '−' : ''}${fmtUSD(Math.abs(v), 0)}`;
+function signedMoney(amount: number): string {
+  const rounded = Math.round(amount);
+  return `${rounded > 0 ? '+' : rounded < 0 ? '−' : ''}${fmtUSD(Math.abs(amount), 0)}`;
 }
 
-function groupNote(r: GroupRow, engagement: boolean): string | null {
-  if (r.unavailable) return r.unavailable;
-  if (r.users === 0) return t('No users');
-  if (engagement && r.overlay) return t('A flag: these users are also in an activity level');
+function groupNote(row: GroupRow, engagement: boolean): string | null {
+  if (row.unavailable) return row.unavailable;
+  if (row.users === 0) return t('No users');
+  if (engagement && row.overlay) return t('A flag: these users are also in an activity level');
   return null;
 }
 
@@ -50,14 +50,14 @@ export function GroupTable({ data, perMonth, showCredits, showPool, billingKnown
         header: t('Group'),
         csvHeader: t(lens.label),
         calc: lens.calc,
-        value: (r) => r.item.label,
-        render: (r) => {
-          const note = groupNote(r, engagement);
+        value: (row) => row.item.label,
+        render: (row) => {
+          const note = groupNote(row, engagement);
           return (
             <div className="max-w-64 min-w-0">
               <div className="flex flex-wrap items-center gap-1.5">
-                <TaxBadge item={r.item} />
-                {r.active ? (
+                <TaxBadge item={row.item} />
+                {row.active ? (
                   <Badge tone="accent" title={t('This group is selected in the filters')}>
                     {t('In filter')}
                   </Badge>
@@ -73,8 +73,8 @@ export function GroupTable({ data, perMonth, showCredits, showPool, billingKnown
         key: 'users',
         header: t('Users'),
         align: 'end',
-        value: (r) => r.users,
-        render: (r) => fmtInt(r.users),
+        value: (row) => row.users,
+        render: (row) => fmtInt(row.users),
         total: fmtInt(total.users),
         hint: t('Number of users in the group.'),
         calc: 'group-users',
@@ -83,8 +83,8 @@ export function GroupTable({ data, perMonth, showCredits, showPool, billingKnown
         key: 'userShare',
         header: t('% of users'),
         align: 'end',
-        value: (r) => percent(r.userShare),
-        render: (r) => fmtPct(r.userShare, 1),
+        value: (row) => percent(row.userShare),
+        render: (row) => fmtPct(row.userShare, 1),
         total: fmtPct(share(total.users, everyone.users), 0),
         csvHeader: t('Share of users (%)'),
         hint: t('Share of all users that are in this group.'),
@@ -94,8 +94,8 @@ export function GroupTable({ data, perMonth, showCredits, showPool, billingKnown
         key: 'gross',
         header: t('Usage'),
         align: 'end',
-        value: (r) => cents(r.gross),
-        render: (r) => money(r.gross),
+        value: (row) => cents(row.gross),
+        render: (row) => money(row.gross),
         total: money(total.gross),
         csvHeader: t('Usage (USD)'),
         hint: t('Usage before included credits are taken off.'),
@@ -105,8 +105,8 @@ export function GroupTable({ data, perMonth, showCredits, showPool, billingKnown
         key: 'usageShare',
         header: t('% of usage'),
         align: 'end',
-        value: (r) => percent(r.usageShare),
-        render: (r) => fmtPct(r.usageShare, 1),
+        value: (row) => percent(row.usageShare),
+        render: (row) => fmtPct(row.usageShare, 1),
         total: fmtPct(share(total.gross, everyone.gross), 0),
         csvHeader: t('Share of usage (%)'),
         hint: t('Share of all usage that comes from this group.'),
@@ -116,8 +116,8 @@ export function GroupTable({ data, perMonth, showCredits, showPool, billingKnown
         key: 'net',
         header: t('Billed'),
         align: 'end',
-        value: (r) => (billingKnown ? cents(r.net) : null),
-        render: (r) => (billingKnown ? money(r.net) : DASH),
+        value: (row) => (billingKnown ? cents(row.net) : null),
+        render: (row) => (billingKnown ? money(row.net) : DASH),
         total: billingKnown ? money(total.net) : DASH,
         csvHeader: t('Billed on top of seats (USD)'),
         hint: billingKnown ? t('Billed on top of seats: usage that included credits did not cover.') : t('This file has no billing split, so the billed amount is not known.'),
@@ -127,8 +127,8 @@ export function GroupTable({ data, perMonth, showCredits, showPool, billingKnown
         key: 'perUser',
         header: t('Per user, per month'),
         align: 'end',
-        value: (r) => (Number.isFinite(r.perUserMonth) ? cents(r.perUserMonth) : null),
-        render: (r) => money(r.perUserMonth),
+        value: (row) => (Number.isFinite(row.perUserMonth) ? cents(row.perUserMonth) : null),
+        render: (row) => money(row.perUserMonth),
         total: money(total.users > 0 ? (total.gross / total.users) * perMonth : Number.NaN),
         csvHeader: t('Per user, per month (USD)'),
         hint: t('Average usage per user, scaled to a 30.4375-day month.'),
@@ -140,8 +140,8 @@ export function GroupTable({ data, perMonth, showCredits, showPool, billingKnown
         key: 'allotment',
         header: t('Included credits'),
         align: 'end',
-        value: (r) => cents(r.allotment),
-        render: (r) => money(r.allotment),
+        value: (row) => cents(row.allotment),
+        render: (row) => money(row.allotment),
         total: money(total.allotment),
         csvHeader: t('Included credits (USD)'),
         hint: t('Included credits that come with the seats of these users in the period, in dollars.'),
@@ -152,8 +152,8 @@ export function GroupTable({ data, perMonth, showCredits, showPool, billingKnown
           key: 'balance',
           header: t('Pool balance'),
           align: 'end',
-          value: (r) => (r.users > 0 ? cents(r.balance) : null),
-          render: (r) => (r.users > 0 ? <BalanceCell value={r.balance} /> : DASH),
+          value: (row) => (row.users > 0 ? cents(row.balance) : null),
+          render: (row) => (row.users > 0 ? <BalanceCell value={row.balance} /> : DASH),
           total: <BalanceCell value={total.allotment - total.gross} />,
           csvHeader: t('Pool balance (USD)'),
           hint: t('Included credits minus usage. Positive: the group left credits in the shared pool. Negative: the group used more than its own credits and drew on the pool.'),
@@ -166,8 +166,8 @@ export function GroupTable({ data, perMonth, showCredits, showPool, billingKnown
         key: 'potential',
         header: t('Potential savings'),
         align: 'end',
-        value: (r) => cents(r.potential),
-        render: (r) => money(r.potential),
+        value: (row) => cents(row.potential),
+        render: (row) => money(row.potential),
         total: money(total.potential),
         csvHeader: t('Potential savings (USD)'),
         hint: t('Estimated reduction in usage if the default recommendations were followed. This is not cash.'),
@@ -176,8 +176,8 @@ export function GroupTable({ data, perMonth, showCredits, showPool, billingKnown
       {
         key: 'action',
         header: t('What to do'),
-        value: (r) => r.item.action,
-        render: (r) => <div className="w-64 whitespace-normal text-xs text-fg-muted">{r.item.action}</div>,
+        value: (row) => row.item.action,
+        render: (row) => <div className="w-64 whitespace-normal text-xs text-fg-muted">{row.item.action}</div>,
       },
       {
         key: 'show',
@@ -186,15 +186,15 @@ export function GroupTable({ data, perMonth, showCredits, showPool, billingKnown
         sortable: false,
         noCsv: true,
         value: () => null,
-        render: (r) => (
+        render: (row) => (
           <button
             type="button"
             className="btn btn-sm whitespace-nowrap"
-            disabled={r.users === 0}
-            aria-label={t('Show users: {group}', { group: r.item.label })}
-            onClick={(e) => {
-              e.stopPropagation();
-              showGroup(lens, r.id);
+            disabled={row.users === 0}
+            aria-label={t('Show users: {group}', { group: row.item.label })}
+            onClick={(event) => {
+              event.stopPropagation();
+              showGroup(lens, row.id);
             }}
           >
             {t('Show users')} <ArrowRight size={12} className="rtl:-scale-x-100" aria-hidden />
@@ -211,12 +211,12 @@ export function GroupTable({ data, perMonth, showCredits, showPool, billingKnown
         key={lens.id}
         rows={data.rows}
         columns={columns}
-        rowKey={(r) => r.id}
+        rowKey={(row) => row.id}
         defaultSort={{ key: 'gross', dir: 'desc' }}
         pageSize={25}
         exportName={`github-copilot-segments-${lens.id}`}
-        onRowClick={(r) => (r.users > 0 ? showGroup(lens, r.id) : undefined)}
-        rowClassName={(r) => (r.active ? 'bg-accent-soft hover:bg-accent-soft' : r.users === 0 ? 'opacity-60' : undefined)}
+        onRowClick={(row) => (row.users > 0 ? showGroup(lens, row.id) : undefined)}
+        rowClassName={(row) => (row.active ? 'bg-accent-soft hover:bg-accent-soft' : row.users === 0 ? 'opacity-60' : undefined)}
         emptyText={t('No groups to show.')}
       />
     </Card>

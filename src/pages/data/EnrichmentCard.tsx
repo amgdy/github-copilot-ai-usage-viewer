@@ -80,17 +80,17 @@ export function EnrichmentCard() {
   return (
     <Card title={t('What else you can add')} subtitle={t('Other GitHub data that adds to the usage report, from the most useful.')}>
       <ol className="space-y-3">
-        {SOURCES.map((s) => (
-          <li key={s.title} className="rounded-lg border border-border px-3 py-2.5">
+        {SOURCES.map((source) => (
+          <li key={source.title} className="rounded-lg border border-border px-3 py-2.5">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm font-medium text-fg">{t(s.title)}</span>
-              {s.priority === 'recommended' ? <Badge tone="good">{t('Recommended for most admins')}</Badge> : null}
-              {s.priority === 'advanced' ? <Badge>{t('Advanced')}</Badge> : null}
-              {s.used ? <Badge tone="good">{t('Read by this app')}</Badge> : <Badge>{t('Not read yet')}</Badge>}
+              <span className="text-sm font-medium text-fg">{t(source.title)}</span>
+              {source.priority === 'recommended' ? <Badge tone="good">{t('Recommended for most admins')}</Badge> : null}
+              {source.priority === 'advanced' ? <Badge>{t('Advanced')}</Badge> : null}
+              {source.used ? <Badge tone="good">{t('Read by this app')}</Badge> : <Badge>{t('Not read yet')}</Badge>}
             </div>
-            <p className="mt-1 text-xs text-fg-muted">{t(s.detail)}</p>
-            <p className="mt-0.5 text-xs text-fg-muted">{t(s.action)}</p>
-            <DocLinks ids={s.links} compact className="mt-1.5" />
+            <p className="mt-1 text-xs text-fg-muted">{t(source.detail)}</p>
+            <p className="mt-0.5 text-xs text-fg-muted">{t(source.action)}</p>
+            <DocLinks ids={source.links} compact className="mt-1.5" />
           </li>
         ))}
       </ol>

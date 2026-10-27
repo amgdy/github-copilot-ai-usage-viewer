@@ -10,7 +10,7 @@ export function KpiRow({ spec, summary }: { spec: DimSpec; summary: Summary }) {
   const totals = analysis.agg.totals;
   const billing = analysis.coverage.billing;
   const { named, blank, largest, top3Share, billedLeader } = summary;
-  const n = named.length;
+  const groupCount = named.length;
   const blankShare = blank?.share ?? 0;
 
   return (
@@ -26,8 +26,8 @@ export function KpiRow({ spec, summary }: { spec: DimSpec; summary: Summary }) {
       />
       <Kpi
         label={t(spec.plural)}
-        value={fmtInt(n)}
-        sub={tp(n, 'One group with usage', '{n} groups with usage')}
+        value={fmtInt(groupCount)}
+        sub={tp(groupCount, 'One group with usage', '{n} groups with usage')}
         hint={t('Distinct groups in this view. Usage without a value is not counted here, see Unattributed usage.')}
         calc="org-group-count"
       />
@@ -40,8 +40,8 @@ export function KpiRow({ spec, summary }: { spec: DimSpec; summary: Summary }) {
       />
       <Kpi
         label={t('Top 3 share')}
-        value={n ? fmtPct(top3Share, 0) : '–'}
-        sub={n > 3 ? t('The 3 largest of {n}', { n: fmtInt(n) }) : n ? tp(n, 'Only one group', 'Only {n} groups') : undefined}
+        value={groupCount ? fmtPct(top3Share, 0) : '–'}
+        sub={groupCount > 3 ? t('The 3 largest of {n}', { n: fmtInt(groupCount) }) : groupCount ? tp(groupCount, 'Only one group', 'Only {n} groups') : undefined}
         hint={t('Share of all usage that comes from the three largest groups. A high share means a few groups decide the bill.')}
         calc="org-top3-share"
       />

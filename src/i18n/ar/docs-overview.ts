@@ -1,7 +1,7 @@
 import type { Dict } from '../core';
 
 /** Arabic for the Overview metric docs in `lib/metrics/docs/overview.ts`. */
-const ar: Dict = {
+const arabic: Dict = {
   // Users and rankings
   'Active users': 'المستخدمون النشطون',
   'The number of different people who used GitHub Copilot in the selected period.': 'عدد الأشخاص المختلفين الذين استخدموا GitHub Copilot في الفترة المحددة.',
@@ -180,4 +180,4 @@ const ar: Dict = {
     'توصية واحدة عالية وفي الشهر تجاوز مدفوع قدره $1,200. يعرض الشريط «يحتاج إلى اهتمام»، مع تجاوز مدفوع قدره $1,200 وإجراء واحد عالي الأولوية.',
 };
 
-export default ar;
+export default arabic;

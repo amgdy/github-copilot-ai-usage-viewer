@@ -31,8 +31,8 @@ const GROUPS: Omit<PlaybookGroup, 'entries'>[] = [
 ];
 
 /** Playbook habits by audience, with habits that have a measurable saving first. */
-export function playbookGroups(a: Analysis, perMonth: number, ctx: NoEffectContext): PlaybookGroup[] {
-  const standalone = new Map(a.plan.levers.steps.map((s) => [s.id, s.standalone * perMonth]));
+export function playbookGroups(analysis: Analysis, perMonth: number, context: NoEffectContext): PlaybookGroup[] {
+  const standalone = new Map(analysis.plan.levers.steps.map((step) => [step.id, step.standalone * perMonth]));
   const entries = PLAYBOOK.map((item): PlaybookEntry => {
     const lever = item.lever;
     if (!lever) return { item, saving: null, noEffect: null, shared: 0 };
@@ -41,15 +41,15 @@ export function playbookGroups(a: Analysis, perMonth: number, ctx: NoEffectConte
     return {
       item,
       saving,
-      noEffect: saving < MIN_EFFECT ? noEffectNote(lever, DEFAULT_LEVERS, ctx) : null,
-      shared: PLAYBOOK.filter((o) => o.lever === lever).length - 1,
+      noEffect: saving < MIN_EFFECT ? noEffectNote(lever, DEFAULT_LEVERS, context) : null,
+      shared: PLAYBOOK.filter((habit) => habit.lever === lever).length - 1,
     };
   });
   // Array.sort is stable, so habits with equal savings keep the order of the playbook.
-  return GROUPS.map((g) => ({
-    ...g,
-    entries: entries.filter((e) => e.item.audience === g.audience).sort((x, y) => (y.saving ?? -1) - (x.saving ?? -1)),
-  })).filter((g) => g.entries.length > 0);
+  return GROUPS.map((group) => ({
+    ...group,
+    entries: entries.filter((entry) => entry.item.audience === group.audience).sort((first, second) => (second.saving ?? -1) - (first.saving ?? -1)),
+  })).filter((group) => group.entries.length > 0);
 }
 
 export interface PlanItem {
@@ -84,14 +84,14 @@ export interface Plan {
 }
 
 /** The top actionable recommendations in the order of the list (largest impact first), three per phase. Empty phases are left out. */
-export function buildPlan(recs: Recommendation[]): Plan {
-  const actionable = recs.filter((r) => isActionable(r) && r.actions.length > 0);
+export function buildPlan(recommendations: Recommendation[]): Plan {
+  const actionable = recommendations.filter((recommendation) => isActionable(recommendation) && recommendation.actions.length > 0);
   const chosen = actionable.slice(0, PHASE_SIZE * PHASES.length);
-  const phases = PHASES.map((p, i) => ({
-    ...p,
-    items: chosen.slice(i * PHASE_SIZE, (i + 1) * PHASE_SIZE).map(
-      (rec): PlanItem => ({ rec, owners: rec.audience, value: recValue(rec), step: rec.actions[0] }),
+  const phases = PHASES.map((phase, index) => ({
+    ...phase,
+    items: chosen.slice(index * PHASE_SIZE, (index + 1) * PHASE_SIZE).map(
+      (recommendation): PlanItem => ({ rec: recommendation, owners: recommendation.audience, value: recValue(recommendation), step: recommendation.actions[0] }),
     ),
-  })).filter((p) => p.items.length > 0);
+  })).filter((phase) => phase.items.length > 0);
   return { phases, actionable: actionable.length, planned: chosen.length };
 }

@@ -37,34 +37,34 @@ export const SEVERITIES: Severity[] = ['critical', 'high', 'medium', 'low', 'inf
 const CONFIDENCE_RANK: Record<Confidence, number> = { high: 0, medium: 1, low: 2 };
 
 /** Findings that ask someone to do something (not "good news" or background information). */
-export const isActionable = (r: Recommendation): boolean => r.severity !== 'positive' && r.severity !== 'info';
+export const isActionable = (recommendation: Recommendation): boolean => recommendation.severity !== 'positive' && recommendation.severity !== 'info';
 
 export { recValue };
 
-export function hasActiveFilters(f: RecFilters): boolean {
-  return f.audience !== 'all' || f.themes.length > 0 || f.severities.length > 0 || f.query.trim() !== '' || f.hidePositive;
+export function hasActiveFilters(filters: RecFilters): boolean {
+  return filters.audience !== 'all' || filters.themes.length > 0 || filters.severities.length > 0 || filters.query.trim() !== '' || filters.hidePositive;
 }
 
 /** Resets every filter and keeps the chosen sort order. */
-export const clearFilters = (f: RecFilters): RecFilters => ({ ...DEFAULT_REC_FILTERS, sort: f.sort });
+export const clearFilters = (filters: RecFilters): RecFilters => ({ ...DEFAULT_REC_FILTERS, sort: filters.sort });
 
 /** Every word must appear somewhere in the title, summary, evidence or actions. */
-export function matchesQuery(r: Recommendation, query: string): boolean {
+export function matchesQuery(recommendation: Recommendation, query: string): boolean {
   const words = query.toLowerCase().split(/\s+/).filter(Boolean);
   if (words.length === 0) return true;
-  const text = [r.title, r.summary, ...r.evidence, ...r.actions].join('\n').toLowerCase();
-  return words.every((w) => text.includes(w));
+  const text = [recommendation.title, recommendation.summary, ...recommendation.evidence, ...recommendation.actions].join('\n').toLowerCase();
+  return words.every((word) => text.includes(word));
 }
 
 /** Applies the filters. `skip` leaves one chip group out, so its chips can show counts for the other filters. */
-export function applyFilters(recs: Recommendation[], f: RecFilters, skip?: 'themes' | 'severities'): Recommendation[] {
-  return recs.filter(
-    (r) =>
-      (f.audience === 'all' || r.audience.includes(f.audience)) &&
-      (skip === 'themes' || f.themes.length === 0 || f.themes.includes(r.theme)) &&
-      (skip === 'severities' || f.severities.length === 0 || f.severities.includes(r.severity)) &&
-      (!f.hidePositive || r.severity !== 'positive') &&
-      matchesQuery(r, f.query),
+export function applyFilters(recommendations: Recommendation[], filters: RecFilters, skip?: 'themes' | 'severities'): Recommendation[] {
+  return recommendations.filter(
+    (recommendation) =>
+      (filters.audience === 'all' || recommendation.audience.includes(filters.audience)) &&
+      (skip === 'themes' || filters.themes.length === 0 || filters.themes.includes(recommendation.theme)) &&
+      (skip === 'severities' || filters.severities.length === 0 || filters.severities.includes(recommendation.severity)) &&
+      (!filters.hidePositive || recommendation.severity !== 'positive') &&
+      matchesQuery(recommendation, filters.query),
   );
 }
 
@@ -77,12 +77,12 @@ const COMPARE: Record<SortKey, (a: Ranked, b: Ranked) => number> = {
 };
 
 /** Ties keep the order of the input, which is the engine's own priority order. */
-export function sortRecs(recs: Recommendation[], key: SortKey): Recommendation[] {
+export function sortRecs(recommendations: Recommendation[], key: SortKey): Recommendation[] {
   const compare = COMPARE[key];
-  return recs
-    .map((rec, index) => ({ rec, index }))
+  return recommendations
+    .map((recommendation, index) => ({ rec: recommendation, index }))
     .sort((a, b) => compare(a, b) || a.index - b.index)
-    .map((x) => x.rec);
+    .map((ranked) => ranked.rec);
 }
 
 export interface SeverityGroup {
@@ -90,13 +90,13 @@ export interface SeverityGroup {
   recs: Recommendation[];
 }
 
-export function groupBySeverity(recs: Recommendation[]): SeverityGroup[] {
-  return SEVERITIES.map((severity) => ({ severity, recs: recs.filter((r) => r.severity === severity) })).filter((g) => g.recs.length > 0);
+export function groupBySeverity(recommendations: Recommendation[]): SeverityGroup[] {
+  return SEVERITIES.map((severity) => ({ severity, recs: recommendations.filter((recommendation) => recommendation.severity === severity) })).filter((group) => group.recs.length > 0);
 }
 
-export function countBy<K extends string>(recs: Recommendation[], keys: readonly K[], pick: (r: Recommendation) => K): Record<K, number> {
-  const out = Object.fromEntries(keys.map((k) => [k, 0])) as Record<K, number>;
-  for (const r of recs) out[pick(r)] += 1;
+export function countBy<K extends string>(recommendations: Recommendation[], keys: readonly K[], pick: (recommendation: Recommendation) => K): Record<K, number> {
+  const out = Object.fromEntries(keys.map((key) => [key, 0])) as Record<K, number>;
+  for (const recommendation of recommendations) out[pick(recommendation)] += 1;
   return out;
 }
 
@@ -106,13 +106,13 @@ export interface FacetCounts {
 }
 
 /** Chip counts: each group is counted over the recommendations that pass every other filter. */
-export function facetCounts(recs: Recommendation[], f: RecFilters): FacetCounts {
+export function facetCounts(recommendations: Recommendation[], filters: RecFilters): FacetCounts {
   return {
-    severity: countBy(applyFilters(recs, f, 'severities'), SEVERITIES, (r) => r.severity),
-    theme: countBy(applyFilters(recs, f, 'themes'), THEMES, (r) => r.theme),
+    severity: countBy(applyFilters(recommendations, filters, 'severities'), SEVERITIES, (recommendation) => recommendation.severity),
+    theme: countBy(applyFilters(recommendations, filters, 'themes'), THEMES, (recommendation) => recommendation.theme),
   };
 }
 
 export function toggleIn<T>(list: T[], item: T): T[] {
-  return list.includes(item) ? list.filter((x) => x !== item) : [...list, item];
+  return list.includes(item) ? list.filter((existing) => existing !== item) : [...list, item];
 }

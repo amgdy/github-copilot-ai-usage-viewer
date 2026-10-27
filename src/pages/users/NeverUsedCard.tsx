@@ -13,18 +13,18 @@ function neverUsedColumns(): Column<SeatCandidate>[] {
     {
       key: 'user',
       header: t('User'),
-      value: (s) => s.name,
-      render: (s) => <span className="font-medium">{s.name}</span>,
+      value: (seat) => seat.name,
+      render: (seat) => <span className="font-medium">{seat.name}</span>,
     },
-    { key: 'plan', header: t('Plan'), value: (s) => seatPlanLabel(s.plan) },
+    { key: 'plan', header: t('Plan'), value: (seat) => seatPlanLabel(seat.plan) },
     {
       key: 'value',
       header: t('License cost per month'),
       calc: 'seat-unused',
-      value: (s) => s.value,
-      render: (s) => fmtUSD(s.value, 2),
+      value: (seat) => seat.value,
+      render: (seat) => fmtUSD(seat.value, 2),
       align: 'right',
-      total: (rows) => fmtUSD(rows.reduce((sum, s) => sum + s.value, 0), 2),
+      total: (rows) => fmtUSD(rows.reduce((sum, seat) => sum + seat.value, 0), 2),
     },
   ];
 }
@@ -90,7 +90,7 @@ export function NeverUsedCard() {
         <DataTable
           rows={unused}
           columns={columns}
-          rowKey={(s) => s.name}
+          rowKey={(seat) => seat.name}
           defaultSort={{ key: 'user', dir: 'asc' }}
           pageSize={10}
           searchable

@@ -57,11 +57,11 @@ interface ReportUser {
 /** Profiles merged by login, ignoring case, as the Licenses page does. */
 function byLogin(profiles: readonly UserProfile[]): Map<string, ReportUser> {
   const out = new Map<string, ReportUser>();
-  for (const p of profiles) {
-    const key = p.name.trim().toLowerCase();
+  for (const profile of profiles) {
+    const key = profile.name.trim().toLowerCase();
     const have = out.get(key);
-    if (have === undefined) out.set(key, { profile: p, usage: p.gross });
-    else have.usage += p.gross;
+    if (have === undefined) out.set(key, { profile: profile, usage: profile.gross });
+    else have.usage += profile.gross;
   }
   return out;
 }
@@ -72,10 +72,10 @@ export function seatCoverageByOrg(input: SeatCoverageInput): OrgSeatCoverage | n
   if (index === null) return null;
 
   const reportOrgs = new Map<string, string>();
-  for (const v of input.orgValues) {
-    if (v === '') continue;
-    const key = v.trim().toLowerCase();
-    if (!reportOrgs.has(key)) reportOrgs.set(key, v);
+  for (const org of input.orgValues) {
+    if (org === '') continue;
+    const key = org.trim().toLowerCase();
+    if (!reportOrgs.has(key)) reportOrgs.set(key, org);
   }
 
   const rows = new Map<string, OrgSeatRow>();

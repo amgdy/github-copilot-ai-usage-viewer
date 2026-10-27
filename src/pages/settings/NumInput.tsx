@@ -113,12 +113,12 @@ export function NumInput({
           aria-label={label}
           aria-invalid={error ? true : undefined}
           aria-describedby={message ? messageId : undefined}
-          onFocus={(e) => {
+          onFocus={(event) => {
             focused.current = true;
-            e.currentTarget.select();
+            event.currentTarget.select();
           }}
-          onChange={(e) => {
-            setText(e.target.value);
+          onChange={(event) => {
+            setText(event.target.value);
             setError(null);
             setNote(null);
           }}
@@ -126,11 +126,11 @@ export function NumInput({
             focused.current = false;
             commit();
           }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault();
               commit();
-            } else if (e.key === 'Escape') {
+            } else if (event.key === 'Escape') {
               setText(numText(value, digits));
               setError(null);
               setNote(null);

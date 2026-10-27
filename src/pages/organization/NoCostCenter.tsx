@@ -11,11 +11,11 @@ import { namedCount } from './dimensions';
 /** Active users that no cost center covers, or a hint on cost centers when the report has none. */
 export function NoCostCenter() {
   const { analysis, taxonomy } = useAnalysis();
-  const { users, agg, narrowed, coverage } = analysis;
-  const selectUser = useApp((s) => s.selectUser);
+  const { users, agg: aggregates, narrowed, coverage } = analysis;
+  const selectUser = useApp((state) => state.selectUser);
   const personas = useMemo(() => taxLookup(taxonomy.personas), [taxonomy]);
-  const missing = useMemo(() => (users.hasCostCenters ? users.profiles.filter((p) => p.costCenter === '') : []), [users]);
-  const totalGross = agg.totals.gross;
+  const missing = useMemo(() => (users.hasCostCenters ? users.profiles.filter((user) => user.costCenter === '') : []), [users]);
+  const totalGross = aggregates.totals.gross;
   const billing = coverage.billing;
 
   const columns = useMemo<Column<UserProfile>[]>(() => {
@@ -23,32 +23,32 @@ export function NoCostCenter() {
       {
         key: 'user',
         header: t('User'),
-        value: (p) => p.name,
-        render: (p) => (
-          <span className="block max-w-[28ch] truncate" title={p.name}>
-            {p.name}
+        value: (user) => user.name,
+        render: (user) => (
+          <span className="block max-w-[28ch] truncate" title={user.name}>
+            {user.name}
           </span>
         ),
       },
-      { key: 'persona', header: t('Persona'), calc: 'persona-groups', value: (p) => personas[p.persona]?.label ?? '', render: (p) => <TaxBadge item={personas[p.persona]} /> },
-      { key: 'usage', header: t('Usage'), calc: 'usage', align: 'end', value: (p) => p.gross, render: (p) => fmtUSD(p.gross) },
+      { key: 'persona', header: t('Persona'), calc: 'persona-groups', value: (user) => personas[user.persona]?.label ?? '', render: (user) => <TaxBadge item={personas[user.persona]} /> },
+      { key: 'usage', header: t('Usage'), calc: 'usage', align: 'end', value: (user) => user.gross, render: (user) => fmtUSD(user.gross) },
       {
         key: 'share',
         header: t('Share of usage'),
         calc: 'org-no-cost-center',
         align: 'end',
-        value: (p) => (totalGross > 0 ? p.gross / totalGross : null),
-        render: (p) => (totalGross > 0 ? fmtPct(p.gross / totalGross, 1) : '–'),
+        value: (user) => (totalGross > 0 ? user.gross / totalGross : null),
+        render: (user) => (totalGross > 0 ? fmtPct(user.gross / totalGross, 1) : '–'),
       },
     ];
     if (billing) {
-      cols.push({ key: 'billed', header: t('Billed'), hint: t('Billed on top of seats'), calc: 'billed', align: 'end', value: (p) => p.net, render: (p) => fmtUSD(p.net) });
+      cols.push({ key: 'billed', header: t('Billed'), hint: t('Billed on top of seats'), calc: 'billed', align: 'end', value: (user) => user.net, render: (user) => fmtUSD(user.net) });
     }
     return cols;
   }, [personas, totalGross, billing]);
 
   if (!users.hasCostCenters) {
-    if (namedCount(agg, 'costCenter') > 0) return null;
+    if (namedCount(aggregates, 'costCenter') > 0) return null;
     return (
       <Callout title={narrowed ? t('No cost centers in these rows') : t('No cost centers in this report')}>
         {t(
@@ -61,7 +61,7 @@ export function NoCostCenter() {
 
   if (missing.length === 0) return null;
 
-  const gross = missing.reduce((a, p) => a + p.gross, 0);
+  const gross = missing.reduce((total, user) => total + user.gross, 0);
   const users$ = tp(missing.length, '1 active user', '{n} active users');
 
   return (
@@ -88,7 +88,7 @@ export function NoCostCenter() {
         <DataTable
           rows={missing}
           columns={columns}
-          rowKey={(p) => p.id}
+          rowKey={(user) => user.id}
           defaultSort={{ key: 'usage', dir: 'desc' }}
           pageSize={10}
           dense
@@ -96,7 +96,7 @@ export function NoCostCenter() {
           searchable={missing.length > 10}
           searchPlaceholder={t('Search users…')}
           exportName="github-copilot-users-without-cost-center"
-          onRowClick={(p) => selectUser(p.id)}
+          onRowClick={(user) => selectUser(user.id)}
         />
         <DocLinks topic="costCenters" title={t('Learn more')} compact />
       </div>

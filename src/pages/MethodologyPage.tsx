@@ -18,10 +18,10 @@ const areaId = (area: string): string => `area-${area.toLowerCase().replace(/[^a
 function KindLegend() {
   return (
     <div className="grid gap-2 sm:grid-cols-3">
-      {BASES.map((b) => (
-        <div key={b} className="rounded-lg border border-border-muted bg-surface-2 px-3 py-2">
-          <Badge tone={BASIS_TONE[b]}>{t(BASIS_LABEL[b])}</Badge>
-          <p className="mt-1.5 text-xs text-fg-muted">{t(BASIS_HELP[b])}</p>
+      {BASES.map((basis) => (
+        <div key={basis} className="rounded-lg border border-border-muted bg-surface-2 px-3 py-2">
+          <Badge tone={BASIS_TONE[basis]}>{t(BASIS_LABEL[basis])}</Badge>
+          <p className="mt-1.5 text-xs text-fg-muted">{t(BASIS_HELP[basis])}</p>
         </div>
       ))}
     </div>
@@ -30,8 +30,8 @@ function KindLegend() {
 
 export default function MethodologyPage() {
   const target = useRouteArg();
-  const showCalc = useApp((s) => s.showCalc);
-  const setShowCalc = useApp((s) => s.setShowCalc);
+  const showCalc = useApp((state) => state.showCalc);
+  const setShowCalc = useApp((state) => state.setShowCalc);
   const [query, setQuery] = useState('');
   const [area, setArea] = useState<MetricArea | 'all'>('all');
   const [basis, setBasis] = useState<BasisFilter>('all');
@@ -50,15 +50,15 @@ export default function MethodologyPage() {
 
   const shown = useMemo(() => {
     let docs = searchMetrics(query);
-    if (area !== 'all') docs = docs.filter((d) => d.area === area);
-    if (basis !== 'all') docs = docs.filter((d) => d.basis === basis);
+    if (area !== 'all') docs = docs.filter((doc) => doc.area === area);
+    if (basis !== 'all') docs = docs.filter((doc) => doc.basis === basis);
     return docs;
   }, [query, area, basis]);
   const groups = useMemo(() => metricsByArea(shown), [shown]);
 
   const areaOptions = useMemo(() => {
-    const present = new Set(METRICS.map((m) => m.area));
-    return [{ value: 'all' as const, label: t('All areas') }, ...METRIC_AREAS.filter((a) => present.has(a)).map((a) => ({ value: a, label: t(a) }))];
+    const present = new Set(METRICS.map((doc) => doc.area));
+    return [{ value: 'all' as const, label: t('All areas') }, ...METRIC_AREAS.filter((metricArea) => present.has(metricArea)).map((metricArea) => ({ value: metricArea, label: t(metricArea) }))];
   }, []);
 
   const toggle = useCallback((id: string) => {
@@ -68,13 +68,13 @@ export default function MethodologyPage() {
       return next;
     });
   }, []);
-  const allOpen = shown.length > 0 && shown.every((d) => open.has(d.id));
-  const toggleAll = () => setOpen(allOpen ? new Set() : new Set(shown.map((d) => d.id)));
+  const allOpen = shown.length > 0 && shown.every((doc) => open.has(doc.id));
+  const toggleAll = () => setOpen(allOpen ? new Set() : new Set(shown.map((doc) => doc.id)));
 
   const counts = useMemo(() => {
-    const c: Record<MetricBasis, number> = { reported: 0, calculated: 0, estimated: 0 };
-    for (const m of METRICS) c[m.basis]++;
-    return c;
+    const countsByBasis: Record<MetricBasis, number> = { reported: 0, calculated: 0, estimated: 0 };
+    for (const doc of METRICS) countsByBasis[doc.basis]++;
+    return countsByBasis;
   }, []);
 
   return (
@@ -115,7 +115,7 @@ export default function MethodologyPage() {
             onChange={setBasis}
             options={[
               { value: 'all', label: t('All {n}', { n: METRICS.length }) },
-              ...BASES.map((b) => ({ value: b, label: `${t(BASIS_LABEL[b])} ${counts[b]}`, title: t(BASIS_HELP[b]) })),
+              ...BASES.map((metricBasis) => ({ value: metricBasis, label: `${t(BASIS_LABEL[metricBasis])} ${counts[metricBasis]}`, title: t(BASIS_HELP[metricBasis]) })),
             ]}
           />
           <button type="button" className="btn btn-sm ms-auto" onClick={toggleAll} disabled={shown.length === 0}>
@@ -129,14 +129,14 @@ export default function MethodologyPage() {
             <EmptyState title={t('Nothing matches')} description={t('Try fewer words, or set the area and the kind of number back to all.')} />
           </div>
         ) : (
-          groups.map((g) => (
-            <section key={g.area} aria-labelledby={areaId(g.area)}>
-              <h2 id={areaId(g.area)} className="mb-1.5 text-sm font-semibold">
-                {t(g.area)} <span className="num font-normal text-fg-subtle">({g.docs.length})</span>
+          groups.map((group) => (
+            <section key={group.area} aria-labelledby={areaId(group.area)}>
+              <h2 id={areaId(group.area)} className="mb-1.5 text-sm font-semibold">
+                {t(group.area)} <span className="num font-normal text-fg-subtle">({group.docs.length})</span>
               </h2>
               <ul className="space-y-1.5">
-                {g.docs.map((d) => (
-                  <MetricRow key={d.id} doc={d} open={open.has(d.id)} highlighted={d.id === target} onToggle={() => toggle(d.id)} />
+                {group.docs.map((doc) => (
+                  <MetricRow key={doc.id} doc={doc} open={open.has(doc.id)} highlighted={doc.id === target} onToggle={() => toggle(doc.id)} />
                 ))}
               </ul>
             </section>

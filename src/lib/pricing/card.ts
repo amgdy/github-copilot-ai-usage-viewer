@@ -32,7 +32,7 @@ export const CARD_SOURCE = 'https://docs.github.com/en/enterprise-cloud@latest/c
 export const CARD_SOURCE_MARKDOWN =
   'https://docs.github.com/api/article/body?pathname=/en/enterprise-cloud@latest/copilot/reference/copilot-billing/models-and-pricing';
 
-const r = (input: number, cachedInput: number, cacheWrite: number, output: number): Rates => ({
+const rates = (input: number, cachedInput: number, cacheWrite: number, output: number): Rates => ({
   input,
   cachedInput,
   cacheWrite,
@@ -42,40 +42,40 @@ const r = (input: number, cachedInput: number, cacheWrite: number, output: numbe
 /** Built-in GitHub Copilot model price card (USD per 1M tokens). Settings can override a model's rates or category without changing this card. */
 export const PRICE_CARD: CardEntry[] = [
   // OpenAI
-  { name: 'GPT-5.3-Codex', vendor: 'OpenAI', category: 'Powerful', base: r(1.75, 0.175, 0, 14) },
-  { name: 'GPT-5.4 nano', vendor: 'OpenAI', category: 'Lightweight', base: r(0.2, 0.02, 0, 1.25) },
-  { name: 'GPT-5.6 Luna', vendor: 'OpenAI', category: 'Lightweight', base: r(0.2, 0.02, 0.25, 1.2), long: r(0.4, 0.04, 0.5, 1.8), longThreshold: 200_000 },
-  { name: 'GPT-5.6 Sol', vendor: 'OpenAI', category: 'Powerful', base: r(4, 0.4, 5, 20), long: r(8, 0.8, 10, 30), longThreshold: 272_000 },
-  { name: 'GPT-5.6 Terra', vendor: 'OpenAI', category: 'Versatile', base: r(2, 0.2, 2.5, 12), long: r(4, 0.4, 5, 18), longThreshold: 272_000 },
-  { name: 'GPT-6 Astra', vendor: 'OpenAI', category: 'Powerful', base: r(10, 1, 12.5, 50), long: r(20, 2, 25, 75), longThreshold: 272_000 },
-  { name: 'GPT-6 Luna', vendor: 'OpenAI', category: 'Lightweight', base: r(0.1, 0.01, 0.125, 0.5), long: r(0.2, 0.02, 0.25, 0.75), longThreshold: 272_000 },
-  { name: 'GPT-6 Sol', vendor: 'OpenAI', category: 'Powerful', base: r(2, 0.2, 2.5, 10), long: r(4, 0.4, 5, 15), longThreshold: 272_000 },
-  { name: 'GPT-6.1 Sol', vendor: 'OpenAI', category: 'Powerful', base: r(2, 0.1, 2.5, 10), long: r(4, 0.2, 5, 15), longThreshold: 272_000 },
-  { name: 'GPT-6.1 Terra', vendor: 'OpenAI', category: 'Versatile', base: r(1, 0.05, 1.25, 5), long: r(2, 0.1, 2.5, 7.5), longThreshold: 272_000 },
+  { name: 'GPT-5.3-Codex', vendor: 'OpenAI', category: 'Powerful', base: rates(1.75, 0.175, 0, 14) },
+  { name: 'GPT-5.4 nano', vendor: 'OpenAI', category: 'Lightweight', base: rates(0.2, 0.02, 0, 1.25) },
+  { name: 'GPT-5.6 Luna', vendor: 'OpenAI', category: 'Lightweight', base: rates(0.2, 0.02, 0.25, 1.2), long: rates(0.4, 0.04, 0.5, 1.8), longThreshold: 200_000 },
+  { name: 'GPT-5.6 Sol', vendor: 'OpenAI', category: 'Powerful', base: rates(4, 0.4, 5, 20), long: rates(8, 0.8, 10, 30), longThreshold: 272_000 },
+  { name: 'GPT-5.6 Terra', vendor: 'OpenAI', category: 'Versatile', base: rates(2, 0.2, 2.5, 12), long: rates(4, 0.4, 5, 18), longThreshold: 272_000 },
+  { name: 'GPT-6 Astra', vendor: 'OpenAI', category: 'Powerful', base: rates(10, 1, 12.5, 50), long: rates(20, 2, 25, 75), longThreshold: 272_000 },
+  { name: 'GPT-6 Luna', vendor: 'OpenAI', category: 'Lightweight', base: rates(0.1, 0.01, 0.125, 0.5), long: rates(0.2, 0.02, 0.25, 0.75), longThreshold: 272_000 },
+  { name: 'GPT-6 Sol', vendor: 'OpenAI', category: 'Powerful', base: rates(2, 0.2, 2.5, 10), long: rates(4, 0.4, 5, 15), longThreshold: 272_000 },
+  { name: 'GPT-6.1 Sol', vendor: 'OpenAI', category: 'Powerful', base: rates(2, 0.1, 2.5, 10), long: rates(4, 0.2, 5, 15), longThreshold: 272_000 },
+  { name: 'GPT-6.1 Terra', vendor: 'OpenAI', category: 'Versatile', base: rates(1, 0.05, 1.25, 5), long: rates(2, 0.1, 2.5, 7.5), longThreshold: 272_000 },
   // Anthropic
-  { name: 'Claude Haiku 4.5', vendor: 'Anthropic', category: 'Versatile', base: r(1, 0.1, 1.25, 5) },
-  { name: 'Claude Haiku 5.5', vendor: 'Anthropic', category: 'Lightweight', base: r(0.1, 0.01, 0.125, 0.5), long: r(0.5, 0.05, 0.625, 2.5), longThreshold: 100_000 },
-  { name: 'Claude Sonnet 4', vendor: 'Anthropic', category: 'Versatile', base: r(3, 0.3, 3.75, 15) },
-  { name: 'Claude Sonnet 4.6', vendor: 'Anthropic', category: 'Versatile', base: r(3, 0.3, 3.75, 15) },
-  { name: 'Claude Sonnet 5', vendor: 'Anthropic', category: 'Versatile', base: r(2, 0.2, 2.5, 10) },
-  { name: 'Claude Sonnet 5.5', vendor: 'Anthropic', category: 'Versatile', base: r(2, 0.1, 2.5, 10) },
-  { name: 'Claude Opus 4.8', vendor: 'Anthropic', category: 'Powerful', base: r(5, 0.5, 6.25, 25) },
-  { name: 'Claude Opus 4.8 (fast mode) (preview)', vendor: 'Anthropic', category: 'Powerful', base: r(10, 1, 12.5, 50), note: msg('Preview') },
-  { name: 'Claude Opus 5', vendor: 'Anthropic', category: 'Powerful', base: r(5, 0.5, 6.25, 25) },
-  { name: 'Claude Opus 5.5', vendor: 'Anthropic', category: 'Powerful', base: r(4, 0.2, 5, 20) },
-  { name: 'Claude Fable 5', vendor: 'Anthropic', category: 'Powerful', base: r(10, 1, 12.5, 50) },
-  { name: 'Claude Fable 5.1', vendor: 'Anthropic', category: 'Powerful', base: r(10, 0.25, 12.5, 50) },
+  { name: 'Claude Haiku 4.5', vendor: 'Anthropic', category: 'Versatile', base: rates(1, 0.1, 1.25, 5) },
+  { name: 'Claude Haiku 5.5', vendor: 'Anthropic', category: 'Lightweight', base: rates(0.1, 0.01, 0.125, 0.5), long: rates(0.5, 0.05, 0.625, 2.5), longThreshold: 100_000 },
+  { name: 'Claude Sonnet 4', vendor: 'Anthropic', category: 'Versatile', base: rates(3, 0.3, 3.75, 15) },
+  { name: 'Claude Sonnet 4.6', vendor: 'Anthropic', category: 'Versatile', base: rates(3, 0.3, 3.75, 15) },
+  { name: 'Claude Sonnet 5', vendor: 'Anthropic', category: 'Versatile', base: rates(2, 0.2, 2.5, 10) },
+  { name: 'Claude Sonnet 5.5', vendor: 'Anthropic', category: 'Versatile', base: rates(2, 0.1, 2.5, 10) },
+  { name: 'Claude Opus 4.8', vendor: 'Anthropic', category: 'Powerful', base: rates(5, 0.5, 6.25, 25) },
+  { name: 'Claude Opus 4.8 (fast mode) (preview)', vendor: 'Anthropic', category: 'Powerful', base: rates(10, 1, 12.5, 50), note: msg('Preview') },
+  { name: 'Claude Opus 5', vendor: 'Anthropic', category: 'Powerful', base: rates(5, 0.5, 6.25, 25) },
+  { name: 'Claude Opus 5.5', vendor: 'Anthropic', category: 'Powerful', base: rates(4, 0.2, 5, 20) },
+  { name: 'Claude Fable 5', vendor: 'Anthropic', category: 'Powerful', base: rates(10, 1, 12.5, 50) },
+  { name: 'Claude Fable 5.1', vendor: 'Anthropic', category: 'Powerful', base: rates(10, 0.25, 12.5, 50) },
   // Google
-  { name: 'Gemini 3.8 Flash', vendor: 'Google', category: 'Versatile', base: r(0.75, 0.075, 0, 3.75), note: msg('Promotional price until 2026-12-31') },
-  { name: 'Gemini 4 Argon', vendor: 'Google', category: 'Powerful', base: r(2, 0.1, 0, 10), note: msg('Promotional price until 2026-12-01') },
+  { name: 'Gemini 3.8 Flash', vendor: 'Google', category: 'Versatile', base: rates(0.75, 0.075, 0, 3.75), note: msg('Promotional price until 2026-12-31') },
+  { name: 'Gemini 4 Argon', vendor: 'Google', category: 'Powerful', base: rates(2, 0.1, 0, 10), note: msg('Promotional price until 2026-12-01') },
   // Microsoft
-  { name: 'MAI-Code-1.1-Flash', vendor: 'Microsoft', category: 'Lightweight', base: r(0.2, 0.02, 0, 1.2) },
+  { name: 'MAI-Code-1.1-Flash', vendor: 'Microsoft', category: 'Lightweight', base: rates(0.2, 0.02, 0, 1.2) },
   // xAI
-  { name: 'Grok 4.5', vendor: 'xAI', category: 'Versatile', base: r(2, 0.5, 0, 6), long: r(4, 1, 0, 12), longThreshold: 200_000 },
-  { name: 'Grok 4.6', vendor: 'xAI', category: 'Versatile', base: r(2, 0.5, 0, 6), long: r(4, 1, 0, 12), longThreshold: 200_000 },
-  { name: 'Grok 4.7', vendor: 'xAI', category: 'Versatile', base: r(2, 0.5, 0, 6), long: r(4, 1, 0, 12), longThreshold: 200_000 },
+  { name: 'Grok 4.5', vendor: 'xAI', category: 'Versatile', base: rates(2, 0.5, 0, 6), long: rates(4, 1, 0, 12), longThreshold: 200_000 },
+  { name: 'Grok 4.6', vendor: 'xAI', category: 'Versatile', base: rates(2, 0.5, 0, 6), long: rates(4, 1, 0, 12), longThreshold: 200_000 },
+  { name: 'Grok 4.7', vendor: 'xAI', category: 'Versatile', base: rates(2, 0.5, 0, 6), long: rates(4, 1, 0, 12), longThreshold: 200_000 },
   // Moonshot
-  { name: 'Kimi K3', vendor: 'Moonshot', category: 'Powerful', base: r(3, 0.3, 0, 15) },
+  { name: 'Kimi K3', vendor: 'Moonshot', category: 'Powerful', base: rates(3, 0.3, 0, 15) },
 ];
 
 /** Lookup key for a model name: lower case, vendor words and spaces removed ("Claude Opus 4.8" and "opus 4.8" match). */
@@ -93,21 +93,21 @@ export function cardKey(name: string): string {
  */
 export function makeCardLookup<T extends { name: string }>(entries: readonly T[]): (name: string) => T | undefined {
   const index = new Map<string, T>();
-  for (const e of entries) index.set(cardKey(e.name), e);
-  for (const e of entries) {
-    const k = cardKey(e.name).replace(/\(preview\)$/, '');
-    if (!index.has(k)) index.set(k, e);
+  for (const entry of entries) index.set(cardKey(entry.name), entry);
+  for (const entry of entries) {
+    const keyWithoutPreview = cardKey(entry.name).replace(/\(preview\)$/, '');
+    if (!index.has(keyWithoutPreview)) index.set(keyWithoutPreview, entry);
   }
   return (name: string) => {
-    let k = cardKey(name);
-    const hit = index.get(k);
+    let key = cardKey(name);
+    const hit = index.get(key);
     if (hit) return hit;
     for (;;) {
-      const m = /\(([^)]*)\)$/.exec(k);
-      if (!m || m[1].includes('fast')) return undefined;
-      k = k.slice(0, m.index);
-      const h = index.get(k);
-      if (h) return h;
+      const match = /\(([^)]*)\)$/.exec(key);
+      if (!match || match[1].includes('fast')) return undefined;
+      key = key.slice(0, match.index);
+      const found = index.get(key);
+      if (found) return found;
     }
   };
 }

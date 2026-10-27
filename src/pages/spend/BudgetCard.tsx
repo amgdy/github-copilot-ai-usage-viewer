@@ -35,24 +35,24 @@ function BudgetNote() {
   );
 }
 
-function verdict(b: BudgetStatus, m: MonthPool, projected: number | null, projectedBurn: number | null): string {
-  const budget = fmtUSD(b.monthlyBudget, 0);
-  const month = b.month;
-  if (b.burn >= 1) {
-    const billed = fmtUSD(b.billedToDate, 2);
-    return m.complete
+function verdict(status: BudgetStatus, monthPool: MonthPool, projected: number | null, projectedBurn: number | null): string {
+  const budget = fmtUSD(status.monthlyBudget, 0);
+  const month = status.month;
+  if (status.burn >= 1) {
+    const billed = fmtUSD(status.billedToDate, 2);
+    return monthPool.complete
       ? t('The {budget} budget for {month} was used up. {billed} was billed on top of seats.', { budget, month, billed })
       : t('The {budget} budget for {month} is used up. {billed} has been billed on top of seats.', { budget, month, billed });
   }
-  if (m.complete) {
+  if (monthPool.complete) {
     return t('{month} is complete. {billed} was billed on top of seats, {share} of the {budget} budget.', {
       month,
-      billed: fmtUSD(b.billedToDate, 2),
-      share: fmtBudgetPct(b.burn),
+      billed: fmtUSD(status.billedToDate, 2),
+      share: fmtBudgetPct(status.burn),
       budget,
     });
   }
-  if (b.hitDate !== null) return t('At the current pace, the budget is used up on {date}.', { date: fmtDay(b.hitDate, true) });
+  if (status.hitDate !== null) return t('At the current pace, the budget is used up on {date}.', { date: fmtDay(status.hitDate, true) });
   if (projected !== null && projectedBurn !== null) {
     return projectedBurn >= 1
       ? t('Billed usage is projected to reach about {amount} by the end of {month}, above the budget.', { amount: fmtUSD(projected, 0), month })
@@ -62,24 +62,24 @@ function verdict(b: BudgetStatus, m: MonthPool, projected: number | null, projec
           share: fmtBudgetPct(projectedBurn),
         });
   }
-  return t('{billed} has been billed so far, {share} of the budget. A projection needs the pool size.', { billed: fmtUSD(b.billedToDate, 2), share: fmtBudgetPct(b.burn) });
+  return t('{billed} has been billed so far, {share} of the budget. A projection needs the pool size.', { billed: fmtUSD(status.billedToDate, 2), share: fmtBudgetPct(status.burn) });
 }
 
-function BudgetProgress({ b, m }: { b: BudgetStatus; m: MonthPool }) {
+function BudgetProgress({ b: status, m: monthPool }: { b: BudgetStatus; m: MonthPool }) {
   const { analysis } = useAnalysis();
   const { range } = analysis;
-  const known = billedProjectionKnown(m, false);
-  const projected = known ? b.projectedBilled : null;
-  const projectedBurn = known ? b.projectedBurn : null;
-  const tone = budgetTone(b.burn, projectedBurn);
-  const rangeCutsMonth = range.start > m.monthStart || (m.complete && range.end < m.monthEnd);
-  const over = b.billedToDate > b.monthlyBudget;
-  const month = b.month;
+  const known = billedProjectionKnown(monthPool, false);
+  const projected = known ? status.projectedBilled : null;
+  const projectedBurn = known ? status.projectedBurn : null;
+  const tone = budgetTone(status.burn, projectedBurn);
+  const rangeCutsMonth = range.start > monthPool.monthStart || (monthPool.complete && range.end < monthPool.monthEnd);
+  const over = status.billedToDate > status.monthlyBudget;
+  const month = status.month;
 
   return (
     <div className="space-y-4">
       <ProgressBar
-        value={b.burn}
+        value={status.burn}
         ghost={projectedBurn ?? undefined}
         tone={tone}
         height={10}
@@ -87,23 +87,23 @@ function BudgetProgress({ b, m }: { b: BudgetStatus; m: MonthPool }) {
       />
       <dl className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
         <Stat
-          label={m.complete ? t('Billed in {month}', { month }) : t('Billed so far')}
+          label={monthPool.complete ? t('Billed in {month}', { month }) : t('Billed so far')}
           calc="billed"
-          value={fmtUSD(b.billedToDate, 2)}
-          sub={m.complete ? t('On top of seats') : t('{month}, through {date}', { month, date: fmtDay(m.lastDay) })}
+          value={fmtUSD(status.billedToDate, 2)}
+          sub={monthPool.complete ? t('On top of seats') : t('{month}, through {date}', { month, date: fmtDay(monthPool.lastDay) })}
         />
         <Stat
           label={t('Budget used')}
           calc="budget-used"
-          value={fmtBudgetPct(b.burn)}
-          tone={b.burn >= 0.8 ? tone : undefined}
-          sub={t('Of {amount} a month', { amount: fmtUSD(b.monthlyBudget, 0) })}
+          value={fmtBudgetPct(status.burn)}
+          tone={status.burn >= 0.8 ? tone : undefined}
+          sub={t('Of {amount} a month', { amount: fmtUSD(status.monthlyBudget, 0) })}
         />
-        {m.complete ? (
+        {monthPool.complete ? (
           <Stat
             label={over ? t('Over budget by') : t('Budget left')}
             calc="budget-used"
-            value={fmtUSD(Math.abs(b.monthlyBudget - b.billedToDate), 2)}
+            value={fmtUSD(Math.abs(status.monthlyBudget - status.billedToDate), 2)}
             tone={over ? 'bad' : undefined}
           />
         ) : (
@@ -118,15 +118,15 @@ function BudgetProgress({ b, m }: { b: BudgetStatus; m: MonthPool }) {
             <Stat
               label={t('Budget used up on')}
               calc="budget-hit-date"
-              value={b.burn >= 1 ? t('Reached') : b.hitDate !== null ? fmtDay(b.hitDate, true) : '–'}
-              tone={b.burn >= 1 || b.hitDate !== null ? 'bad' : undefined}
-              sub={b.burn >= 1 ? undefined : b.hitDate !== null ? t('At the current pace') : projected !== null ? t('Not expected this month') : t('Not known')}
+              value={status.burn >= 1 ? t('Reached') : status.hitDate !== null ? fmtDay(status.hitDate, true) : '–'}
+              tone={status.burn >= 1 || status.hitDate !== null ? 'bad' : undefined}
+              sub={status.burn >= 1 ? undefined : status.hitDate !== null ? t('At the current pace') : projected !== null ? t('Not expected this month') : t('Not known')}
             />
           </>
         )}
       </dl>
-      <p className="text-sm text-fg">{verdict(b, m, projected, projectedBurn)}</p>
-      {projectedBurn !== null && projectedBurn > b.burn ? <p className="text-xs text-fg-subtle">{t('The lighter part of the bar is the amount projected for the rest of the month.')}</p> : null}
+      <p className="text-sm text-fg">{verdict(status, monthPool, projected, projectedBurn)}</p>
+      {projectedBurn !== null && projectedBurn > status.burn ? <p className="text-xs text-fg-subtle">{t('The lighter part of the bar is the amount projected for the rest of the month.')}</p> : null}
       {rangeCutsMonth ? (
         <p className="text-xs text-fg-subtle">{t('The selected date range covers only part of {month}, so the billed amount is lower than the whole month.', { month })}</p>
       ) : null}

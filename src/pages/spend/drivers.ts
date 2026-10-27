@@ -39,32 +39,32 @@ export function filterPatch(driver: Driver, value: string): Partial<Filters> {
 }
 
 /** Every product, SKU, model tier or vendor with usage, largest first by the chosen metric. */
-export function driverRows(driver: Driver, metric: DriverMetric, agg: Aggregates, store: DataStore, models: ModelTable): DriverRow[] {
-  let m: Measures;
-  let name: (i: number) => string;
-  let filter: (i: number) => string;
-  let color: ((i: number) => string | undefined) | undefined;
+export function driverRows(driver: Driver, metric: DriverMetric, aggregates: Aggregates, store: DataStore, models: ModelTable): DriverRow[] {
+  let measures: Measures;
+  let name: (index: number) => string;
+  let filter: (index: number) => string;
+  let color: ((index: number) => string | undefined) | undefined;
   if (driver === 'product' || driver === 'sku') {
-    m = agg[driver];
-    name = (i) => labelOf(driver, store.dicts[driver].values[i]);
-    filter = (i) => store.dicts[driver].values[i];
+    measures = aggregates[driver];
+    name = (index) => labelOf(driver, store.dicts[driver].values[index]);
+    filter = (index) => store.dicts[driver].values[index];
   } else if (driver === 'tier') {
-    m = rollupByCategory(models, agg.model);
-    name = (i) => t(CATEGORIES[i]);
-    filter = (i) => CATEGORIES[i];
-    color = (i) => CATEGORY_COLORS[CATEGORIES[i] as Category];
+    measures = rollupByCategory(models, aggregates.model);
+    name = (index) => t(CATEGORIES[index]);
+    filter = (index) => CATEGORIES[index];
+    color = (index) => CATEGORY_COLORS[CATEGORIES[index] as Category];
   } else {
-    m = rollupByVendor(models, agg.model);
-    name = (i) => (VENDORS[i] === 'Other' ? t('Other') : VENDORS[i]);
-    filter = (i) => VENDORS[i];
+    measures = rollupByVendor(models, aggregates.model);
+    name = (index) => (VENDORS[index] === 'Other' ? t('Other') : VENDORS[index]);
+    filter = (index) => VENDORS[index];
   }
   const rows: DriverRow[] = [];
-  for (let i = 0; i < m.gross.length; i++) {
-    if (!(m.gross[i] > 0 || m.net[i] > 0)) continue;
-    rows.push({ name: name(i), filter: filter(i), gross: m.gross[i], covered: m.discount[i], billed: m.net[i], color: color?.(i) });
+  for (let i = 0; i < measures.gross.length; i++) {
+    if (!(measures.gross[i] > 0 || measures.net[i] > 0)) continue;
+    rows.push({ name: name(i), filter: filter(i), gross: measures.gross[i], covered: measures.discount[i], billed: measures.net[i], color: color?.(i) });
   }
   const key = metric === 'gross' ? 'gross' : 'billed';
-  return rows.filter((r) => r[key] > 0.005).sort((a, b) => b[key] - a[key]);
+  return rows.filter((row) => row[key] > 0.005).sort((a, b) => b[key] - a[key]);
 }
 
 /** Keeps the largest rows and folds the rest into one "Other" row. */
@@ -72,9 +72,9 @@ export function withOther(rows: DriverRow[], keep: number): DriverRow[] {
   if (rows.length <= keep + 1) return rows;
   const head = rows.slice(0, keep);
   const rest = rows.slice(keep);
-  const sum = (f: (r: DriverRow) => number) => rest.reduce((a, r) => a + f(r), 0);
+  const sum = (getValue: (row: DriverRow) => number) => rest.reduce((total, row) => total + getValue(row), 0);
   return [
     ...head,
-    { name: t('Other ({n})', { n: fmtInt(rest.length) }), filter: null, gross: sum((r) => r.gross), covered: sum((r) => r.covered), billed: sum((r) => r.billed) },
+    { name: t('Other ({n})', { n: fmtInt(rest.length) }), filter: null, gross: sum((row) => row.gross), covered: sum((row) => row.covered), billed: sum((row) => row.billed) },
   ];
 }

@@ -34,14 +34,14 @@ interface ReportUser {
 }
 
 function populationOf(users: ReportUser[], inactive: InactiveSeat[], fallback: number): UserSet {
-  const profiles = users.map((u, i) => ({
-    id: i + 1,
-    name: u.name,
-    org: u.org ?? 'acme',
-    plan: u.plan ?? 'Business',
-    quotaCredits: u.quota ?? 1900,
-    gross: u.gross ?? 5,
-    lastDay: dayNum(u.lastDay ?? AS_OF),
+  const profiles = users.map((user, index) => ({
+    id: index + 1,
+    name: user.name,
+    org: user.org ?? 'acme',
+    plan: user.plan ?? 'Business',
+    quotaCredits: user.quota ?? 1900,
+    gross: user.gross ?? 5,
+    lastDay: dayNum(user.lastDay ?? AS_OF),
   }));
   return { profiles, inactive, fallbackQuotaCredits: fallback } as unknown as UserSet;
 }
@@ -58,37 +58,37 @@ interface ReportOptions {
   inactive?: string[];
 }
 
-function reportOf(roster: RosterEntry[], users: ReportUser[] = [], opts: ReportOptions = {}): LicenseReport {
-  const names = new Set(users.map((u) => u.name.trim().toLowerCase()));
+function reportOf(roster: RosterEntry[], users: ReportUser[] = [], options: ReportOptions = {}): LicenseReport {
+  const names = new Set(users.map((user) => user.name.trim().toLowerCase()));
   const inactive: InactiveSeat[] =
-    opts.inactive !== undefined
-      ? opts.inactive.map((user) => ({ user, plan: null }))
-      : roster.filter((r) => !names.has(r.user.trim().toLowerCase())).map((r) => ({ user: r.user, plan: r.plan ?? null }));
-  const asOf = opts.asOf === undefined ? AS_OF : opts.asOf === null ? undefined : opts.asOf;
+    options.inactive !== undefined
+      ? options.inactive.map((user) => ({ user, plan: null }))
+      : roster.filter((entry) => !names.has(entry.user.trim().toLowerCase())).map((entry) => ({ user: entry.user, plan: entry.plan ?? null }));
+  const asOf = options.asOf === undefined ? AS_OF : options.asOf === null ? undefined : options.asOf;
   const report = buildLicenseReport(
-    populationOf(users, inactive, opts.fallback ?? 1900),
-    { roster, rosterAsOf: asOf, newUserDays: opts.newUserDays ?? 14 },
-    { maxDay: dayNum(opts.maxDay ?? AS_OF) },
-    opts.scoped,
+    populationOf(users, inactive, options.fallback ?? 1900),
+    { roster, rosterAsOf: asOf, newUserDays: options.newUserDays ?? 14 },
+    { maxDay: dayNum(options.maxDay ?? AS_OF) },
+    options.scoped,
   );
   if (report === null) throw new Error('the roster has no usable seat');
   return report;
 }
 
-const loginsOf = (list: LicenseFinding[]): string[] => list.map((f) => f.login);
-const sum = (xs: number[]): number => xs.reduce((a, b) => a + b, 0);
+const loginsOf = (list: LicenseFinding[]): string[] => list.map((finding) => finding.login);
+const sum = (values: number[]): number => values.reduce((a, b) => a + b, 0);
 
 function must<T>(value: T | null | undefined): T {
   if (value === null || value === undefined) throw new Error('expected a value');
   return value;
 }
 
-function bestMs(runs: number, fn: () => void): number {
+function bestMs(runs: number, task: () => void): number {
   let best = Infinity;
   for (let i = 0; i < runs; i++) {
-    const t0 = performance.now();
-    fn();
-    best = Math.min(best, performance.now() - t0);
+    const startMs = performance.now();
+    task();
+    best = Math.min(best, performance.now() - startMs);
   }
   return best;
 }
@@ -101,63 +101,63 @@ describe('license report: the activity thresholds', () => {
   });
 
   it('sorts seats that are not in the report by the days since their last activity (29, 30, 31 and 89, 90, 91)', () => {
-    const ks = [0, 1, RECENT_DAYS - 1, RECENT_DAYS, RECENT_DAYS + 1, RECLAIM_DAYS - 1, RECLAIM_DAYS, RECLAIM_DAYS + 1, 365];
-    const r = reportOf(ks.map((k) => seat(`seat-${k}`, { lastActivityAt: ago(k) })));
-    expect(r.quiet.map((f) => f.daysSinceActivity)).toEqual([0, 1, 29]);
-    expect(r.fading.map((f) => f.daysSinceActivity)).toEqual([89, 31, 30]);
-    expect(r.reclaim.map((f) => f.daysSinceActivity)).toEqual([365, 91, 90]);
-    expect(r.reclaim.every((f) => f.reason === 'stale')).toBe(true);
-    expect(loginsOf(r.reclaim)).toEqual(['seat-365', 'seat-91', 'seat-90']);
-    expect(r.byStatus).toEqual({ recent: 3, fading: 3, stale: 3, 'no-date': 0, unknown: 0 });
-    expect(r.seats).toBe(9);
+    const daysAgoValues = [0, 1, RECENT_DAYS - 1, RECENT_DAYS, RECENT_DAYS + 1, RECLAIM_DAYS - 1, RECLAIM_DAYS, RECLAIM_DAYS + 1, 365];
+    const report = reportOf(daysAgoValues.map((daysAgo) => seat(`seat-${daysAgo}`, { lastActivityAt: ago(daysAgo) })));
+    expect(report.quiet.map((finding) => finding.daysSinceActivity)).toEqual([0, 1, 29]);
+    expect(report.fading.map((finding) => finding.daysSinceActivity)).toEqual([89, 31, 30]);
+    expect(report.reclaim.map((finding) => finding.daysSinceActivity)).toEqual([365, 91, 90]);
+    expect(report.reclaim.every((finding) => finding.reason === 'stale')).toBe(true);
+    expect(loginsOf(report.reclaim)).toEqual(['seat-365', 'seat-91', 'seat-90']);
+    expect(report.byStatus).toEqual({ recent: 3, fading: 3, stale: 3, 'no-date': 0, unknown: 0 });
+    expect(report.seats).toBe(9);
   });
 
   it('counts a seat with activity after the export date as active today', () => {
-    const r = reportOf([seat('future', { lastActivityAt: addDays(AS_OF, 5) })]);
-    expect(r.quiet).toHaveLength(1);
-    expect(r.quiet[0].daysSinceActivity).toBe(0);
+    const report = reportOf([seat('future', { lastActivityAt: addDays(AS_OF, 5) })]);
+    expect(report.quiet).toHaveLength(1);
+    expect(report.quiet[0].daysSinceActivity).toBe(0);
   });
 
   it('treats a blank activity date as uncertain and never as proof that a seat was unused', () => {
-    const r = reportOf([
+    const report = reportOf([
       seat('signed-in', { lastAuthenticatedAt: ago(5) }),
       seat('no-sign-in'),
       seat('csv-no-sign-in', { source: 'activity' }),
       seat('csv-signed-in', { source: 'activity', lastAuthenticatedAt: ago(40) }),
       seat('plain', { source: undefined }),
     ]);
-    expect(r.reclaim).toEqual([]);
-    expect(loginsOf(r.noActivityDate)).toEqual(['csv-no-sign-in', 'csv-signed-in', 'no-sign-in', 'signed-in']);
-    expect(r.noActivityDate.every((f) => f.daysSinceActivity === null && f.lastActivityAt === '')).toBe(true);
-    expect(r.byStatus).toEqual({ recent: 0, fading: 0, stale: 0, 'no-date': 4, unknown: 1 });
+    expect(report.reclaim).toEqual([]);
+    expect(loginsOf(report.noActivityDate)).toEqual(['csv-no-sign-in', 'csv-signed-in', 'no-sign-in', 'signed-in']);
+    expect(report.noActivityDate.every((finding) => finding.daysSinceActivity === null && finding.lastActivityAt === '')).toBe(true);
+    expect(report.byStatus).toEqual({ recent: 0, fading: 0, stale: 0, 'no-date': 4, unknown: 1 });
   });
 
   it('judges nothing for a plain list of logins: no activity data means every seat is unknown and no list is filled', () => {
-    const r = reportOf([{ user: 'a', plan: 'Business' }, { user: 'b' }, { user: 'c', plan: 'Enterprise' }]);
-    expect(r).toMatchObject({ hasActivity: false, asOf: AS_OF, asOfSource: 'settings', seats: 3 });
-    expect(r.byStatus).toEqual({ recent: 0, fading: 0, stale: 0, 'no-date': 0, unknown: 3 });
-    expect([r.reclaim, r.fading, r.quiet, r.pending, r.newSeats].every((list) => list.length === 0)).toBe(true);
+    const report = reportOf([{ user: 'a', plan: 'Business' }, { user: 'b' }, { user: 'c', plan: 'Enterprise' }]);
+    expect(report).toMatchObject({ hasActivity: false, asOf: AS_OF, asOfSource: 'settings', seats: 3 });
+    expect(report.byStatus).toEqual({ recent: 0, fading: 0, stale: 0, 'no-date': 0, unknown: 3 });
+    expect([report.reclaim, report.fading, report.quiet, report.pending, report.newSeats].every((list) => list.length === 0)).toBe(true);
     const undated = reportOf([{ user: 'a' }, { user: 'b' }], [], { asOf: null });
     expect(undated).toMatchObject({ hasActivity: false, asOf: null, asOfSource: null, asOfBehindReport: null, seats: 2 });
     expect(undated.byStatus.unknown).toBe(2);
   });
 
   it('lists a seat with a scheduled cancellation as pending only, but still counts it', () => {
-    const r = reportOf([
+    const report = reportOf([
       seat('p-stale', { lastActivityAt: ago(200), pendingCancellation: '2026-06-15' }),
       seat('p-fading', { lastActivityAt: ago(45), pendingCancellation: '2026-06-10' }),
       seat('p-quiet', { lastActivityAt: ago(2), pendingCancellation: '2026-06-20' }),
       seat('p-never', { pendingCancellation: '2026-06-12' }),
       seat('ok', { lastActivityAt: ago(1) }),
     ]);
-    expect(loginsOf(r.pending)).toEqual(['p-fading', 'p-never', 'p-stale', 'p-quiet']);
-    expect(r.pending[0].pendingCancellation).toBe('2026-06-10');
-    expect(r.reclaim).toEqual([]);
-    expect(r.fading).toEqual([]);
-    expect(loginsOf(r.quiet)).toEqual(['ok']);
-    expect(r.seats).toBe(5);
-    expect(r.byStatus).toEqual({ recent: 2, fading: 1, stale: 1, 'no-date': 1, unknown: 0 });
-    expect(r.reclaimValue).toBe(0);
+    expect(loginsOf(report.pending)).toEqual(['p-fading', 'p-never', 'p-stale', 'p-quiet']);
+    expect(report.pending[0].pendingCancellation).toBe('2026-06-10');
+    expect(report.reclaim).toEqual([]);
+    expect(report.fading).toEqual([]);
+    expect(loginsOf(report.quiet)).toEqual(['ok']);
+    expect(report.seats).toBe(5);
+    expect(report.byStatus).toEqual({ recent: 2, fading: 1, stale: 1, 'no-date': 1, unknown: 0 });
+    expect(report.reclaimValue).toBe(0);
   });
 
   it('lists seats created fewer than newUserDays before the export date as new, and never asks to reclaim them', () => {
@@ -169,13 +169,13 @@ describe('license report: the activity thresholds', () => {
       seat('old-never', { createdAt: ago(100) }),
       seat('no-date'),
     ];
-    const r = reportOf(roster);
-    expect(loginsOf(r.newSeats)).toEqual(['n0', 'np', 'n13']);
-    expect(loginsOf(r.reclaim)).toEqual([]);
-    expect(loginsOf(r.noActivityDate)).toEqual(['n13', 'n14', 'no-date', 'np', 'old-never']);
-    expect(loginsOf(r.pending)).toEqual(['np']);
-    expect(loginsOf(r.quiet)).toEqual(['n0']);
-    expect(r.newSeats[0].createdAt).toBe(AS_OF);
+    const report = reportOf(roster);
+    expect(loginsOf(report.newSeats)).toEqual(['n0', 'np', 'n13']);
+    expect(loginsOf(report.reclaim)).toEqual([]);
+    expect(loginsOf(report.noActivityDate)).toEqual(['n13', 'n14', 'no-date', 'np', 'old-never']);
+    expect(loginsOf(report.pending)).toEqual(['np']);
+    expect(loginsOf(report.quiet)).toEqual(['n0']);
+    expect(report.newSeats[0].createdAt).toBe(AS_OF);
     const wide = reportOf(roster, [], { newUserDays: 30 });
     expect(loginsOf(wide.newSeats)).toEqual(['n0', 'np', 'n13', 'n14']);
     expect(loginsOf(wide.reclaim)).toEqual([]);
@@ -185,9 +185,9 @@ describe('license report: the activity thresholds', () => {
 
 describe('license report: the as-of date', () => {
   it('is the stored export date when there is one', () => {
-    const r = reportOf([seat('a', { lastActivityAt: '2026-05-01' })], [], { asOf: '2026-05-20' });
-    expect(r).toMatchObject({ asOf: '2026-05-20', asOfSource: 'settings' });
-    expect(r.quiet[0].daysSinceActivity).toBe(19);
+    const report = reportOf([seat('a', { lastActivityAt: '2026-05-01' })], [], { asOf: '2026-05-20' });
+    expect(report).toMatchObject({ asOf: '2026-05-20', asOfSource: 'settings' });
+    expect(report.quiet[0].daysSinceActivity).toBe(19);
   });
 
   it('is the latest date inside the roster when the export date is missing or not a real day', () => {
@@ -227,10 +227,10 @@ describe('license report: matching and totals', () => {
       { name: 'stranger-a', gross: 5, org: 'beta', plan: 'Enterprise' },
       { name: 'stranger-b', gross: 50 },
     ];
-    const r = reportOf(roster, users);
-    expect(r).toMatchObject({ seats: 4, reportUsers: 5, matched: 3, neverSeen: 1, seenOutsideScope: 0, matchedUsage: 60, unmatchedUsage: 55 });
-    expect(r.coverage).toBeCloseTo(3 / 5, 12);
-    expect(r.unmatched).toEqual([
+    const report = reportOf(roster, users);
+    expect(report).toMatchObject({ seats: 4, reportUsers: 5, matched: 3, neverSeen: 1, seenOutsideScope: 0, matchedUsage: 60, unmatchedUsage: 55 });
+    expect(report.coverage).toBeCloseTo(3 / 5, 12);
+    expect(report.unmatched).toEqual([
       { name: 'stranger-b', org: 'acme', plan: 'Business', usage: 50 },
       { name: 'stranger-a', org: 'beta', plan: 'Enterprise', usage: 5 },
     ]);
@@ -238,28 +238,28 @@ describe('license report: matching and totals', () => {
 
   it('lists the report users without a seat by usage, biggest first, then by name', () => {
     const users: ReportUser[] = [{ name: 'zed', gross: 5 }, { name: 'amy', gross: 5 }, { name: 'big', gross: 90 }, { name: 'small', gross: 0 }, { name: 'seat', gross: 1 }];
-    const r = reportOf([seat('seat')], users);
-    expect(r.unmatched.map((u) => u.name)).toEqual(['big', 'amy', 'zed', 'small']);
-    expect(r.unmatchedUsage).toBe(100);
+    const report = reportOf([seat('seat')], users);
+    expect(report.unmatched.map((user) => user.name)).toEqual(['big', 'amy', 'zed', 'small']);
+    expect(report.unmatchedUsage).toBe(100);
   });
 
   it('counts a report user whose login appears in two spellings once, with the usage added', () => {
-    const r = reportOf([seat('ana', { lastActivityAt: ago(2) })], [{ name: 'Ana', gross: 4 }, { name: 'ana', gross: 6 }, { name: 'other', gross: 1 }]);
-    expect(r).toMatchObject({ reportUsers: 2, matched: 1, matchedUsage: 10, unmatchedUsage: 1 });
-    expect(r.quiet).toEqual([]);
+    const report = reportOf([seat('ana', { lastActivityAt: ago(2) })], [{ name: 'Ana', gross: 4 }, { name: 'ana', gross: 6 }, { name: 'other', gross: 1 }]);
+    expect(report).toMatchObject({ reportUsers: 2, matched: 1, matchedUsage: 10, unmatchedUsage: 1 });
+    expect(report.quiet).toEqual([]);
   });
 
   it('has no coverage when the report has no users', () => {
-    const r = reportOf([seat('a', { lastActivityAt: ago(1) })]);
-    expect(r).toMatchObject({ reportUsers: 0, matched: 0, unmatched: [], matchedUsage: 0, unmatchedUsage: 0 });
-    expect(r.coverage).toBeNull();
+    const report = reportOf([seat('a', { lastActivityAt: ago(1) })]);
+    expect(report).toMatchObject({ reportUsers: 0, matched: 0, unmatched: [], matchedUsage: 0, unmatchedUsage: 0 });
+    expect(report.coverage).toBeNull();
   });
 
   it('counts a login that is on the roster twice once, and the first entry wins', () => {
-    const r = reportOf([seat('Ana', { lastActivityAt: ago(1) }), seat('ana', { lastActivityAt: ago(300) }), seat(' ANA '), { user: ' ' }]);
-    expect(r.seats).toBe(1);
-    expect(loginsOf(r.quiet)).toEqual(['Ana']);
-    expect(r.reclaim).toEqual([]);
+    const report = reportOf([seat('Ana', { lastActivityAt: ago(1) }), seat('ana', { lastActivityAt: ago(300) }), seat(' ANA '), { user: ' ' }]);
+    expect(report.seats).toBe(1);
+    expect(loginsOf(report.quiet)).toEqual(['Ana']);
+    expect(report.reclaim).toEqual([]);
   });
 
   it('prices a seat by its plan, else by the seat size in the report, else by the most common seat size', () => {
@@ -271,17 +271,17 @@ describe('license report: matching and totals', () => {
       seat('noplan-report', { plan: undefined, lastActivityAt: stale }),
       seat('noplan-absent', { plan: undefined, lastActivityAt: stale }),
     ];
-    const r = reportOf(roster, [{ name: 'noplan-report', quota: 3900, lastDay: ago(200) }]);
-    expect(r.reclaim.map((f) => [f.login, f.seatPrice])).toEqual([
+    const report = reportOf(roster, [{ name: 'noplan-report', quota: 3900, lastDay: ago(200) }]);
+    expect(report.reclaim.map((finding) => [finding.login, finding.seatPrice])).toEqual([
       ['ent', 39],
       ['noplan-report', 39],
       ['custom', 25],
       ['biz', 19],
       ['noplan-absent', 19],
     ]);
-    expect(r.reclaimValue).toBe(141);
-    expect(r.seatCost).toBe(141);
-    expect(r.byPlan).toEqual({ Business: 1, Enterprise: 1, other: 3 });
+    expect(report.reclaimValue).toBe(141);
+    expect(report.seatCost).toBe(141);
+    expect(report.byPlan).toEqual({ Business: 1, Enterprise: 1, other: 3 });
     expect(reportOf([seat('x', { plan: undefined, lastActivityAt: stale })], [], { fallback: 3900 }).reclaim[0].seatPrice).toBe(39);
   });
 
@@ -293,65 +293,65 @@ describe('license report: matching and totals', () => {
       seat('label-1900', { plan: 'Custom (1,900 credits)', lastActivityAt: stale }),
       seat('plain', { plan: 'Enterprise', lastActivityAt: stale }),
     ];
-    const r = reportOf(roster, [], { fallback: 3900 });
-    expect(r.reclaim.map((f) => [f.login, f.seatPrice])).toEqual([
+    const report = reportOf(roster, [], { fallback: 3900 });
+    expect(report.reclaim.map((finding) => [finding.login, finding.seatPrice])).toEqual([
       ['plain', 39],
       ['label-2500', 25],
       ['label-1900', 19],
       ['label-500', 5],
     ]);
-    expect(r.reclaimValue).toBe(88);
-    expect(r.seatCost).toBe(88);
-    expect(r.byPlan).toEqual({ Business: 1, Enterprise: 1, other: 2 });
+    expect(report.reclaimValue).toBe(88);
+    expect(report.seatCost).toBe(88);
+    expect(report.byPlan).toEqual({ Business: 1, Enterprise: 1, other: 2 });
   });
 
   it('adds up on a mixed roster of 300 seats', () => {
-    const rand = mulberry32(42);
-    const pick = <T>(xs: T[]): T => xs[Math.floor(rand() * xs.length)];
-    const roster: RosterEntry[] = Array.from({ length: 300 }, (_, i) => {
-      const e: RosterEntry = { user: `u${i}`, source: 'api' };
+    const random = mulberry32(42);
+    const pick = <T>(choices: T[]): T => choices[Math.floor(random() * choices.length)];
+    const roster: RosterEntry[] = Array.from({ length: 300 }, (_, seatIndex) => {
+      const entry: RosterEntry = { user: `u${seatIndex}`, source: 'api' };
       const plan = pick(['Business', 'Enterprise', undefined]);
-      if (plan !== undefined) e.plan = plan;
-      if (rand() < 0.8) e.lastActivityAt = ago(Math.floor(rand() * 400));
-      else if (rand() < 0.5) e.lastAuthenticatedAt = ago(Math.floor(rand() * 50));
-      if (rand() < 0.5) e.createdAt = ago(Math.floor(rand() * 500));
-      if (rand() < 0.05) e.pendingCancellation = '2026-06-30';
-      return e;
+      if (plan !== undefined) entry.plan = plan;
+      if (random() < 0.8) entry.lastActivityAt = ago(Math.floor(random() * 400));
+      else if (random() < 0.5) entry.lastAuthenticatedAt = ago(Math.floor(random() * 50));
+      if (random() < 0.5) entry.createdAt = ago(Math.floor(random() * 500));
+      if (random() < 0.05) entry.pendingCancellation = '2026-06-30';
+      return entry;
     });
     const users: ReportUser[] = [
-      ...Array.from({ length: 150 }, (_, i) => ({ name: `U${i}`, gross: Math.round(rand() * 20 * 100) / 100, lastDay: ago(Math.floor(rand() * 200)) })),
-      ...Array.from({ length: 50 }, (_, i) => ({ name: `x${i}`, gross: 3 })),
+      ...Array.from({ length: 150 }, (_, userIndex) => ({ name: `U${userIndex}`, gross: Math.round(random() * 20 * 100) / 100, lastDay: ago(Math.floor(random() * 200)) })),
+      ...Array.from({ length: 50 }, (_, userIndex) => ({ name: `x${userIndex}`, gross: 3 })),
     ];
-    const never = roster.slice(200).map((e) => e.user);
-    const r = reportOf(roster, users, { inactive: never });
+    const never = roster.slice(200).map((entry) => entry.user);
+    const report = reportOf(roster, users, { inactive: never });
 
-    expect(r.seats).toBe(300);
-    expect(r.reportUsers).toBe(200);
-    expect(r.matched).toBe(150);
-    expect(r.matched + r.unmatched.length).toBe(r.reportUsers);
-    expect(r.neverSeen).toBe(100);
-    expect(r.seenOutsideScope).toBe(50);
-    expect(r.matched + r.seenOutsideScope + r.neverSeen).toBe(r.seats);
-    expect(sum(Object.values(r.byStatus))).toBe(r.seats);
-    expect(r.byPlan.Business + r.byPlan.Enterprise + r.byPlan.other).toBe(r.seats);
-    expect(r.reclaimValue).toBe(sum(r.reclaim.map((f) => f.seatPrice)));
-    expect(r.matchedUsage + r.unmatchedUsage).toBeCloseTo(sum(users.map((u) => u.gross ?? 0)), 6);
-    expect(r.unmatchedUsage).toBe(150);
-    expect(r.coverage).toBeCloseTo(0.75, 12);
+    expect(report.seats).toBe(300);
+    expect(report.reportUsers).toBe(200);
+    expect(report.matched).toBe(150);
+    expect(report.matched + report.unmatched.length).toBe(report.reportUsers);
+    expect(report.neverSeen).toBe(100);
+    expect(report.seenOutsideScope).toBe(50);
+    expect(report.matched + report.seenOutsideScope + report.neverSeen).toBe(report.seats);
+    expect(sum(Object.values(report.byStatus))).toBe(report.seats);
+    expect(report.byPlan.Business + report.byPlan.Enterprise + report.byPlan.other).toBe(report.seats);
+    expect(report.reclaimValue).toBe(sum(report.reclaim.map((finding) => finding.seatPrice)));
+    expect(report.matchedUsage + report.unmatchedUsage).toBeCloseTo(sum(users.map((user) => user.gross ?? 0)), 6);
+    expect(report.unmatchedUsage).toBe(150);
+    expect(report.coverage).toBeCloseTo(0.75, 12);
 
     const seen = new Set<string>();
-    for (const list of [r.reclaim, r.fading, r.quiet, r.pending]) {
-      for (const f of list) {
-        expect(seen.has(f.login), f.login).toBe(false);
-        seen.add(f.login);
+    for (const list of [report.reclaim, report.fading, report.quiet, report.pending]) {
+      for (const finding of list) {
+        expect(seen.has(finding.login), finding.login).toBe(false);
+        seen.add(finding.login);
       }
     }
-    expect(r.reclaim.length).toBeGreaterThan(0);
-    expect(r.fading.length).toBeGreaterThan(5);
-    expect(r.quiet.length).toBeGreaterThan(5);
-    expect(r.pending.length).toBeGreaterThan(3);
+    expect(report.reclaim.length).toBeGreaterThan(0);
+    expect(report.fading.length).toBeGreaterThan(5);
+    expect(report.quiet.length).toBeGreaterThan(5);
+    expect(report.pending.length).toBeGreaterThan(3);
 
-    const order = [...r.reclaim].sort((a, b) => {
+    const order = [...report.reclaim].sort((a, b) => {
       if (a.seatPrice !== b.seatPrice) return b.seatPrice - a.seatPrice;
       if (a.daysSinceActivity !== b.daysSinceActivity) {
         if (a.daysSinceActivity === null) return -1;
@@ -360,16 +360,16 @@ describe('license report: matching and totals', () => {
       }
       return a.login < b.login ? -1 : 1;
     });
-    expect(loginsOf(r.reclaim)).toEqual(loginsOf(order));
-    for (const f of r.reclaim) expect(f.daysSinceActivity === null || f.daysSinceActivity >= RECLAIM_DAYS, f.login).toBe(true);
-    for (const f of r.fading) expect(f.daysSinceActivity !== null && f.daysSinceActivity >= RECENT_DAYS && f.daysSinceActivity < RECLAIM_DAYS, f.login).toBe(true);
-    for (const f of r.quiet) expect(f.daysSinceActivity !== null && f.daysSinceActivity < RECENT_DAYS, f.login).toBe(true);
+    expect(loginsOf(report.reclaim)).toEqual(loginsOf(order));
+    for (const finding of report.reclaim) expect(finding.daysSinceActivity === null || finding.daysSinceActivity >= RECLAIM_DAYS, finding.login).toBe(true);
+    for (const finding of report.fading) expect(finding.daysSinceActivity !== null && finding.daysSinceActivity >= RECENT_DAYS && finding.daysSinceActivity < RECLAIM_DAYS, finding.login).toBe(true);
+    for (const finding of report.quiet) expect(finding.daysSinceActivity !== null && finding.daysSinceActivity < RECENT_DAYS, finding.login).toBe(true);
   });
 
   it('gives every finding the facts of its seat', () => {
     const roster = [seat('Full', { plan: 'Enterprise', name: 'Full Name', org: 'acme, beta', team: 'core', createdAt: '2025-01-15', lastActivityAt: ago(100), lastSurface: 'vscode' })];
-    const [f] = reportOf(roster).reclaim;
-    expect(f).toEqual({
+    const [finding] = reportOf(roster).reclaim;
+    expect(finding).toEqual({
       login: 'Full',
       name: 'Full Name',
       plan: 'Enterprise',
@@ -394,11 +394,11 @@ describe('license report: the usage safety net', () => {
   it('keeps a stale seat off the reclaim list when the report shows usage in the last 90 days', () => {
     const roster = [seat('st', { lastActivityAt: ago(100) })];
     for (const [usageAgo, expected] of [[0, false], [11, false], [89, false], [90, true], [131, true], [-5, false]] as const) {
-      const r = listed(roster, 12, usageAgo);
-      expect(loginsOf(r.reclaim), `usage ${usageAgo} days ago`).toEqual(expected ? ['st'] : []);
+      const report = listed(roster, 12, usageAgo);
+      expect(loginsOf(report.reclaim), `usage ${usageAgo} days ago`).toEqual(expected ? ['st'] : []);
     }
-    const [f] = listed(roster, 12, 131).reclaim;
-    expect(f).toMatchObject({ inReport: true, usage: 12, daysSinceActivity: 100 });
+    const [finding] = listed(roster, 12, 131).reclaim;
+    expect(finding).toMatchObject({ inReport: true, usage: 12, daysSinceActivity: 100 });
   });
 
   it('does not reclaim a seat without a dated activity record, even when the report shows old usage', () => {
@@ -451,7 +451,7 @@ describe('license report: the usage safety net', () => {
   });
 
   it('takes the last day of each login over every loaded row, without filters, in lower case', async () => {
-    const pl = await analyzeCsv(
+    const pipeline = await analyzeCsv(
       makeCsv([
         { date: '2026-03-01', user: 'Ana', gross: 1 },
         { date: '2026-03-10', user: 'ana', gross: 1 },
@@ -461,7 +461,7 @@ describe('license report: the usage safety net', () => {
       ]),
       { filters: { orgs: ['beta'], dateTo: dayNum('2026-03-05') } },
     );
-    const days = lastUsageDays(pl.store, pl.prep);
+    const days = lastUsageDays(pipeline.store, pipeline.prep);
     expect([...days.keys()].sort()).toEqual(['ana', 'bob']);
     expect(days.get('ana')).toBe(dayNum('2026-03-10'));
     expect(days.get('bob')).toBe(dayNum('2026-03-20'));
@@ -469,13 +469,13 @@ describe('license report: the usage safety net', () => {
 });
 
 describe('analysis.licenses', () => {
-  const march = (d: number): string => `2026-03-${String(d).padStart(2, '0')}`;
+  const march = (dayOfMonth: number): string => `2026-03-${String(dayOfMonth).padStart(2, '0')}`;
   const specs: RowSpec[] = [];
-  for (let d = 1; d <= 31; d += 3) specs.push({ date: march(d), user: 'user001', gross: 2, org: 'acme' });
+  for (let dayOfMonth = 1; dayOfMonth <= 31; dayOfMonth += 3) specs.push({ date: march(dayOfMonth), user: 'user001', gross: 2, org: 'acme' });
   specs.push({ date: march(2), user: 'user002', gross: 0.5, org: 'acme' });
-  for (let d = 2; d <= 30; d += 4) specs.push({ date: march(d), user: 'user003', gross: 1.5, org: 'beta' });
+  for (let dayOfMonth = 2; dayOfMonth <= 30; dayOfMonth += 4) specs.push({ date: march(dayOfMonth), user: 'user003', gross: 1.5, org: 'beta' });
   specs.push({ date: march(30), user: 'user004', gross: 1, org: 'beta' });
-  for (let d = 1; d <= 31; d += 5) specs.push({ date: march(d), user: 'stranger01', gross: 1, org: 'acme' });
+  for (let dayOfMonth = 1; dayOfMonth <= 31; dayOfMonth += 5) specs.push({ date: march(dayOfMonth), user: 'stranger01', gross: 1, org: 'acme' });
   const CSV = makeCsv(specs, { pool: true });
 
   const ROSTER: RosterEntry[] = [
@@ -501,47 +501,47 @@ describe('analysis.licenses', () => {
     const none = base.run(base.filters, mergeSettings({}));
     expect(none.licenses).toBeNull();
     expect(none.population.profiles.length).toBeGreaterThan(0);
-    expect(none.population.profiles.every((p) => p.license === null)).toBe(true);
-    expect(none.users.profiles.every((p) => p.license === null)).toBe(true);
+    expect(none.population.profiles.every((profile) => profile.license === null)).toBe(true);
+    expect(none.users.profiles.every((profile) => profile.license === null)).toBe(true);
     const blank = base.run(base.filters, mergeSettings({ roster: [{ user: '  ' }] }));
     expect(blank.licenses).toBeNull();
   });
 
   it('sets the roster against the report: seats, matched, never seen, and the lists', () => {
-    const r = must(base.analysis.licenses);
-    expect(r).toMatchObject({ asOf: '2026-03-31', asOfSource: 'settings', asOfBehindReport: 0, hasActivity: true, scoped: false, seats: 10, reportUsers: 5, matched: 4, neverSeen: 6, seenOutsideScope: 0 });
-    expect(r.byPlan).toEqual({ Business: 8, Enterprise: 2, other: 0 });
-    expect(r.seatCost).toBe(8 * 19 + 2 * 39);
-    expect(r.coverage).toBeCloseTo(0.8, 12);
-    expect(r.matchedUsage).toBeCloseTo(35.5, 9);
-    expect(r.unmatched).toEqual([{ name: 'stranger01', org: 'acme', plan: 'Business', usage: expect.closeTo(7, 9) }]);
-    expect(r.unmatchedUsage).toBeCloseTo(7, 9);
-    expect(r.byStatus).toEqual({ recent: 3, fading: 2, stale: 2, 'no-date': 3, unknown: 0 });
-    expect(r.reclaim.map((f) => [f.login, f.reason])).toEqual([['ghost06', 'stale']]);
-    expect(r.reclaimValue).toBe(19);
-    expect(loginsOf(r.noActivityDate)).toEqual(['ghost01', 'ghost03', 'user004']);
-    expect(loginsOf(r.fading)).toEqual(['ghost04']);
-    expect(loginsOf(r.quiet)).toEqual(['ghost02']);
-    expect(loginsOf(r.pending)).toEqual(['ghost05']);
-    expect(loginsOf(r.newSeats)).toEqual(['user004', 'ghost03']);
+    const report = must(base.analysis.licenses);
+    expect(report).toMatchObject({ asOf: '2026-03-31', asOfSource: 'settings', asOfBehindReport: 0, hasActivity: true, scoped: false, seats: 10, reportUsers: 5, matched: 4, neverSeen: 6, seenOutsideScope: 0 });
+    expect(report.byPlan).toEqual({ Business: 8, Enterprise: 2, other: 0 });
+    expect(report.seatCost).toBe(8 * 19 + 2 * 39);
+    expect(report.coverage).toBeCloseTo(0.8, 12);
+    expect(report.matchedUsage).toBeCloseTo(35.5, 9);
+    expect(report.unmatched).toEqual([{ name: 'stranger01', org: 'acme', plan: 'Business', usage: expect.closeTo(7, 9) }]);
+    expect(report.unmatchedUsage).toBeCloseTo(7, 9);
+    expect(report.byStatus).toEqual({ recent: 3, fading: 2, stale: 2, 'no-date': 3, unknown: 0 });
+    expect(report.reclaim.map((finding) => [finding.login, finding.reason])).toEqual([['ghost06', 'stale']]);
+    expect(report.reclaimValue).toBe(19);
+    expect(loginsOf(report.noActivityDate)).toEqual(['ghost01', 'ghost03', 'user004']);
+    expect(loginsOf(report.fading)).toEqual(['ghost04']);
+    expect(loginsOf(report.quiet)).toEqual(['ghost02']);
+    expect(loginsOf(report.pending)).toEqual(['ghost05']);
+    expect(loginsOf(report.newSeats)).toEqual(['user004', 'ghost03']);
   });
 
   it('explains how imported activity protects seats in the idle-seat recommendation', () => {
-    const rec = must(base.analysis.recs.find((item) => item.id === 'idle-seats'));
-    expect(rec.evidence).toContain('Only dated activity from the license list is used here. Recently active seats and seats pending cancellation are excluded. Seats without a recent activity date are not counted as idle. Check the Licenses page for the recorded activity dates.');
+    const recommendation = must(base.analysis.recs.find((item) => item.id === 'idle-seats'));
+    expect(recommendation.evidence).toContain('Only dated activity from the license list is used here. Recently active seats and seats pending cancellation are excluded. Seats without a recent activity date are not counted as idle. Check the Licenses page for the recorded activity dates.');
     const candidates = [...base.analysis.seats.idle, ...base.analysis.seats.unused].map((item) => item.name);
     expect(candidates).not.toContain('ghost02');
     expect(candidates).not.toContain('ghost05');
   });
 
   it('leaves a fading seat off the list when the report shows its user at work (user003 stopped using completions but still spends credits)', () => {
-    const r = must(base.analysis.licenses);
-    expect(loginsOf(r.fading)).not.toContain('user003');
-    expect(r.byStatus.fading).toBe(2);
+    const report = must(base.analysis.licenses);
+    expect(loginsOf(report.fading)).not.toContain('user003');
+    expect(report.byStatus.fading).toBe(2);
   });
 
   it('gives each report user the facts of their seat, matched by login without regard to case', () => {
-    const user001 = must(base.analysis.population.profiles.find((p) => p.name === 'user001'));
+    const user001 = must(base.analysis.population.profiles.find((profile) => profile.name === 'user001'));
     expect(user001.license).toEqual({
       seat: true,
       plan: 'Business',
@@ -555,9 +555,9 @@ describe('analysis.licenses', () => {
       pendingCancellation: '',
       isNew: false,
     });
-    const user004 = must(base.analysis.population.profiles.find((p) => p.name === 'user004'));
+    const user004 = must(base.analysis.population.profiles.find((profile) => profile.name === 'user004'));
     expect(user004.license).toMatchObject({ seat: true, status: 'no-date', daysSinceActivity: null, isNew: true, createdAt: '2026-03-28' });
-    const stranger = must(base.analysis.population.profiles.find((p) => p.name === 'stranger01'));
+    const stranger = must(base.analysis.population.profiles.find((profile) => profile.name === 'stranger01'));
     expect(stranger.license).toEqual({
       seat: false,
       plan: '',
@@ -571,8 +571,8 @@ describe('analysis.licenses', () => {
       pendingCancellation: '',
       isNew: false,
     });
-    expect(base.analysis.population.profiles.every((p) => p.license !== null && p.license !== undefined)).toBe(true);
-    expect(base.analysis.population.inactive.map((s) => s.user)).toEqual(['ghost01', 'ghost02', 'ghost03', 'ghost04', 'ghost05', 'ghost06']);
+    expect(base.analysis.population.profiles.every((profile) => profile.license !== null && profile.license !== undefined)).toBe(true);
+    expect(base.analysis.population.inactive.map((inactiveSeat) => inactiveSeat.user)).toEqual(['ghost01', 'ghost02', 'ghost03', 'ghost04', 'ghost05', 'ghost06']);
     expect(must(base.analysis.population.inactive[1].license)).toMatchObject({ seat: true, status: 'recent', daysSinceActivity: 6 });
   });
 
@@ -590,12 +590,12 @@ describe('analysis.licenses', () => {
       { tiers: ['core'], minUserSpend: 11, maxUserSpend: 13 },
     ];
     let narrowedAtLeastOnce = false;
-    for (const v of variants) {
-      const a = base.run({ ...emptyFilters(), ...v });
-      expect(a.segmentFiltered, JSON.stringify(v)).toBe(true);
-      expect(JSON.stringify(a.licenses), JSON.stringify(v)).toBe(before);
-      if (a.users.profiles.length < a.population.profiles.length) narrowedAtLeastOnce = true;
-      expect(a.seats.unused, JSON.stringify(v)).toEqual([]);
+    for (const variant of variants) {
+      const analysis = base.run({ ...emptyFilters(), ...variant });
+      expect(analysis.segmentFiltered, JSON.stringify(variant)).toBe(true);
+      expect(JSON.stringify(analysis.licenses), JSON.stringify(variant)).toBe(before);
+      if (analysis.users.profiles.length < analysis.population.profiles.length) narrowedAtLeastOnce = true;
+      expect(analysis.seats.unused, JSON.stringify(variant)).toEqual([]);
     }
     expect(narrowedAtLeastOnce).toBe(true);
     expect(base.analysis.seats.unused.length).toBeGreaterThan(0);
@@ -604,47 +604,47 @@ describe('analysis.licenses', () => {
   it('follows a row filter for the usage side only: scoped, with seats, plans and activity unchanged', () => {
     const full = must(base.analysis.licenses);
     const beta = base.run({ ...emptyFilters(), orgs: ['beta'] });
-    const r = must(beta.licenses);
-    expect(r.scoped).toBe(true);
-    expect(r).toMatchObject({ seats: 10, reportUsers: 2, matched: 2, neverSeen: 6, seenOutsideScope: 2, coverage: 1 });
-    expect(r.unmatched).toEqual([]);
+    const report = must(beta.licenses);
+    expect(report.scoped).toBe(true);
+    expect(report).toMatchObject({ seats: 10, reportUsers: 2, matched: 2, neverSeen: 6, seenOutsideScope: 2, coverage: 1 });
+    expect(report.unmatched).toEqual([]);
     for (const key of ['seats', 'byPlan', 'byStatus', 'seatCost', 'reclaim', 'reclaimValue', 'fading', 'noActivityDate', 'pending', 'newSeats'] as const) {
-      expect(r[key], key).toEqual(full[key]);
+      expect(report[key], key).toEqual(full[key]);
     }
-    expect(loginsOf(r.quiet)).toEqual(['USER001', 'ghost02', 'user002']);
-    expect(r.seats - r.matched - r.neverSeen).toBe(r.seenOutsideScope);
-    expect(r.matched + r.unmatched.length).toBe(r.reportUsers);
+    expect(loginsOf(report.quiet)).toEqual(['USER001', 'ghost02', 'user002']);
+    expect(report.seats - report.matched - report.neverSeen).toBe(report.seenOutsideScope);
+    expect(report.matched + report.unmatched.length).toBe(report.reportUsers);
   });
 
   it('follows the date range for the usage side, without calling the view scoped', () => {
     const last3 = base.run({ ...emptyFilters(), dateFrom: dayNum('2026-03-29'), dateTo: dayNum('2026-03-31') });
-    const r = must(last3.licenses);
-    expect(r.scoped).toBe(false);
-    expect(r).toMatchObject({ seats: 10, reportUsers: 4, matched: 3, neverSeen: 6, seenOutsideScope: 1, asOfBehindReport: 0 });
-    expect(r.matchedUsage).toBeCloseTo(4.5, 9);
-    expect(r.unmatchedUsage).toBeCloseTo(1, 9);
-    expect(r.unmatched.map((u) => u.name)).toEqual(['stranger01']);
-    expect(loginsOf(r.quiet)).toEqual(['ghost02', 'user002']);
-    expect(r.byStatus).toEqual(must(base.analysis.licenses).byStatus);
+    const report = must(last3.licenses);
+    expect(report.scoped).toBe(false);
+    expect(report).toMatchObject({ seats: 10, reportUsers: 4, matched: 3, neverSeen: 6, seenOutsideScope: 1, asOfBehindReport: 0 });
+    expect(report.matchedUsage).toBeCloseTo(4.5, 9);
+    expect(report.unmatchedUsage).toBeCloseTo(1, 9);
+    expect(report.unmatched.map((user) => user.name)).toEqual(['stranger01']);
+    expect(loginsOf(report.quiet)).toEqual(['ghost02', 'user002']);
+    expect(report.byStatus).toEqual(must(base.analysis.licenses).byStatus);
   });
 
   it('counts the days from the stored export date, and says when the report runs past it', () => {
     const early = base.run(base.filters, mergeSettings({ roster: ROSTER, rosterAsOf: '2026-03-10' }));
-    const r = must(early.licenses);
-    expect(r).toMatchObject({ asOf: '2026-03-10', asOfSource: 'settings', asOfBehindReport: 21 });
-    expect(r.asOfBehindReport).toBeLessThanOrEqual(STALE_EXPORT_DAYS);
+    const report = must(early.licenses);
+    expect(report).toMatchObject({ asOf: '2026-03-10', asOfSource: 'settings', asOfBehindReport: 21 });
+    expect(report.asOfBehindReport).toBeLessThanOrEqual(STALE_EXPORT_DAYS);
     const none = base.run(base.filters, mergeSettings({ roster: ROSTER }));
     expect(must(none.licenses)).toMatchObject({ asOf: '2026-03-30', asOfSource: 'roster', asOfBehindReport: 1 });
   });
 
   it('reads a roster of plain logins and plans: no activity data, so nothing to judge', () => {
-    const plain = ROSTER.map((e) => ({ user: e.user, plan: e.plan }));
-    const a = base.run(base.filters, mergeSettings({ roster: plain }));
-    const r = must(a.licenses);
-    expect(r).toMatchObject({ hasActivity: false, asOf: null, asOfSource: null, seats: 10, matched: 4, neverSeen: 6, unmatched: [expect.objectContaining({ name: 'stranger01' })] });
-    expect(r.byStatus).toEqual({ recent: 0, fading: 0, stale: 0, 'no-date': 0, unknown: 10 });
-    expect([r.reclaim, r.fading, r.quiet, r.pending, r.newSeats].every((list) => list.length === 0)).toBe(true);
-    expect(r.byPlan).toEqual({ Business: 8, Enterprise: 2, other: 0 });
+    const plain = ROSTER.map((entry) => ({ user: entry.user, plan: entry.plan }));
+    const analysis = base.run(base.filters, mergeSettings({ roster: plain }));
+    const report = must(analysis.licenses);
+    expect(report).toMatchObject({ hasActivity: false, asOf: null, asOfSource: null, seats: 10, matched: 4, neverSeen: 6, unmatched: [expect.objectContaining({ name: 'stranger01' })] });
+    expect(report.byStatus).toEqual({ recent: 0, fading: 0, stale: 0, 'no-date': 0, unknown: 10 });
+    expect([report.reclaim, report.fading, report.quiet, report.pending, report.newSeats].every((list) => list.length === 0)).toBe(true);
+    expect(report.byPlan).toEqual({ Business: 8, Enterprise: 2, other: 0 });
   });
 });
 
@@ -670,49 +670,49 @@ describe('the license lists in other views of the report', () => {
   ];
 
   /** The numbers and lists that come from the license data, without the usage columns that follow the view. */
-  const facts = (r: LicenseReport | null) => {
-    const report = must(r);
+  const facts = (licenses: LicenseReport | null) => {
+    const report = must(licenses);
     return {
       asOf: [report.asOf, report.asOfSource, report.asOfBehindReport, report.hasActivity],
       seats: [report.seats, report.byPlan, report.seatCost, report.byStatus],
-      reclaim: [report.reclaim.map((f) => [f.login, f.reason, f.seatPrice, f.daysSinceActivity]), report.reclaimValue],
-      fading: report.fading.map((f) => [f.login, f.daysSinceActivity]),
-      noActivityDate: report.noActivityDate.map((f) => f.login),
-      pending: report.pending.map((f) => [f.login, f.pendingCancellation]),
-      newSeats: report.newSeats.map((f) => [f.login, f.createdAt]),
+      reclaim: [report.reclaim.map((finding) => [finding.login, finding.reason, finding.seatPrice, finding.daysSinceActivity]), report.reclaimValue],
+      fading: report.fading.map((finding) => [finding.login, finding.daysSinceActivity]),
+      noActivityDate: report.noActivityDate.map((finding) => finding.login),
+      pending: report.pending.map((finding) => [finding.login, finding.pendingCancellation]),
+      newSeats: report.newSeats.map((finding) => [finding.login, finding.createdAt]),
     };
   };
 
-  let pl: Pipeline;
+  let pipeline: Pipeline;
   beforeAll(async () => {
-    pl = await analyzeCsv(makeCsv(SPECS, { pool: true }), { settings: { roster: ROSTER, rosterAsOf: AS_OF } });
+    pipeline = await analyzeCsv(makeCsv(SPECS, { pool: true }), { settings: { roster: ROSTER, rosterAsOf: AS_OF } });
   });
 
   it('puts the right seats on the lists for the whole report', () => {
-    const r = must(pl.analysis.licenses);
-    expect(r).toMatchObject({ seats: 7, reportUsers: 5, matched: 4, neverSeen: 3, seenOutsideScope: 0, scoped: false, asOfBehindReport: 0 });
-    expect(r.reclaim.map((f) => [f.login, f.reason, f.seatPrice])).toEqual([['stale-b', 'stale', 39], ['ghost', 'stale', 19]]);
-    expect(r.reclaimValue).toBe(58);
-    expect(r.fading).toEqual([]);
-    expect(loginsOf(r.pending)).toEqual(['leaving']);
-    expect(loginsOf(r.newSeats)).toEqual(['rookie']);
-    expect(r.byStatus).toEqual({ recent: 1, fading: 1, stale: 4, 'no-date': 1, unknown: 0 });
-    expect(r.unmatched.map((u) => u.name)).toEqual(['stranger']);
+    const report = must(pipeline.analysis.licenses);
+    expect(report).toMatchObject({ seats: 7, reportUsers: 5, matched: 4, neverSeen: 3, seenOutsideScope: 0, scoped: false, asOfBehindReport: 0 });
+    expect(report.reclaim.map((finding) => [finding.login, finding.reason, finding.seatPrice])).toEqual([['stale-b', 'stale', 39], ['ghost', 'stale', 19]]);
+    expect(report.reclaimValue).toBe(58);
+    expect(report.fading).toEqual([]);
+    expect(loginsOf(report.pending)).toEqual(['leaving']);
+    expect(loginsOf(report.newSeats)).toEqual(['rookie']);
+    expect(report.byStatus).toEqual({ recent: 1, fading: 1, stale: 4, 'no-date': 1, unknown: 0 });
+    expect(report.unmatched.map((user) => user.name)).toEqual(['stranger']);
   });
 
   it('keeps a seat off the reclaim and fading lists when the user has later usage outside the date range', () => {
-    const early = pl.run({ ...emptyFilters(), dateFrom: dayNum('2026-01-01'), dateTo: dayNum('2026-02-28') });
+    const early = pipeline.run({ ...emptyFilters(), dateFrom: dayNum('2026-01-01'), dateTo: dayNum('2026-02-28') });
     expect(early.licenses?.reportUsers).toBe(4);
     expect(early.licenses?.matched).toBe(4);
-    expect(early.licenses?.reclaim.map((f) => f.login)).toEqual(['stale-b', 'ghost']);
+    expect(early.licenses?.reclaim.map((finding) => finding.login)).toEqual(['stale-b', 'ghost']);
     expect(early.licenses?.fading).toEqual([]);
-    expect(facts(early.licenses)).toEqual(facts(pl.analysis.licenses));
+    expect(facts(early.licenses)).toEqual(facts(pipeline.analysis.licenses));
 
-    const late = pl.run({ ...emptyFilters(), dateFrom: dayNum('2026-05-26'), dateTo: dayNum('2026-05-31') });
-    const r = must(late.licenses);
-    expect(r).toMatchObject({ scoped: false, reportUsers: 2, matched: 1, neverSeen: 3, seenOutsideScope: 3 });
-    expect(r.unmatched.map((u) => u.name)).toEqual(['stranger']);
-    expect(facts(r)).toEqual(facts(pl.analysis.licenses));
+    const late = pipeline.run({ ...emptyFilters(), dateFrom: dayNum('2026-05-26'), dateTo: dayNum('2026-05-31') });
+    const report = must(late.licenses);
+    expect(report).toMatchObject({ scoped: false, reportUsers: 2, matched: 1, neverSeen: 3, seenOutsideScope: 3 });
+    expect(report.unmatched.map((user) => user.name)).toEqual(['stranger']);
+    expect(facts(report)).toEqual(facts(pipeline.analysis.licenses));
   });
 
   it('keeps the same lists when a row filter leaves the user out of the view', () => {
@@ -723,19 +723,19 @@ describe('the license lists in other views of the report', () => {
       { users: ['stranger'] },
       { orgs: ['beta'], dateFrom: dayNum('2026-02-01'), dateTo: dayNum('2026-02-28') },
     ];
-    for (const v of variants) {
-      const r = must(pl.run({ ...emptyFilters(), ...v }).licenses);
-      expect(r.scoped, JSON.stringify(v)).toBe(true);
-      expect(facts(r), JSON.stringify(v)).toEqual(facts(pl.analysis.licenses));
+    for (const variant of variants) {
+      const report = must(pipeline.run({ ...emptyFilters(), ...variant }).licenses);
+      expect(report.scoped, JSON.stringify(variant)).toBe(true);
+      expect(facts(report), JSON.stringify(variant)).toEqual(facts(pipeline.analysis.licenses));
     }
-    const beta = must(pl.run({ ...emptyFilters(), orgs: ['beta'] }).licenses);
+    const beta = must(pipeline.run({ ...emptyFilters(), orgs: ['beta'] }).licenses);
     expect(beta).toMatchObject({ reportUsers: 2, matched: 2, seenOutsideScope: 2, neverSeen: 3 });
   });
 
   it('still lists a seat when the loaded files hold only old usage of the user', () => {
-    const r = must(pl.run({ ...emptyFilters(), users: ['stale-b'] }).licenses);
-    expect(r.reclaim.map((f) => f.login)).toContain('stale-b');
-    const [stale] = r.reclaim.filter((f) => f.login === 'stale-b');
+    const report = must(pipeline.run({ ...emptyFilters(), users: ['stale-b'] }).licenses);
+    expect(report.reclaim.map((finding) => finding.login)).toContain('stale-b');
+    const [stale] = report.reclaim.filter((finding) => finding.login === 'stale-b');
     expect(stale).toMatchObject({ inReport: true, usage: 1, daysSinceActivity: 211 });
   });
 });
@@ -743,7 +743,7 @@ describe('the license lists in other views of the report', () => {
 describe('seat actions with license data', () => {
   const settings = mergeSettings({});
   const idle = { tier: 'minimal', persona: 'dormant' } as const;
-  const lic = (over: Partial<ProfileLicense> = {}): ProfileLicense => ({
+  const fakeLicense = (over: Partial<ProfileLicense> = {}): ProfileLicense => ({
     seat: true,
     plan: 'Business',
     org: '',
@@ -759,9 +759,9 @@ describe('seat actions with license data', () => {
   });
 
   function fakeUsers(profiles: Partial<UserProfile>[], inactive: InactiveSeat[] = [], fallbackQuotaCredits = 1900): UserSet {
-    const full = profiles.map((p, i) => ({
-      id: i + 1,
-      name: `user-${i + 1}`,
+    const full = profiles.map((profile, index) => ({
+      id: index + 1,
+      name: `user-${index + 1}`,
       plan: 'Business',
       quotaCredits: 1900,
       tier: 'light',
@@ -770,7 +770,7 @@ describe('seat actions with license data', () => {
       peakMonthGross: 5,
       gross: 5,
       utilization: 0.26,
-      ...p,
+      ...profile,
     }));
     return { profiles: full, inactive, fallbackQuotaCredits } as unknown as UserSet;
   }
@@ -779,41 +779,41 @@ describe('seat actions with license data', () => {
     const cases = [['recent', 0], ['fading', 1], ['stale', 1], ['no-date', 0], ['unknown', 0]] as const;
     for (const persona of ['dormant', 'lapsed'] as const) {
       for (const [status, count] of cases) {
-        expect(planSeats(fakeUsers([{ tier: 'minimal', persona, license: lic({ status }) }]), settings).idle.length, `${persona} ${status}`).toBe(count);
+        expect(planSeats(fakeUsers([{ tier: 'minimal', persona, license: fakeLicense({ status }) }]), settings).idle.length, `${persona} ${status}`).toBe(count);
       }
     }
     for (const license of [null, undefined]) {
       expect(planSeats(fakeUsers([{ ...idle, license }]), settings).idle.length, String(license)).toBe(1);
     }
-    expect(planSeats(fakeUsers([{ ...idle, license: lic({ seat: false }) }]), settings).idle).toEqual([]);
+    expect(planSeats(fakeUsers([{ ...idle, license: fakeLicense({ seat: false }) }]), settings).idle).toEqual([]);
   });
 
   it('still needs the old evidence: a recently active seat is never idle, but an active one in the report is not either', () => {
-    expect(planSeats(fakeUsers([{ tier: 'light', persona: 'dormant', license: lic({ status: 'stale' }) }]), settings).idle).toEqual([]);
-    expect(planSeats(fakeUsers([{ tier: 'minimal', persona: 'steady', license: lic({ status: 'stale' }) }]), settings).idle).toEqual([]);
+    expect(planSeats(fakeUsers([{ tier: 'light', persona: 'dormant', license: fakeLicense({ status: 'stale' }) }]), settings).idle).toEqual([]);
+    expect(planSeats(fakeUsers([{ tier: 'minimal', persona: 'steady', license: fakeLicense({ status: 'stale' }) }]), settings).idle).toEqual([]);
   });
 
   it('shows the license of an idle seat, and excludes users without a seat', () => {
-    const stale = lic({ status: 'stale', daysSinceActivity: 120, lastActivityAt: '2026-01-01', lastSurface: 'vscode' });
-    const plan = planSeats(fakeUsers([{ ...idle, license: stale }, { ...idle, license: lic({ seat: false }) }, { ...idle, license: null }, { ...idle }]), settings);
+    const stale = fakeLicense({ status: 'stale', daysSinceActivity: 120, lastActivityAt: '2026-01-01', lastSurface: 'vscode' });
+    const plan = planSeats(fakeUsers([{ ...idle, license: stale }, { ...idle, license: fakeLicense({ seat: false }) }, { ...idle, license: null }, { ...idle }]), settings);
     expect(plan.idle).toHaveLength(3);
     expect(plan.idle[0].license).toEqual(stale);
-    expect(plan.idle.slice(1).every((c) => !c.license)).toBe(true);
+    expect(plan.idle.slice(1).every((candidate) => !candidate.license)).toBe(true);
   });
 
   it('does not plan a saving from a seat that is already being cancelled', () => {
-    const leaving = lic({ status: 'stale', pendingCancellation: '2026-06-30' });
-    const ent = { quotaCredits: 3900, plan: 'Enterprise', peakMonthGross: 1 };
+    const leaving = fakeLicense({ status: 'stale', pendingCancellation: '2026-06-30' });
+    const enterprise = { quotaCredits: 3900, plan: 'Enterprise', peakMonthGross: 1 };
     const plan = planSeats(
       fakeUsers(
-        [{ ...idle, license: leaving }, { ...ent, license: leaving }, { ...ent, license: lic() }, { ...ent, license: lic({ status: 'recent' }) }],
-        [{ user: 'gone', plan: 'Business', license: leaving }, { user: 'stays', plan: 'Business', license: lic({ status: 'stale' }) }],
+        [{ ...idle, license: leaving }, { ...enterprise, license: leaving }, { ...enterprise, license: fakeLicense() }, { ...enterprise, license: fakeLicense({ status: 'recent' }) }],
+        [{ user: 'gone', plan: 'Business', license: leaving }, { user: 'stays', plan: 'Business', license: fakeLicense({ status: 'stale' }) }],
       ),
       settings,
     );
     expect(plan.idle).toEqual([]);
-    expect(plan.downgrade.map((s) => s.id)).toEqual([4]);
-    expect(plan.unused.map((s) => s.name)).toEqual(['stays']);
+    expect(plan.downgrade.map((candidate) => candidate.id)).toEqual([4]);
+    expect(plan.unused.map((candidate) => candidate.name)).toEqual(['stays']);
     expect(plan.keep).toBeUndefined();
   });
 
@@ -822,21 +822,21 @@ describe('seat actions with license data', () => {
       fakeUsers(
         [],
         [
-          { user: 'recent', plan: 'Business', license: lic({ status: 'recent', daysSinceActivity: 4 }) },
-          { user: 'stale', plan: 'Business', license: lic({ status: 'stale', daysSinceActivity: 200 }) },
-          { user: 'new', plan: 'Enterprise', license: lic({ status: 'no-date', isNew: true }) },
-          { user: 'fading', plan: 'Business', license: lic({ status: 'fading', daysSinceActivity: 60 }) },
-          { user: 'no-date', plan: 'Business', license: lic({ status: 'no-date' }) },
-          { user: 'unknown', plan: 'Business', license: lic({ status: 'unknown' }) },
+          { user: 'recent', plan: 'Business', license: fakeLicense({ status: 'recent', daysSinceActivity: 4 }) },
+          { user: 'stale', plan: 'Business', license: fakeLicense({ status: 'stale', daysSinceActivity: 200 }) },
+          { user: 'new', plan: 'Enterprise', license: fakeLicense({ status: 'no-date', isNew: true }) },
+          { user: 'fading', plan: 'Business', license: fakeLicense({ status: 'fading', daysSinceActivity: 60 }) },
+          { user: 'no-date', plan: 'Business', license: fakeLicense({ status: 'no-date' }) },
+          { user: 'unknown', plan: 'Business', license: fakeLicense({ status: 'unknown' }) },
           { user: 'bare', plan: 'Business' },
-          { user: 'cancelling', plan: 'Business', license: lic({ status: 'recent', pendingCancellation: '2026-06-30' }) },
+          { user: 'cancelling', plan: 'Business', license: fakeLicense({ status: 'recent', pendingCancellation: '2026-06-30' }) },
         ],
       ),
       settings,
     );
-    expect(plan.keep?.map((s) => s.name)).toEqual(['recent', 'new']);
+    expect(plan.keep?.map((candidate) => candidate.name)).toEqual(['recent', 'new']);
     expect(plan.keepValue).toBe(19 + 39);
-    expect(plan.unused.map((s) => s.name)).toEqual(['stale', 'fading', 'bare']);
+    expect(plan.unused.map((candidate) => candidate.name)).toEqual(['stale', 'fading', 'bare']);
     expect(plan.unusedValue).toBe(3 * 19);
     expect(plan.keep?.[0].license).toMatchObject({ status: 'recent', daysSinceActivity: 4 });
     expect(plan.idle).toEqual([]);
@@ -863,11 +863,11 @@ describe('seat actions with license data', () => {
   });
 
   describe('through analyze()', () => {
-    const day = (d: number): string => `2026-03-${String(d).padStart(2, '0')}`;
+    const day = (dayOfMonth: number): string => `2026-03-${String(dayOfMonth).padStart(2, '0')}`;
     const specs: RowSpec[] = [];
-    for (let d = 1; d <= 31; d += 3) specs.push({ date: day(d), user: 'user001', gross: 2 });
+    for (let dayOfMonth = 1; dayOfMonth <= 31; dayOfMonth += 3) specs.push({ date: day(dayOfMonth), user: 'user001', gross: 2 });
     specs.push({ date: day(2), user: 'user002', gross: 0.5 });
-    for (let d = 2; d <= 30; d += 4) specs.push({ date: day(d), user: 'user003', gross: 1.5 });
+    for (let dayOfMonth = 2; dayOfMonth <= 30; dayOfMonth += 4) specs.push({ date: day(dayOfMonth), user: 'user003', gross: 1.5 });
     const csv = makeCsv(specs, { pool: true });
     const stamps = { rosterAsOf: '2026-03-31' };
     const ghosts: RosterEntry[] = [
@@ -888,12 +888,12 @@ describe('seat actions with license data', () => {
 
     it('keeps a minimal seat that the license data shows as active, and flags it when the data shows it as stale', async () => {
       const recent = await run(seatsOf({ user: 'user002', plan: 'Business', lastActivityAt: '2026-03-20', source: 'api' }));
-      const lapsed = recent.analysis.population.profiles.find((p) => p.name === 'user002');
+      const lapsed = recent.analysis.population.profiles.find((profile) => profile.name === 'user002');
       expect(lapsed).toMatchObject({ tier: 'minimal', persona: 'lapsed' });
       expect(recent.analysis.seats.idle).toEqual([]);
 
       const stale = await run(seatsOf({ user: 'user002', plan: 'Business', lastActivityAt: '2025-12-01', source: 'api' }));
-      expect(stale.analysis.seats.idle.map((s) => s.name)).toEqual(['user002']);
+      expect(stale.analysis.seats.idle.map((candidate) => candidate.name)).toEqual(['user002']);
       expect(stale.analysis.seats.idle[0].license).toMatchObject({ seat: true, status: 'stale', daysSinceActivity: 120 });
 
       const cancelling = await run(seatsOf({ user: 'user002', plan: 'Business', lastActivityAt: '2025-12-01', pendingCancellation: '2026-04-30', source: 'api' }));
@@ -901,26 +901,26 @@ describe('seat actions with license data', () => {
     });
 
     it('leaves seats without a recent activity date out of savings and reclaim lists', async () => {
-      const a = await run(seatsOf({ user: 'user002', plan: 'Business', lastActivityAt: '2026-03-20', source: 'api' }));
-      const s = a.analysis.seats;
-      expect(s.unused.map((x) => x.name)).toEqual(['ghost-fading', 'ghost-stale']);
-      expect(s.unusedValue).toBe(38);
-      expect(s.keep?.map((x) => x.name)).toEqual(['ghost-active', 'ghost-new']);
-      expect(s.keepValue).toBe(39 + 19);
-      expect(must(a.analysis.licenses).noActivityDate.map((f) => f.login)).toEqual(['ghost-never', 'ghost-new']);
-      expect(must(a.analysis.licenses).reclaim.map((f) => f.login)).toEqual(['ghost-stale']);
-      expect(must(a.analysis.licenses).reclaimValue).toBe(19);
+      const pipeline = await run(seatsOf({ user: 'user002', plan: 'Business', lastActivityAt: '2026-03-20', source: 'api' }));
+      const seatPlan = pipeline.analysis.seats;
+      expect(seatPlan.unused.map((candidate) => candidate.name)).toEqual(['ghost-fading', 'ghost-stale']);
+      expect(seatPlan.unusedValue).toBe(38);
+      expect(seatPlan.keep?.map((candidate) => candidate.name)).toEqual(['ghost-active', 'ghost-new']);
+      expect(seatPlan.keepValue).toBe(39 + 19);
+      expect(must(pipeline.analysis.licenses).noActivityDate.map((finding) => finding.login)).toEqual(['ghost-never', 'ghost-new']);
+      expect(must(pipeline.analysis.licenses).reclaim.map((finding) => finding.login)).toEqual(['ghost-stale']);
+      expect(must(pipeline.analysis.licenses).reclaimValue).toBe(19);
     });
 
     it('does not make seat savings recommendations when activity dates are absent', async () => {
-      const plain = seatsOf({ user: 'user002', plan: 'Business' }).map((e) => ({ user: e.user, plan: e.plan }));
-      const a = await analyzeCsv(csv, { settings: { roster: plain } });
-      expect(a.analysis.seats.idle).toEqual([]);
-      expect(a.analysis.seats.unused).toEqual([]);
-      expect(a.analysis.seats.unusedValue).toBe(0);
-      expect('keep' in a.analysis.seats).toBe(false);
+      const plain = seatsOf({ user: 'user002', plan: 'Business' }).map((entry) => ({ user: entry.user, plan: entry.plan }));
+      const pipeline = await analyzeCsv(csv, { settings: { roster: plain } });
+      expect(pipeline.analysis.seats.idle).toEqual([]);
+      expect(pipeline.analysis.seats.unused).toEqual([]);
+      expect(pipeline.analysis.seats.unusedValue).toBe(0);
+      expect('keep' in pipeline.analysis.seats).toBe(false);
       const without = await analyzeCsv(csv, {});
-      expect(without.analysis.seats.idle.map((s) => s.name)).toEqual(['user002']);
+      expect(without.analysis.seats.idle.map((candidate) => candidate.name)).toEqual(['user002']);
       expect(without.analysis.seats.unused).toEqual([]);
       expect(without.analysis.licenses).toBeNull();
     });
@@ -930,7 +930,7 @@ describe('seat actions with license data', () => {
 describe('pool capacity from imported plans', () => {
   const dates = ['2026-05-05', '2026-05-20', '2026-06-03', '2026-06-20'];
   const csv = makeCsv(dates.flatMap((date) => ['user001', 'user002'].map((user) => ({ date, user, gross: 1 }))), { pool: true });
-  const ghosts = (n: number, prefix: string, over: Partial<RosterEntry> = {}): RosterEntry[] => Array.from({ length: n }, (_, i) => seat(`${prefix}${i + 1}`, over));
+  const ghosts = (seatCount: number, prefix: string, over: Partial<RosterEntry> = {}): RosterEntry[] => Array.from({ length: seatCount }, (_, seatIndex) => seat(`${prefix}${seatIndex + 1}`, over));
 
   it('adds the credits of each seat the report does not show, from the plan of the seat, and none before the seat existed', async () => {
     const roster = [
@@ -940,8 +940,8 @@ describe('pool capacity from imported plans', () => {
       seat('ghost-e1', { plan: 'Enterprise', createdAt: '2025-01-15' }),
       seat('ghost-e2', { plan: 'Enterprise', createdAt: '2026-06-10' }),
     ];
-    const pl = await analyzeCsv(csv, { settings: { roster, rosterAsOf: '2026-06-20' } });
-    const pool = pl.analysis.pool;
+    const pipeline = await analyzeCsv(csv, { settings: { roster, rosterAsOf: '2026-06-20' } });
+    const pool = pipeline.analysis.pool;
     expect(pool.months).toHaveLength(2);
     const [may, june] = pool.months;
     expect(may.csvCapacity).toBeCloseTo(38, 9);
@@ -962,7 +962,7 @@ describe('pool capacity from imported plans', () => {
   it('counts a seat without a creation day in every month', async () => {
     const roster = [seat('user001'), seat('user002'), ...ghosts(3, 'ghost-')];
     const pool = (await analyzeCsv(csv, { settings: { roster } })).analysis.pool;
-    expect(pool.months.map((m) => m.extraCapacity)).toEqual([expect.closeTo(57, 9), expect.closeTo(57, 9)]);
+    expect(pool.months.map((month) => month.extraCapacity)).toEqual([expect.closeTo(57, 9), expect.closeTo(57, 9)]);
   });
 
   it('adds the credits in the label of a custom plan for a seat the report does not show', async () => {
@@ -984,87 +984,87 @@ describe('pool capacity from imported plans', () => {
   });
 
   it('gives the exact pool for a complete import: 60 Business and 40 Enterprise seats are $2,700', async () => {
-    const planOf = (i: number): string => (i % 5 < 3 ? 'business' : 'enterprise');
+    const planOf = (seatIndex: number): string => (seatIndex % 5 < 3 ? 'business' : 'enterprise');
     const rest = {
       total_seats: 100,
-      seats: Array.from({ length: 100 }, (_, i) => ({
+      seats: Array.from({ length: 100 }, (_, seatIndex) => ({
         created_at: '2025-01-15T09:00:00Z',
         pending_cancellation_date: null,
-        last_activity_at: `${ago(1 + (i % 20))}T09:00:00Z`,
+        last_activity_at: `${ago(1 + (seatIndex % 20))}T09:00:00Z`,
         last_activity_editor: 'vscode/1.97.1/copilot-chat/0.24.1',
         last_authenticated_at: `${AS_OF}T09:00:00Z`,
-        plan_type: planOf(i),
-        assignee: { login: `member${String(i).padStart(3, '0')}`, type: 'User' },
+        plan_type: planOf(seatIndex),
+        assignee: { login: `member${String(seatIndex).padStart(3, '0')}`, type: 'User' },
       })),
     };
     const parse = parseLicenseFile(JSON.stringify(rest));
     expect(parse).toMatchObject({ kind: 'seats-json', total: 100, exportedAt: AS_OF });
     const roster = rosterFromParse(parse);
-    const specs: RowSpec[] = Array.from({ length: 10 }, (_, i) => ({ date: '2026-05-10', user: `member${String(i).padStart(3, '0')}`, gross: 1, quota: planOf(i) === 'business' ? 1900 : 3900 }));
-    const pl = await analyzeCsv(makeCsv(specs, { pool: true }), { settings: { roster, rosterAsOf: parse.exportedAt } });
-    const may = pl.analysis.pool.months[0];
+    const specs: RowSpec[] = Array.from({ length: 10 }, (_, userIndex) => ({ date: '2026-05-10', user: `member${String(userIndex).padStart(3, '0')}`, gross: 1, quota: planOf(userIndex) === 'business' ? 1900 : 3900 }));
+    const pipeline = await analyzeCsv(makeCsv(specs, { pool: true }), { settings: { roster, rosterAsOf: parse.exportedAt } });
+    const may = pipeline.analysis.pool.months[0];
     expect(may.csvCapacity).toBeCloseTo(6 * 19 + 4 * 39, 9);
     expect(may.extraCapacity).toBeCloseTo(54 * 19 + 36 * 39, 9);
     expect(may.capacity).toBeCloseTo(2700, 9);
-    expect(pl.analysis.pool.capacityIsLowerBound).toBe(false);
-    const r = must(pl.analysis.licenses);
-    expect(r.byPlan).toEqual({ Business: 60, Enterprise: 40, other: 0 });
-    expect(r.seatCost).toBe(2700);
-    expect(r).toMatchObject({ seats: 100, reportUsers: 10, matched: 10, neverSeen: 90, seenOutsideScope: 0 });
-    expect(r.coverage).toBe(1);
+    expect(pipeline.analysis.pool.capacityIsLowerBound).toBe(false);
+    const report = must(pipeline.analysis.licenses);
+    expect(report.byPlan).toEqual({ Business: 60, Enterprise: 40, other: 0 });
+    expect(report.seatCost).toBe(2700);
+    expect(report).toMatchObject({ seats: 100, reportUsers: 10, matched: 10, neverSeen: 90, seenOutsideScope: 0 });
+    expect(report.coverage).toBe(1);
   });
 });
 
 describe('a roster of 20,000 seats', () => {
-  const N = 20_000;
+  const SEAT_COUNT = 20_000;
 
-  function restText(n: number, names: string[]): string {
-    const seats = Array.from({ length: n }, (_, i) => ({
+  function restText(seatCount: number, names: string[]): string {
+    const seats = Array.from({ length: seatCount }, (_, seatIndex) => ({
       created_at: '2025-01-15T09:00:00Z',
-      pending_cancellation_date: i % 50 === 0 ? '2026-06-30' : null,
-      last_activity_at: i % 7 === 0 ? null : `${ago((i * 13) % 300)}T09:00:00Z`,
+      pending_cancellation_date: seatIndex % 50 === 0 ? '2026-06-30' : null,
+      last_activity_at: seatIndex % 7 === 0 ? null : `${ago((seatIndex * 13) % 300)}T09:00:00Z`,
       last_activity_editor: 'vscode/1.97.1/copilot-chat/0.24.1',
-      last_authenticated_at: `${ago((i * 7) % 100)}T09:00:00Z`,
-      plan_type: i % 4 === 0 ? 'enterprise' : 'business',
-      assignee: { login: i < names.length ? names[i].toUpperCase() : `member${i}`, name: `Test User ${i}`, email: `member${i}@example.com` },
+      last_authenticated_at: `${ago((seatIndex * 7) % 100)}T09:00:00Z`,
+      plan_type: seatIndex % 4 === 0 ? 'enterprise' : 'business',
+      assignee: { login: seatIndex < names.length ? names[seatIndex].toUpperCase() : `member${seatIndex}`, name: `Test User ${seatIndex}`, email: `member${seatIndex}@example.com` },
       organization: { login: 'acme' },
-      assigning_team: { slug: i % 2 === 0 ? 'core' : 'platform' },
+      assigning_team: { slug: seatIndex % 2 === 0 ? 'core' : 'platform' },
     }));
-    return JSON.stringify({ total_seats: n, seats });
+    return JSON.stringify({ total_seats: seatCount, seats });
   }
 
   it('is read and set against a report in well under a second', async () => {
-    const pl = await analyzeDemo();
-    const names = pl.analysis.population.profiles.map((p) => p.name);
+    const pipeline = await analyzeDemo();
+    const names = pipeline.analysis.population.profiles.map((profile) => profile.name);
     expect(names.length).toBeGreaterThan(20);
-    const text = restText(N, names);
+    const text = restText(SEAT_COUNT, names);
     const out: { report: LicenseReport | null } = { report: null };
-    const ms = bestMs(3, () => {
+    const elapsedMs = bestMs(3, () => {
       const parse = parseLicenseFile(text);
       const roster = rosterFromParse(parse);
-      out.report = buildLicenseReport(pl.analysis.population, { roster, rosterAsOf: parse.exportedAt, newUserDays: 14 }, pl.store);
+      out.report = buildLicenseReport(pipeline.analysis.population, { roster, rosterAsOf: parse.exportedAt, newUserDays: 14 }, pipeline.store);
     });
-    const r = must(out.report);
-    expect(r.seats).toBe(N);
-    expect(r.matched).toBe(names.length);
-    expect(r.matched + r.seenOutsideScope + r.neverSeen).toBe(r.seats);
-    expect(r.reclaim.length).toBeGreaterThan(1000);
-    expect(ms).toBeLessThan(1000);
+    const report = must(out.report);
+    expect(report.seats).toBe(SEAT_COUNT);
+    expect(report.matched).toBe(names.length);
+    expect(report.matched + report.seenOutsideScope + report.neverSeen).toBe(report.seats);
+    expect(report.reclaim.length).toBeGreaterThan(1000);
+    expect(elapsedMs).toBeLessThan(1000);
   });
 
   it('runs through the whole analysis, and the report is the one buildLicenseReport gives', async () => {
-    const pl = await analyzeDemo();
-    const names = pl.analysis.population.profiles.map((p) => p.name);
-    const parse = parseLicenseFile(restText(N, names));
+    const pipeline = await analyzeDemo();
+    const names = pipeline.analysis.population.profiles.map((profile) => profile.name);
+    const parse = parseLicenseFile(restText(SEAT_COUNT, names));
     const settings = mergeSettings({ roster: rosterFromParse(parse), rosterAsOf: parse.exportedAt });
     const out: { a: ReturnType<Pipeline['run']> | null } = { a: null };
-    const ms = bestMs(2, () => {
-      out.a = pl.run(pl.filters, settings);
+    const elapsedMs = bestMs(2, () => {
+      out.a = pipeline.run(pipeline.filters, settings);
     });
-    const a = must(out.a);
-    expect(must(a.licenses).seats).toBe(N);
-    expect(JSON.stringify(a.licenses)).toBe(JSON.stringify(buildLicenseReport(a.population, settings, pl.store)));
-    expect(a.seats.unused.length + (a.seats.keep?.length ?? 0)).toBeLessThanOrEqual(N);
-    expect(ms).toBeLessThan(5000);
+    const analysis = must(out.a);
+    expect(must(analysis.licenses).seats).toBe(SEAT_COUNT);
+    expect(JSON.stringify(analysis.licenses)).toBe(JSON.stringify(buildLicenseReport(analysis.population, settings, pipeline.store)));
+    expect(analysis.seats.unused.length + (analysis.seats.keep?.length ?? 0)).toBeLessThanOrEqual(SEAT_COUNT);
+    expect(elapsedMs).toBeLessThan(5000);
   });
 });

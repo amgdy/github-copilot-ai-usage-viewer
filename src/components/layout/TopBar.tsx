@@ -11,11 +11,11 @@ import { Badge } from '../ui/Badge';
 
 const THEME_NEXT: Record<ThemeMode, ThemeMode> = { system: 'light', light: 'dark', dark: 'system' };
 const THEME_ICON = { system: Monitor, light: Sun, dark: Moon } as const;
-const themeName = (m: ThemeMode) => ({ system: t('same as your device'), light: t('light'), dark: t('dark') })[m];
+const themeName = (mode: ThemeMode) => ({ system: t('same as your device'), light: t('light'), dark: t('dark') })[mode];
 
 function ThemeButton() {
-  const theme = useApp((s) => s.theme);
-  const setTheme = useApp((s) => s.setTheme);
+  const theme = useApp((state) => state.theme);
+  const setTheme = useApp((state) => state.setTheme);
   const Icon = THEME_ICON[theme];
   const label = t('Theme: {now}. Click to switch to {next}.', { now: themeName(theme), next: themeName(THEME_NEXT[theme]) });
   return (
@@ -26,8 +26,8 @@ function ThemeButton() {
 }
 
 function CalcToggle() {
-  const on = useApp((s) => s.showCalc);
-  const setShowCalc = useApp((s) => s.setShowCalc);
+  const on = useApp((state) => state.showCalc);
+  const setShowCalc = useApp((state) => state.setShowCalc);
   return (
     <button
       type="button"
@@ -45,9 +45,9 @@ function CalcToggle() {
 
 export function TopBar() {
   const { dataset, store } = useAnalysis();
-  const filters = useApp((s) => s.filters);
-  const setNavOpen = useApp((s) => s.setNavOpen);
-  const openFilters = useApp((s) => s.setFilterDrawerOpen);
+  const filters = useApp((state) => state.filters);
+  const setNavOpen = useApp((state) => state.setNavOpen);
+  const openFilters = useApp((state) => state.setFilterDrawerOpen);
   const count = activeFilterCount(filters);
   const name = datasetLabel(dataset);
   return (

@@ -21,11 +21,11 @@ function removeModel(name: string) {
 }
 
 function AttentionNote({ rows, total, onShow }: { rows: ModelRowData[]; total: number; onShow: () => void }) {
-  const unpriced = rows.filter((r) => r.attention && !r.meta.priced);
-  const noTier = rows.filter((r) => r.attention && r.meta.category === 'Unknown');
+  const unpriced = rows.filter((row) => row.attention && !row.meta.priced);
+  const noTier = rows.filter((row) => row.attention && row.meta.category === 'Unknown');
   if (unpriced.length === 0 && noTier.length === 0) return <Callout tone="good">{t('Every model in the report has a tier and a price on the price card.')}</Callout>;
 
-  const gross = unpriced.reduce((sum, r) => sum + r.gross, 0);
+  const gross = unpriced.reduce((sum, row) => sum + row.gross, 0);
   return (
     <Callout
       tone="warn"
@@ -63,16 +63,16 @@ function AttentionNote({ rows, total, onShow }: { rows: ModelRowData[]; total: n
 }
 
 export function ModelsSection() {
-  const store = useApp((s) => s.dataset)?.store ?? null;
-  const overrides = useApp((s) => s.settings.modelOverrides);
-  const update = useApp((s) => s.updateSettings);
+  const store = useApp((state) => state.dataset)?.store ?? null;
+  const overrides = useApp((state) => state.settings.modelOverrides);
+  const update = useApp((state) => state.updateSettings);
   const [filter, setFilter] = useState<ModelFilter>('all');
 
   const usage = useMemo(() => (store ? modelUsage(store) : null), [store]);
   const rows = useMemo(() => (store && usage ? modelRows(store, usage, overrides) : []), [store, usage, overrides]);
-  const reportModels = useMemo(() => rows.filter((r) => !r.readOnly).map((r) => r.name), [rows]);
+  const reportModels = useMemo(() => rows.filter((row) => !row.readOnly).map((row) => row.name), [rows]);
   const notListed = useMemo(() => {
-    const listed = new Set(rows.map((r) => r.name));
+    const listed = new Set(rows.map((row) => row.name));
     return Object.keys(overrides)
       .filter((name) => !listed.has(name))
       .sort((a, b) => a.localeCompare(b));

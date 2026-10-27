@@ -24,7 +24,7 @@ const DESCRIPTION = msg('Who uses GitHub Copilot, how much, and who needs attent
 
 export default function UsersPage() {
   const { analysis, settings, taxonomy } = useAnalysis();
-  const { range, agg, users, coverage } = analysis;
+  const { range, agg: aggregates, users, coverage } = analysis;
   const trendReliable = users.trendReliable;
   const hasLicense = analysis.licenses !== null;
   const columns = useMemo(
@@ -32,7 +32,7 @@ export default function UsersPage() {
     [taxonomy, trendReliable, coverage, hasLicense],
   );
 
-  if (agg.totals.rows === 0) {
+  if (aggregates.totals.rows === 0) {
     return (
       <>
         <PageHeader title={t('Users')} description={t(DESCRIPTION)} />

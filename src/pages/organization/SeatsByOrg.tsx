@@ -36,14 +36,14 @@ export function SeatsByOrg() {
 
   const columns = useMemo<Column<OrgSeatRow>[]>(() => {
     if (data === null) return [];
-    const sum = (rows: OrgSeatRow[], f: (r: OrgSeatRow) => number) => rows.reduce((a, r) => a + f(r), 0);
+    const sum = (rows: OrgSeatRow[], getValue: (row: OrgSeatRow) => number) => rows.reduce((total, row) => total + getValue(row), 0);
     const everything = (rows: OrgSeatRow[]) => rows.length === data.rows.length;
     return [
       {
         key: 'org',
         header: t('Organization'),
-        value: (r) => (r.known ? r.name : t('Organization not known')),
-        render: (r) => <GroupName name={r.known ? r.name : t('Organization not known')} blank={!r.known} />,
+        value: (row) => (row.known ? row.name : t('Organization not known')),
+        render: (row) => <GroupName name={row.known ? row.name : t('Organization not known')} blank={!row.known} />,
         total: (rows) => (everything(rows) ? t('Total') : t('Total of {n} matching', { n: fmtInt(rows.length) })),
       },
       {
@@ -52,9 +52,9 @@ export function SeatsByOrg() {
         hint: t('Seats in the license list. A seat counts in the first organization the list names for it.'),
         calc: 'org-seats',
         align: 'end',
-        value: (r) => r.seats,
-        render: (r) => fmtInt(r.seats),
-        total: (rows) => fmtInt(sum(rows, (r) => r.seats)),
+        value: (row) => row.seats,
+        render: (row) => fmtInt(row.seats),
+        total: (rows) => fmtInt(sum(rows, (row) => row.seats)),
       },
       {
         key: 'used',
@@ -62,9 +62,9 @@ export function SeatsByOrg() {
         hint: t('Seats whose holder has usage in this view'),
         calc: 'org-seats-used',
         align: 'end',
-        value: (r) => r.used,
-        render: (r) => fmtInt(r.used),
-        total: (rows) => fmtInt(sum(rows, (r) => r.used)),
+        value: (row) => row.used,
+        render: (row) => fmtInt(row.used),
+        total: (rows) => fmtInt(sum(rows, (row) => row.used)),
       },
       {
         key: 'unused',
@@ -72,9 +72,9 @@ export function SeatsByOrg() {
         hint: t('Seats whose holder has no usage in this view. Code completions are not in the report, so check activity on the Licenses page first.'),
         calc: 'org-seats-unused',
         align: 'end',
-        value: (r) => r.unused,
-        render: (r) => (r.unused > 0 ? <span className="text-warn">{fmtInt(r.unused)}</span> : fmtInt(r.unused)),
-        total: (rows) => fmtInt(sum(rows, (r) => r.unused)),
+        value: (row) => row.unused,
+        render: (row) => (row.unused > 0 ? <span className="text-warn">{fmtInt(row.unused)}</span> : fmtInt(row.unused)),
+        total: (rows) => fmtInt(sum(rows, (row) => row.unused)),
       },
       {
         key: 'noSeat',
@@ -82,9 +82,9 @@ export function SeatsByOrg() {
         hint: t('People with usage in this view who hold no seat in the license list'),
         calc: 'org-no-seat',
         align: 'end',
-        value: (r) => r.noSeat,
-        render: (r) => fmtInt(r.noSeat),
-        total: (rows) => fmtInt(sum(rows, (r) => r.noSeat)),
+        value: (row) => row.noSeat,
+        render: (row) => fmtInt(row.noSeat),
+        total: (rows) => fmtInt(sum(rows, (row) => row.noSeat)),
       },
       {
         key: 'seatCost',
@@ -92,9 +92,9 @@ export function SeatsByOrg() {
         hint: t('What the seats cost per month at the seat prices'),
         calc: 'org-seat-cost',
         align: 'end',
-        value: (r) => r.seatCost,
-        render: (r) => fmtUSD(r.seatCost),
-        total: (rows) => fmtUSD(sum(rows, (r) => r.seatCost)),
+        value: (row) => row.seatCost,
+        render: (row) => fmtUSD(row.seatCost),
+        total: (rows) => fmtUSD(sum(rows, (row) => row.seatCost)),
       },
       {
         key: 'perSeat',
@@ -102,11 +102,11 @@ export function SeatsByOrg() {
         hint: t('Usage of the seat holders in a 30.4-day month, divided by the seats'),
         calc: 'org-usage-per-seat',
         align: 'end',
-        value: (r) => (Number.isFinite(r.perSeat) ? r.perSeat : null),
-        render: (r) => (Number.isFinite(r.perSeat) ? fmtUSD(r.perSeat) : DASH),
+        value: (row) => (Number.isFinite(row.perSeat) ? row.perSeat : null),
+        render: (row) => (Number.isFinite(row.perSeat) ? fmtUSD(row.perSeat) : DASH),
         total: (rows) => {
-          const seats = sum(rows, (r) => r.seats);
-          return seats > 0 ? fmtUSD((sum(rows, (r) => r.holderUsage) * perMonth) / seats) : DASH;
+          const seats = sum(rows, (row) => row.seats);
+          return seats > 0 ? fmtUSD((sum(rows, (row) => row.holderUsage) * perMonth) / seats) : DASH;
         },
       },
       {
@@ -117,13 +117,13 @@ export function SeatsByOrg() {
         sortable: false,
         align: 'end',
         value: () => null,
-        render: (r) =>
-          r.value === null ? null : (
+        render: (row) =>
+          row.value === null ? null : (
             <button
               type="button"
               className="btn btn-sm"
-              title={t('Filter the whole report to {name}', { name: r.name })}
-              onClick={() => drill(filterPatch('org', r.value ?? ''), { merge: true })}
+              title={t('Filter the whole report to {name}', { name: row.name })}
+              onClick={() => drill(filterPatch('org', row.value ?? ''), { merge: true })}
             >
               <ListFilter size={12} /> {t('Filter')}
             </button>
@@ -152,7 +152,7 @@ export function SeatsByOrg() {
       ),
     );
   }
-  if (data.rows.some((r) => !r.known)) {
+  if (data.rows.some((row) => !row.known)) {
     notes.push(t('Organization not known: the license list names no organization for the seat, and the report names none for its holder.'));
   }
 
@@ -166,13 +166,13 @@ export function SeatsByOrg() {
           {t('Open Licenses')}
         </button>
       }
-      footer={notes.length ? notes.map((n) => <p key={n}>{n}</p>) : undefined}
+      footer={notes.length ? notes.map((note) => <p key={note}>{note}</p>) : undefined}
     >
       <div className="space-y-3">
         <DataTable
           rows={data.rows}
           columns={columns}
-          rowKey={(r) => r.key}
+          rowKey={(row) => row.key}
           defaultSort={{ key: 'seatCost', dir: 'desc' }}
           pageSize={10}
           searchable={data.rows.length > 10}

@@ -35,8 +35,8 @@ function inputLabel(spec: ScalarSpec): string {
 }
 
 function ScalarRow({ spec }: { spec: ScalarSpec }) {
-  const value = useApp((s) => scalarDisplay(spec, s.settings));
-  const update = useApp((s) => s.updateSettings);
+  const value = useApp((state) => scalarDisplay(spec, state.settings));
+  const update = useApp((state) => state.updateSettings);
   const live = LIVE[spec.key];
 
   return (
@@ -55,9 +55,9 @@ function ScalarRow({ spec }: { spec: ScalarSpec }) {
         prefix={spec.unit === 'usd' ? '$' : undefined}
         suffix={spec.unit === 'percent' ? '%' : spec.unit === 'days' ? t('days') : undefined}
         digits={spec.unit === 'percent' ? 2 : 4}
-        onCommit={(v) => {
-          if (v === null) return null;
-          const next = spec.unit === 'percent' ? fromPct(v) : v;
+        onCommit={(entered) => {
+          if (entered === null) return null;
+          const next = spec.unit === 'percent' ? fromPct(entered) : entered;
           if (spec.key === 'lowAuto' || spec.key === 'autoFirst') {
             const error = autoLimitsError(useApp.getState().settings, spec.key, next);
             if (error) return error;
@@ -81,8 +81,8 @@ function ScalarGroup({ title, keys, note, icon }: { title: string; keys: ScalarK
       </GroupTitle>
       {note ? <p className="py-2 text-xs text-fg-subtle">{t(note)}</p> : null}
       <div className="divide-y divide-border-muted pt-3">
-        {keys.map((k) => (
-          <ScalarRow key={k} spec={SCALARS[k]} />
+        {keys.map((settingKey) => (
+          <ScalarRow key={settingKey} spec={SCALARS[settingKey]} />
         ))}
       </div>
     </div>
@@ -109,13 +109,13 @@ export function BehaviorCard() {
   return (
     <Card title={t('User groups and traits')} subtitle={t("The limits behind each user's usage profile, persona, Auto use class and usage traits.")}>
       <div className="space-y-5">
-        {BEHAVIOR_GROUPS.map((g) => (
+        {BEHAVIOR_GROUPS.map((group) => (
           <ScalarGroup
-            key={g.title}
-            title={g.title}
-            keys={g.keys}
-            note={GROUP_NOTES[g.title]}
-            icon={isAutoGroup(g.title) ? <FeatureIcon feature="auto" size={13} /> : undefined}
+            key={group.title}
+            title={group.title}
+            keys={group.keys}
+            note={GROUP_NOTES[group.title]}
+            icon={isAutoGroup(group.title) ? <FeatureIcon feature="auto" size={13} /> : undefined}
           />
         ))}
       </div>

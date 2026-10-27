@@ -1,6 +1,5 @@
-import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { join, relative, sep } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { globSync, readFileSync } from 'node:fs';
+import { join, sep } from 'node:path';
 import { parseAst } from 'vite';
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_SETTINGS } from '../src/lib/analytics/settings';
@@ -19,7 +18,7 @@ const EM_DASH = /\u2014/;
 const EMOJI = /\p{Extended_Pictographic}/u;
 const BANNED_WORDS = /\b(seamless|seamlessly|leverage|leverages|unlock|robust|cutting-edge|game-changing|delve)\b/i;
 
-const textsOf = (d: MetricDoc): string[] => [d.title, d.meaning, d.formula, ...(d.steps ?? []), ...(d.notes ?? []), d.example ?? ''];
+const textsOf = (metric: MetricDoc): string[] => [metric.title, metric.meaning, metric.formula, ...(metric.steps ?? []), ...(metric.notes ?? []), metric.example ?? ''];
 
 /** Fails with one line per problem, so the message says what to fix. */
 const expectNone = (problems: string[]) => expect(problems, problems.join('\n')).toEqual([]);
@@ -32,10 +31,10 @@ describe('metric docs: registry', () => {
   it('ids are unique and written as lower-case words joined by dashes', () => {
     const seen = new Set<string>();
     const bad: string[] = [];
-    for (const d of METRICS) {
-      if (!KEBAB.test(d.id)) bad.push(`${d.id}: not kebab-case`);
-      if (seen.has(d.id)) bad.push(`${d.id}: defined twice`);
-      seen.add(d.id);
+    for (const metric of METRICS) {
+      if (!KEBAB.test(metric.id)) bad.push(`${metric.id}: not kebab-case`);
+      if (seen.has(metric.id)) bad.push(`${metric.id}: defined twice`);
+      seen.add(metric.id);
     }
     expectNone(bad);
   });
@@ -43,22 +42,22 @@ describe('metric docs: registry', () => {
   it('every explanation has a title, a meaning and a formula, in a known area and basis', () => {
     const areas = new Set<string>(METRIC_AREAS);
     const bad: string[] = [];
-    for (const d of METRICS) {
-      if (!d.title.trim()) bad.push(`${d.id}: empty title`);
-      if (!d.meaning.trim()) bad.push(`${d.id}: empty meaning`);
-      if (!d.formula.trim()) bad.push(`${d.id}: empty formula`);
-      if (!areas.has(d.area)) bad.push(`${d.id}: unknown area "${d.area}"`);
-      if (!(d.basis in BASIS_LABEL)) bad.push(`${d.id}: unknown basis "${d.basis}"`);
+    for (const metric of METRICS) {
+      if (!metric.title.trim()) bad.push(`${metric.id}: empty title`);
+      if (!metric.meaning.trim()) bad.push(`${metric.id}: empty meaning`);
+      if (!metric.formula.trim()) bad.push(`${metric.id}: empty formula`);
+      if (!areas.has(metric.area)) bad.push(`${metric.id}: unknown area "${metric.area}"`);
+      if (!(metric.basis in BASIS_LABEL)) bad.push(`${metric.id}: unknown basis "${metric.basis}"`);
       const lists: [string, readonly string[] | undefined][] = [
-        ['steps', d.steps],
-        ['notes', d.notes],
-        ['columns', d.columns],
-        ['settings', d.settings],
-        ['related', d.related],
+        ['steps', metric.steps],
+        ['notes', metric.notes],
+        ['columns', metric.columns],
+        ['settings', metric.settings],
+        ['related', metric.related],
       ];
       for (const [name, list] of lists) {
-        if (list && list.some((x) => !x.trim())) bad.push(`${d.id}: empty entry in ${name}`);
-        if (list && new Set(list).size !== list.length) bad.push(`${d.id}: repeated entry in ${name}`);
+        if (list && list.some((entry) => !entry.trim())) bad.push(`${metric.id}: empty entry in ${name}`);
+        if (list && new Set(list).size !== list.length) bad.push(`${metric.id}: repeated entry in ${name}`);
       }
     }
     expectNone(bad);
@@ -66,13 +65,13 @@ describe('metric docs: registry', () => {
 
   it('related ids, settings and columns all resolve', () => {
     const bad: string[] = [];
-    for (const d of METRICS) {
-      for (const r of d.related ?? []) {
-        if (r === d.id) bad.push(`${d.id}: relates to itself`);
-        else if (!metricDoc(r)) bad.push(`${d.id}: related "${r}" is not defined`);
+    for (const metric of METRICS) {
+      for (const relatedId of metric.related ?? []) {
+        if (relatedId === metric.id) bad.push(`${metric.id}: relates to itself`);
+        else if (!metricDoc(relatedId)) bad.push(`${metric.id}: related "${relatedId}" is not defined`);
       }
-      for (const s of d.settings ?? []) if (!(s in SETTING_REFS)) bad.push(`${d.id}: unknown setting "${s}"`);
-      for (const c of d.columns ?? []) if (!COLUMN.test(c)) bad.push(`${d.id}: "${c}" is not a column name`);
+      for (const setting of metric.settings ?? []) if (!(setting in SETTING_REFS)) bad.push(`${metric.id}: unknown setting "${setting}"`);
+      for (const columnName of metric.columns ?? []) if (!COLUMN.test(columnName)) bad.push(`${metric.id}: "${columnName}" is not a column name`);
     }
     expectNone(bad);
   });
@@ -88,31 +87,31 @@ describe('metric docs: registry', () => {
 
   it('text has no em dashes, emojis, exclamation marks or marketing words', () => {
     const bad: string[] = [];
-    for (const d of METRICS) {
-      for (const t of textsOf(d)) {
-        const head = t.slice(0, 60);
-        if (EM_DASH.test(t)) bad.push(`${d.id}: em dash in "${head}"`);
-        if (EMOJI.test(t)) bad.push(`${d.id}: emoji in "${head}"`);
-        if (t.includes('!')) bad.push(`${d.id}: exclamation mark in "${head}"`);
-        const m = BANNED_WORDS.exec(t);
-        if (m) bad.push(`${d.id}: "${m[0]}" in "${head}"`);
+    for (const metric of METRICS) {
+      for (const text of textsOf(metric)) {
+        const head = text.slice(0, 60);
+        if (EM_DASH.test(text)) bad.push(`${metric.id}: em dash in "${head}"`);
+        if (EMOJI.test(text)) bad.push(`${metric.id}: emoji in "${head}"`);
+        if (text.includes('!')) bad.push(`${metric.id}: exclamation mark in "${head}"`);
+        const match = BANNED_WORDS.exec(text);
+        if (match) bad.push(`${metric.id}: "${match[0]}" in "${head}"`);
       }
     }
     expectNone(bad);
   });
 
   it('a formula is one line', () => {
-    expectNone(METRICS.filter((d) => d.formula.includes('\n')).map((d) => `${d.id}: formula runs over several lines`));
+    expectNone(METRICS.filter((metric) => metric.formula.includes('\n')).map((metric) => `${metric.id}: formula runs over several lines`));
   });
 
   it('is grouped by area in reading order and searchable', () => {
     const groups = metricsByArea();
-    const order = groups.map((g) => METRIC_AREAS.indexOf(g.area));
+    const order = groups.map((group) => METRIC_AREAS.indexOf(group.area));
     expect(order).toEqual([...order].sort((a, b) => a - b));
-    expect(groups.reduce((n, g) => n + g.docs.length, 0)).toBe(METRICS.length);
+    expect(groups.reduce((docCount, group) => docCount + group.docs.length, 0)).toBe(METRICS.length);
     expect(searchMetrics('')).toHaveLength(METRICS.length);
     const hits = searchMetrics('auto discount');
-    expect(hits.map((d) => d.id)).toContain('auto-discount');
+    expect(hits.map((metric) => metric.id)).toContain('auto-discount');
     expect(searchMetrics('zzzz-not-a-word')).toEqual([]);
   });
 
@@ -125,7 +124,7 @@ describe('metric docs: registry', () => {
 
 // ---- Source scan: the pages must point at explanations that exist -------------------------------
 
-const SRC = fileURLToPath(new URL('../src', import.meta.url));
+const SOURCE_DIR = join(import.meta.dirname, '..', 'src');
 const REQUIRES_CALC = new Set(['Kpi', 'ChartCard']);
 
 /**
@@ -137,7 +136,7 @@ const COVERAGE_ENFORCED = ['pages/', 'components/'];
 /** While a page is being finished, run `METRIC_DOCS_ENFORCE=pages/users/,components/user/ npx vitest run tests/metric-docs.test.ts` to check it. */
 const ENFORCE_EXTRA = (process.env.METRIC_DOCS_ENFORCE ?? '')
   .split(',')
-  .map((s) => s.trim())
+  .map((path) => path.trim())
   .filter(Boolean);
 
 interface AstNode {
@@ -147,11 +146,11 @@ interface AstNode {
   [key: string]: unknown;
 }
 
-const isNode = (v: unknown): v is AstNode => typeof v === 'object' && v !== null && typeof (v as AstNode).type === 'string';
+const isNode = (value: unknown): value is AstNode => typeof value === 'object' && value !== null && typeof (value as AstNode).type === 'string';
 
-function childrenOf(n: AstNode): AstNode[] {
+function childrenOf(node: AstNode): AstNode[] {
   const out: AstNode[] = [];
-  for (const [key, value] of Object.entries(n)) {
+  for (const [key, value] of Object.entries(node)) {
     if (key === 'type') continue;
     if (Array.isArray(value)) {
       for (const item of value) if (isNode(item)) out.push(item);
@@ -163,29 +162,29 @@ function childrenOf(n: AstNode): AstNode[] {
 }
 
 /** The ids an expression can evaluate to, when it is built from string literals, arrays and conditions only. */
-function idsOf(e: unknown): string[] {
-  if (!isNode(e)) return [];
-  switch (e.type) {
+function idsOf(node: unknown): string[] {
+  if (!isNode(node)) return [];
+  switch (node.type) {
     case 'Literal':
-      return typeof e.value === 'string' ? [e.value] : [];
+      return typeof node.value === 'string' ? [node.value] : [];
     case 'TemplateLiteral': {
-      const quasis = e.quasis as { value: { cooked?: string | null } }[];
-      const expressions = e.expressions as unknown[];
+      const quasis = node.quasis as { value: { cooked?: string | null } }[];
+      const expressions = node.expressions as unknown[];
       const cooked = quasis[0]?.value.cooked;
       return expressions.length === 0 && quasis.length === 1 && cooked ? [cooked] : [];
     }
     case 'ArrayExpression':
-      return (e.elements as unknown[]).flatMap(idsOf);
+      return (node.elements as unknown[]).flatMap(idsOf);
     case 'ConditionalExpression':
-      return [...idsOf(e.consequent), ...idsOf(e.alternate)];
+      return [...idsOf(node.consequent), ...idsOf(node.alternate)];
     case 'LogicalExpression':
-      return [...idsOf(e.left), ...idsOf(e.right)];
+      return [...idsOf(node.left), ...idsOf(node.right)];
     case 'JSXExpressionContainer':
     case 'TSAsExpression':
     case 'TSSatisfiesExpression':
     case 'TSNonNullExpression':
     case 'ParenthesizedExpression':
-      return idsOf(e.expression);
+      return idsOf(node.expression);
     default:
       return [];
   }
@@ -203,22 +202,17 @@ interface Gap {
   what: string;
 }
 
-const walkDir = (dir: string, out: string[] = []): string[] => {
-  for (const name of readdirSync(dir)) {
-    const p = join(dir, name);
-    if (statSync(p).isDirectory()) walkDir(p, out);
-    else if (/\.tsx?$/.test(name) && !name.endsWith('.d.ts')) out.push(p);
-  }
-  return out;
-};
+/** Every TypeScript source file under src, as paths relative to src. */
+const sourceFiles = (): string[] => globSync('**/*.{ts,tsx}', { cwd: SOURCE_DIR }).filter((file) => !file.endsWith('.d.ts')).sort();
 
 function scan() {
   const uses: Use[] = [];
   const gaps: Gap[] = [];
   const parseErrors: string[] = [];
 
-  for (const path of walkDir(SRC)) {
-    const file = relative(SRC, path).split(sep).join('/');
+  for (const entry of sourceFiles()) {
+    const path = join(SOURCE_DIR, entry);
+    const file = entry.split(sep).join('/');
     if (file.startsWith('lib/metrics/docs/')) continue;
     const text = readFileSync(path, 'utf8');
     if (!/calc|Calc|EChart|Kpi|ChartCard/.test(text)) continue;
@@ -231,39 +225,39 @@ function scan() {
       continue;
     }
 
-    const lineOf = (n: AstNode) => text.slice(0, n.start).split('\n').length;
+    const lineOf = (node: AstNode) => text.slice(0, node.start).split('\n').length;
     const fileUses: Use[] = [];
     let charts = 0;
     let firstChartLine = 0;
 
-    const visit = (n: AstNode) => {
-      if (n.type === 'JSXOpeningElement') {
-        const nameNode = n.name as AstNode;
+    const visit = (node: AstNode) => {
+      if (node.type === 'JSXOpeningElement') {
+        const nameNode = node.name as AstNode;
         const tag = nameNode.type === 'JSXIdentifier' ? (nameNode.name as string) : '';
-        const attributes = n.attributes as AstNode[];
-        const attr = (name: string) => attributes.find((a) => a.type === 'JSXAttribute' && (a.name as AstNode).name === name);
-        const valueIds = (a: AstNode | undefined) => idsOf(a?.value);
+        const attributes = node.attributes as AstNode[];
+        const attributeNamed = (name: string) => attributes.find((attribute) => attribute.type === 'JSXAttribute' && (attribute.name as AstNode).name === name);
+        const valueIds = (attribute: AstNode | undefined) => idsOf(attribute?.value);
 
-        const calc = attr('calc');
-        if (calc) fileUses.push({ file, line: lineOf(n), ids: valueIds(calc) });
+        const calcAttribute = attributeNamed('calc');
+        if (calcAttribute) fileUses.push({ file, line: lineOf(node), ids: valueIds(calcAttribute) });
         if (tag === 'CalcInfo' || tag === 'CalcLine') {
-          const id = attr('id');
-          if (id) fileUses.push({ file, line: lineOf(n), ids: valueIds(id) });
+          const id = attributeNamed('id');
+          if (id) fileUses.push({ file, line: lineOf(node), ids: valueIds(id) });
         }
-        const hasSpread = attributes.some((a) => a.type === 'JSXSpreadAttribute');
-        if (REQUIRES_CALC.has(tag) && !calc && !hasSpread) gaps.push({ file, line: lineOf(n), what: `<${tag}> has no calc` });
+        const hasSpread = attributes.some((attribute) => attribute.type === 'JSXSpreadAttribute');
+        if (REQUIRES_CALC.has(tag) && !calcAttribute && !hasSpread) gaps.push({ file, line: lineOf(node), what: `<${tag}> has no calc` });
         if (tag === 'EChart' && !file.startsWith('components/ui/') && !file.startsWith('components/charts/')) {
           charts++;
-          firstChartLine ||= lineOf(n);
+          firstChartLine ||= lineOf(node);
         }
       }
-      if (n.type === 'Property' && !n.computed) {
-        const key = n.key as AstNode;
+      if (node.type === 'Property' && !node.computed) {
+        const key = node.key as AstNode;
         if ((key.type === 'Identifier' && key.name === 'calc') || (key.type === 'Literal' && key.value === 'calc')) {
-          fileUses.push({ file, line: lineOf(n), ids: idsOf(n.value) });
+          fileUses.push({ file, line: lineOf(node), ids: idsOf(node.value) });
         }
       }
-      for (const child of childrenOf(n)) visit(child);
+      for (const child of childrenOf(node)) visit(child);
     };
     visit(program);
 
@@ -275,27 +269,27 @@ function scan() {
 }
 
 const SCAN = scan();
-const enforced = (file: string) => [...COVERAGE_ENFORCED, ...ENFORCE_EXTRA].some((p) => (p.endsWith('/') ? file.startsWith(p) : file === p));
+const enforced = (file: string) => [...COVERAGE_ENFORCED, ...ENFORCE_EXTRA].some((path) => (path.endsWith('/') ? file.startsWith(path) : file === path));
 
 describe('metric docs: pages', () => {
   it('reads every source file (the scan works)', () => {
     expectNone(SCAN.parseErrors);
     expect(SCAN.uses.length).toBeGreaterThan(10);
-    expect(SCAN.uses.some((u) => u.file === 'pages/OverviewPage.tsx')).toBe(true);
+    expect(SCAN.uses.some((use) => use.file === 'pages/OverviewPage.tsx')).toBe(true);
   });
 
   it('every id written as calc or CalcInfo resolves to an explanation', () => {
-    const bad = SCAN.uses.flatMap((u) => u.ids.filter((id) => !metricDoc(id)).map((id) => `${u.file}:${u.line}: "${id}" is not defined`));
+    const bad = SCAN.uses.flatMap((use) => use.ids.filter((id) => !metricDoc(id)).map((id) => `${use.file}:${use.line}: "${id}" is not defined`));
     expectNone(bad);
   });
 
   it('the finished pages explain every Kpi and every chart', () => {
-    const bad = SCAN.gaps.filter((g) => enforced(g.file)).map((g) => `${g.file}:${g.line}: ${g.what}`);
+    const bad = SCAN.gaps.filter((gap) => enforced(gap.file)).map((gap) => `${gap.file}:${gap.line}: ${gap.what}`);
     expectNone(bad);
   });
 
   it('the Overview explains the Auto discount', () => {
-    const ids = new Set(SCAN.uses.filter((u) => enforced(u.file)).flatMap((u) => u.ids));
+    const ids = new Set(SCAN.uses.filter((use) => enforced(use.file)).flatMap((use) => use.ids));
     for (const id of ['auto-share', 'auto-discount', 'auto-original-price', 'auto-missed', 'auto-use-class']) expect(ids.has(id), id).toBe(true);
   });
 });

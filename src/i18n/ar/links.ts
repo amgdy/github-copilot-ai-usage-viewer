@@ -1,7 +1,7 @@
 import type { Dict } from '../core';
 
 /** Arabic titles for the official pages in src/lib/links.ts. The pages themselves are in English. */
-const ar: Dict = {
+const arabic: Dict = {
   'GitHub Docs': 'وثائق GitHub',
   'GitHub Blog': 'مدونة GitHub',
   'GitHub Changelog': 'سجل تغييرات GitHub',
@@ -63,4 +63,4 @@ const ar: Dict = {
   'Reviewing audit logs for GitHub Copilot': 'مراجعة سجلات التدقيق في GitHub Copilot',
 };
 
-export default ar;
+export default arabic;

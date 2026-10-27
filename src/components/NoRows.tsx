@@ -5,7 +5,7 @@ import { t } from '../i18n';
 
 /** Shown by every page when the active filters leave no rows. */
 export function NoRows() {
-  const resetFilters = useApp((s) => s.resetFilters);
+  const resetFilters = useApp((state) => state.resetFilters);
   return (
     <Card>
       <EmptyState

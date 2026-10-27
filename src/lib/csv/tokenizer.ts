@@ -6,102 +6,101 @@
 export class CsvTokenizer {
   private carry = '';
   private readonly delim: number;
+  private readonly onRow: (fields: string[]) => void;
 
-  constructor(
-    delimiter: string,
-    private readonly onRow: (fields: string[]) => void,
-  ) {
+  constructor(delimiter: string, onRow: (fields: string[]) => void) {
+    this.onRow = onRow;
     this.delim = delimiter.charCodeAt(0);
   }
 
   push(chunk: string): void {
-    const s = this.carry ? this.carry + chunk : chunk;
-    const consumed = this.parse(s, false);
-    this.carry = consumed < s.length ? s.slice(consumed) : '';
+    const text = this.carry ? this.carry + chunk : chunk;
+    const consumed = this.parse(text, false);
+    this.carry = consumed < text.length ? text.slice(consumed) : '';
   }
 
   end(): void {
     if (this.carry) {
-      const s = this.carry;
+      const text = this.carry;
       this.carry = '';
-      this.parse(s, true);
+      this.parse(text, true);
     }
   }
 
   /** Parses complete rows from `s`; returns the index of the first unconsumed character. */
-  private parse(s: string, atEnd: boolean): number {
-    const n = s.length;
-    const d = this.delim;
-    let pos = 0;
-    while (pos < n) {
-      const rowStart = pos;
+  private parse(text: string, atEnd: boolean): number {
+    const length = text.length;
+    const delimiter = this.delim;
+    let position = 0;
+    while (position < length) {
+      const rowStart = position;
       const fields: string[] = [];
-      let i = pos;
+      let index = position;
       let rowDone = false;
       while (!rowDone) {
         let value: string;
-        if (i < n && s.charCodeAt(i) === 34) {
-          let j = i + 1;
-          let seg = j;
-          let acc = '';
+        if (index < length && text.charCodeAt(index) === 34) {
+          let searchFrom = index + 1;
+          let segmentStart = searchFrom;
+          let fieldText = '';
           let closed = false;
           for (;;) {
-            const q = s.indexOf('"', j);
-            if (q === -1) break;
-            if (q + 1 >= n && !atEnd) break; // cannot tell yet whether this is an escaped quote
-            if (q + 1 < n && s.charCodeAt(q + 1) === 34) {
-              acc += s.slice(seg, q + 1);
-              j = q + 2;
-              seg = j;
+            const quoteIndex = text.indexOf('"', searchFrom);
+            if (quoteIndex === -1) break;
+            if (quoteIndex + 1 >= length && !atEnd) break; // cannot tell yet whether this is an escaped quote
+            if (quoteIndex + 1 < length && text.charCodeAt(quoteIndex + 1) === 34) {
+              fieldText += text.slice(segmentStart, quoteIndex + 1);
+              searchFrom = quoteIndex + 2;
+              segmentStart = searchFrom;
               continue;
             }
-            acc += s.slice(seg, q);
-            i = q + 1;
+            fieldText += text.slice(segmentStart, quoteIndex);
+            index = quoteIndex + 1;
             closed = true;
             break;
           }
           if (!closed) {
             if (!atEnd) return rowStart;
-            acc += s.slice(seg);
-            i = n;
+            fieldText += text.slice(segmentStart);
+            index = length;
           }
-          value = acc;
-          while (i < n) {
-            const c = s.charCodeAt(i);
-            if (c === d || c === 10 || c === 13) break;
-            i++;
+          value = fieldText;
+          while (index < length) {
+            const charCode = text.charCodeAt(index);
+            if (charCode === delimiter || charCode === 10 || charCode === 13) break;
+            index++;
           }
         } else {
-          let j = i;
-          while (j < n) {
-            const c = s.charCodeAt(j);
-            if (c === d || c === 10 || c === 13) break;
-            j++;
+          let fieldEnd = index;
+          while (fieldEnd < length) {
+            const charCode = text.charCodeAt(fieldEnd);
+            if (charCode === delimiter || charCode === 10 || charCode === 13) break;
+            fieldEnd++;
           }
-          value = s.slice(i, j);
-          i = j;
+          value = text.slice(index, fieldEnd);
+          index = fieldEnd;
         }
 
-        if (i >= n) {
+        if (index >= length) {
           if (!atEnd) return rowStart;
           fields.push(value);
           rowDone = true;
         } else {
-          const c = s.charCodeAt(i);
+          const charCode = text.charCodeAt(index);
           fields.push(value);
-          if (c === d) {
-            i++;
+          if (charCode === delimiter) {
+            index++;
           } else {
-            i += c === 13 && i + 1 < n && s.charCodeAt(i + 1) === 10 ? 2 : 1;
+            index += charCode === 13 && index + 1 < length && text.charCodeAt(index + 1) === 10 ? 2 : 1;
             rowDone = true;
           }
         }
       }
-      pos = i;
+      position = index;
       if (fields.length === 1 && fields[0] === '') continue;
       this.onRow(fields);
     }
-    return n;
+    return length;
   }
 }
 
@@ -111,16 +110,16 @@ export function detectDelimiter(text: string): string {
   const counts: Record<string, number> = { ',': 0, ';': 0, '\t': 0, '|': 0 };
   let inQuotes = false;
   for (let i = 0; i < line.length; i++) {
-    const c = line[i];
-    if (c === '"') inQuotes = !inQuotes;
-    else if (!inQuotes && c in counts) counts[c]++;
+    const character = line[i];
+    if (character === '"') inQuotes = !inQuotes;
+    else if (!inQuotes && character in counts) counts[character]++;
   }
   let best = ',';
   let max = 0;
-  for (const k of Object.keys(counts)) {
-    if (counts[k] > max) {
-      max = counts[k];
-      best = k;
+  for (const delimiter of Object.keys(counts)) {
+    if (counts[delimiter] > max) {
+      max = counts[delimiter];
+      best = delimiter;
     }
   }
   return best;

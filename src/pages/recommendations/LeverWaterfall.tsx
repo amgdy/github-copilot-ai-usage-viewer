@@ -5,7 +5,7 @@ import type { LeverParams } from '../../lib/analytics/levers';
 import type { Scenario } from '../../lib/analytics/simulator';
 import { fmtPct, pluralize } from '../../lib/utils/format';
 import { MIN_EFFECT, fmtMoney, leverSentence, noEffectNote, targetLabel, type NoEffectContext } from './scenario';
-import { TABLE, TABLE_WRAP, TD, TH } from './tableClasses';
+import { TABLE, TABLE_WRAP, BODY_CELL_CLASSES, HEADER_CELL_CLASSES } from './tableClasses';
 
 function Row({ label, note, bar, value, valueNote }: { label: ReactNode; note?: ReactNode; bar: ReactNode; value: ReactNode; valueNote?: ReactNode }) {
   return (
@@ -40,7 +40,7 @@ const Signed = ({ children, className }: { children: ReactNode; className?: stri
 /** Usage now, the effect of each lever in order, and usage after. Values are usage per month. */
 export function LeverWaterfall({ scenario, perMonth, levers, context }: { scenario: Scenario; perMonth: number; levers: LeverParams; context: NoEffectContext }) {
   const { baseline, steps, total } = scenario.levers;
-  const pct = (v: number): number => (baseline > 0 ? Math.min(100, Math.max(0, (v / baseline) * 100)) : 0);
+  const pct = (amount: number): number => (baseline > 0 ? Math.min(100, Math.max(0, (amount / baseline) * 100)) : 0);
 
   let remaining = baseline;
   const rows = steps.map((step) => {
@@ -48,7 +48,7 @@ export function LeverWaterfall({ scenario, perMonth, levers, context }: { scenar
     return { step, start: pct(remaining), width: pct(step.savings), month: step.savings * perMonth, alone: step.standalone * perMonth };
   });
   const after = Math.max(0, baseline - total);
-  const projectedMonth = scenario.months.some((m) => m.projected);
+  const projectedMonth = scenario.months.some((scenarioMonth) => scenarioMonth.projected);
 
   return (
     <Card
@@ -88,7 +88,7 @@ export function LeverWaterfall({ scenario, perMonth, levers, context }: { scenar
 
 function ShiftDetail({ scenario, levers, perMonth }: { scenario: Scenario; levers: LeverParams; perMonth: number }) {
   const all = scenario.levers.shiftRows;
-  const cheaper = all.filter((r) => r.savingsAtFull > 0);
+  const cheaper = all.filter((shiftRow) => shiftRow.savingsAtFull > 0);
   const top = cheaper.slice(0, 5);
   const heading = (
     <h4 className="mb-1.5 mt-5 flex items-center gap-1 text-sm font-semibold">
@@ -122,22 +122,22 @@ function ShiftDetail({ scenario, levers, perMonth }: { scenario: Scenario; lever
         <table className={TABLE}>
           <thead>
             <tr>
-              <th className={TH}>{t('Model')}</th>
-              <th className={TH}>{t('Moves to')}</th>
-              <th className={cx(TH, 'text-end')}>{t('Same work costs')}</th>
-              <th className={cx(TH, 'text-end')}>{t('Usage per month')}</th>
-              <th className={cx(TH, 'text-end')}>{t('Saving at {pct}', { pct: fmtPct(levers.modelShift, 0) })}</th>
+              <th className={HEADER_CELL_CLASSES}>{t('Model')}</th>
+              <th className={HEADER_CELL_CLASSES}>{t('Moves to')}</th>
+              <th className={cx(HEADER_CELL_CLASSES, 'text-end')}>{t('Same work costs')}</th>
+              <th className={cx(HEADER_CELL_CLASSES, 'text-end')}>{t('Usage per month')}</th>
+              <th className={cx(HEADER_CELL_CLASSES, 'text-end')}>{t('Saving at {pct}', { pct: fmtPct(levers.modelShift, 0) })}</th>
             </tr>
           </thead>
           <tbody>
-            {top.map((r) => (
-              <tr key={r.modelId}>
-                <td className={TD}>{r.model}</td>
-                <td className={TD}>{r.target}</td>
-                <td className={cx(TD, 'num text-end')}>{fmtPct(r.ratio, 0)}</td>
-                <td className={cx(TD, 'num text-end')}>{fmtMoney(r.gross * perMonth)}</td>
-                <td className={cx(TD, 'num text-end text-good')}>
-                  <Signed>−{fmtMoney(r.savingsAtFull * levers.modelShift * perMonth)}</Signed>
+            {top.map((shiftRow) => (
+              <tr key={shiftRow.modelId}>
+                <td className={BODY_CELL_CLASSES}>{shiftRow.model}</td>
+                <td className={BODY_CELL_CLASSES}>{shiftRow.target}</td>
+                <td className={cx(BODY_CELL_CLASSES, 'num text-end')}>{fmtPct(shiftRow.ratio, 0)}</td>
+                <td className={cx(BODY_CELL_CLASSES, 'num text-end')}>{fmtMoney(shiftRow.gross * perMonth)}</td>
+                <td className={cx(BODY_CELL_CLASSES, 'num text-end text-good')}>
+                  <Signed>−{fmtMoney(shiftRow.savingsAtFull * levers.modelShift * perMonth)}</Signed>
                 </td>
               </tr>
             ))}

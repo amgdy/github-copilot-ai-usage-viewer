@@ -61,13 +61,13 @@ export interface Check {
 }
 
 const POWERFUL = CATEGORIES.indexOf('Powerful');
-const finite = (x: number): boolean => Number.isFinite(x);
-const rate = (x: number): string => (finite(x) ? fmtPct(x, 1) : '–');
+const finite = (value: number): boolean => Number.isFinite(value);
+const rate = (share: number): string => (finite(share) ? fmtPct(share, 1) : '–');
 
 /** Why Auto matters, with the Auto discount as the report shows it: measured per plan, and the setting only where a plan has nothing to measure. */
 function autoWhyText(analysis: Analysis): string {
   const auto = analysis.auto;
-  const measuredPlans = auto.plans.filter((p) => p.source === 'measured').length;
+  const measuredPlans = auto.plans.filter((plan) => plan.source === 'measured').length;
   const assumedPlans = auto.plans.length - measuredPlans;
   const discount = { rate: fmtPct(auto.rate, 1) };
   const second =
@@ -88,33 +88,33 @@ function autoWhyText(analysis: Analysis): string {
 
 /** The six best-practice checks for the users and usage in scope. Pure, so it can be tested without React. */
 export function buildChecks(analysis: Analysis, hasTokens: boolean): Check[] {
-  const tot = analysis.agg.totals;
+  const totals = analysis.agg.totals;
   const profiles = analysis.users.profiles;
-  const n = profiles.length;
-  const count = (f: (p: UserProfile) => boolean): number => profiles.filter(f).length;
-  const gross = tot.gross;
+  const userCount = profiles.length;
+  const count = (matches: (user: UserProfile) => boolean): number => profiles.filter(matches).length;
+  const gross = totals.gross;
 
   const modelsKnown = analysis.coverage.models;
-  const autoShare = gross > 0 && modelsKnown ? tot.autoGross / gross : Number.NaN;
-  const prompt = tot.input + tot.cacheRead + tot.cacheWrite;
-  const cacheHit = hasTokens && prompt > 0 ? tot.cacheRead / prompt : Number.NaN;
-  const powerfulGross = tot.tierGross[POWERFUL] ?? 0;
+  const autoShare = gross > 0 && modelsKnown ? totals.autoGross / gross : Number.NaN;
+  const prompt = totals.input + totals.cacheRead + totals.cacheWrite;
+  const cacheHit = hasTokens && prompt > 0 ? totals.cacheRead / prompt : Number.NaN;
+  const powerfulGross = totals.tierGross[POWERFUL] ?? 0;
   const powerfulShare = gross > 0 && modelsKnown ? powerfulGross / gross : Number.NaN;
   // The premium is only measured on rows that could be priced from token counts, so without any it is unknown, not zero.
-  const longMeasured = hasTokens && modelsKnown && tot.pricedGross > 0;
-  const longShare = longMeasured && gross > 0 ? tot.longPremium / gross : Number.NaN;
-  const runaway = count((p) => p.tier === 'runaway');
-  const active = count((p) => p.engagement === 'daily' || p.engagement === 'regular');
-  const activeShare = n > 0 ? active / n : Number.NaN;
+  const longMeasured = hasTokens && modelsKnown && totals.pricedGross > 0;
+  const longShare = longMeasured && gross > 0 ? totals.longPremium / gross : Number.NaN;
+  const runaway = count((user) => user.tier === 'runaway');
+  const active = count((user) => user.engagement === 'daily' || user.engagement === 'regular');
+  const activeShare = userCount > 0 ? active / userCount : Number.NaN;
 
-  const lowAuto = count((p) => p.traits.includes('lowAuto'));
-  const lowCache = count((p) => p.traits.includes('lowCache'));
-  const frontier = count((p) => p.profile === 'frontier');
-  const longCtx = count((p) => p.traits.includes('longContext'));
-  const quiet = count((p) => p.engagement === 'occasional' || p.engagement === 'rare');
+  const lowAuto = count((user) => user.traits.includes('lowAuto'));
+  const lowCache = count((user) => user.traits.includes('lowCache'));
+  const frontier = count((user) => user.profile === 'frontier');
+  const longCtx = count((user) => user.traits.includes('longContext'));
+  const quiet = count((user) => user.engagement === 'occasional' || user.engagement === 'rare');
 
-  const jump = (c: number, label: string, patch: Partial<Filters>, title: string): CheckJump | undefined => (c > 0 ? { label, title, patch, page: 'users' } : undefined);
-  const nUsers = (c: number) => ({ n: fmtInt(c) });
+  const jump = (matchCount: number, label: string, patch: Partial<Filters>, title: string): CheckJump | undefined => (matchCount > 0 ? { label, title, patch, page: 'users' } : undefined);
+  const nUsers = (matchCount: number) => ({ n: fmtInt(matchCount) });
 
   const needsTokens = t('Needs token columns');
   const needsModels = t('Needs a model column');
@@ -127,8 +127,8 @@ export function buildChecks(analysis: Analysis, hasTokens: boolean): Check[] {
     ? t('This report has no token columns, so the cache hit rate cannot be measured.')
     : finite(cacheHit)
       ? t('Cache read: {read} tokens. Cache write: {write} tokens. All prompt tokens: {prompt}.', {
-          read: fmtCompact(tot.cacheRead),
-          write: fmtCompact(tot.cacheWrite),
+          read: fmtCompact(totals.cacheRead),
+          write: fmtCompact(totals.cacheWrite),
           prompt: fmtCompact(prompt),
         })
       : t('No prompt tokens in this scope');
@@ -142,7 +142,7 @@ export function buildChecks(analysis: Analysis, hasTokens: boolean): Check[] {
         ? noUsage
         : !longMeasured
           ? t('No usage could be priced from token counts, so long-context surcharges cannot be measured.')
-          : t('{premium} surcharge on {usage} usage', { premium: fmtUSD(tot.longPremium, 0), usage: fmtUSD(gross, 0) });
+          : t('{premium} surcharge on {usage} usage', { premium: fmtUSD(totals.longPremium, 0), usage: fmtUSD(gross, 0) });
 
   return [
     {
@@ -153,7 +153,7 @@ export function buildChecks(analysis: Analysis, hasTokens: boolean): Check[] {
       detail: !modelsKnown
         ? noModelsDetail
         : gross > 0
-          ? t('{auto} of {usage} usage went through Auto', { auto: fmtUSD(tot.autoGross, 0), usage: fmtUSD(gross, 0) })
+          ? t('{auto} of {usage} usage went through Auto', { auto: fmtUSD(totals.autoGross, 0), usage: fmtUSD(gross, 0) })
           : noUsage,
       target: autoTarget(),
       status: finite(autoShare) ? higherIsBetter(autoShare, AUTO_SHARE_HEALTHY, AUTO_SHARE_FAIR) : null,
@@ -233,10 +233,10 @@ export function buildChecks(analysis: Analysis, hasTokens: boolean): Check[] {
       id: 'runaway',
       label: t('Users in the runaway tier'),
       calc: 'scorecard-runaway',
-      value: n > 0 ? (runaway === 0 ? t('None') : pluralize(runaway, 'user')) : '–',
-      detail: n > 0 ? tp(n, '{share} of {n} user', '{share} of {n} users', { share: fmtPct(runaway / n, 1), n: fmtInt(n) }) : noUsers,
+      value: userCount > 0 ? (runaway === 0 ? t('None') : pluralize(runaway, 'user')) : '–',
+      detail: userCount > 0 ? tp(userCount, '{share} of {n} user', '{share} of {n} users', { share: fmtPct(runaway / userCount, 1), n: fmtInt(userCount) }) : noUsers,
       target: runawayTarget(),
-      status: n > 0 ? runawayStatus(runaway, n) : null,
+      status: userCount > 0 ? runawayStatus(runaway, userCount) : null,
       why: t('One user far beyond their own included credits can use up the shared pool for everybody.'),
       todo: t('Look at how they work. Move routine work to lighter models and think about a user budget.'),
       topic: 'budgets',
@@ -252,7 +252,7 @@ export function buildChecks(analysis: Analysis, hasTokens: boolean): Check[] {
       label: t('Active use'),
       calc: 'scorecard-active-use',
       value: rate(activeShare),
-      detail: n > 0 ? t('Daily or regular users: {active} of {n}', { active: fmtInt(active), n: fmtInt(n) }) : noUsers,
+      detail: userCount > 0 ? t('Daily or regular users: {active} of {n}', { active: fmtInt(active), n: fmtInt(userCount) }) : noUsers,
       target: activeUseTarget(),
       status: finite(activeShare) ? higherIsBetter(activeShare, ACTIVE_USE_HEALTHY, ACTIVE_USE_FAIR) : null,
       why: t('A seat pays off only when it is used often. Daily users get the most from their included credits.'),
@@ -314,8 +314,8 @@ function CheckRow({ check }: { check: Check }) {
 export function Scorecard() {
   const { analysis, store } = useAnalysis();
   const checks = useMemo(() => buildChecks(analysis, store.hasTokens), [analysis, store.hasTokens]);
-  const healthy = checks.filter((c) => c.status === 'good').length;
-  const unmeasured = checks.filter((c) => c.status === null).length;
+  const healthy = checks.filter((check) => check.status === 'good').length;
+  const unmeasured = checks.filter((check) => check.status === null).length;
 
   return (
     <Section title={t('Best-practice scorecard')} description={t('Six habits that decide how far your credits go. The targets are guidance, not rules.')}>
@@ -325,8 +325,8 @@ export function Scorecard() {
       >
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-b border-border-muted bg-surface-2 px-4 py-3">
           <div className="flex items-center gap-1.5" aria-hidden>
-            {checks.map((c) => (
-              <span key={c.id} className={cx('size-3 rounded-xs', c.status ? DOT_CLASS[c.status] : 'bg-surface-3 ring-1 ring-inset ring-border')} title={c.label} />
+            {checks.map((check) => (
+              <span key={check.id} className={cx('size-3 rounded-xs', check.status ? DOT_CLASS[check.status] : 'bg-surface-3 ring-1 ring-inset ring-border')} title={check.label} />
             ))}
           </div>
           <p className="text-sm font-semibold">
@@ -344,8 +344,8 @@ export function Scorecard() {
           <CalcLine id="efficiency-scorecard" className="basis-full" />
         </div>
         <ul className="divide-y divide-border-muted">
-          {checks.map((c) => (
-            <CheckRow key={c.id} check={c} />
+          {checks.map((check) => (
+            <CheckRow key={check.id} check={check} />
           ))}
         </ul>
       </Card>

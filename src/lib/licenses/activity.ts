@@ -23,9 +23,9 @@ const DAY = /^(\d{4})-(\d{2})-(\d{2})$/;
 /** The day number (days since 1970-01-01, UTC) of a YYYY-MM-DD text, or null when it is not a real day. */
 export function dayOf(iso: string | undefined): number | null {
   if (typeof iso !== 'string') return null;
-  const m = DAY.exec(iso);
-  if (!m) return null;
-  const day = dayFromYMD(+m[1], +m[2] - 1, +m[3]);
+  const match = DAY.exec(iso);
+  if (!match) return null;
+  const day = dayFromYMD(+match[1], +match[2] - 1, +match[3]);
   return isoDate(day) === iso ? day : null;
 }
 
@@ -41,7 +41,7 @@ export interface LicenseIndex {
   hasActivity: boolean;
 }
 
-const bearsActivity = (e: RosterEntry): boolean => e.lastActivityAt !== undefined || e.source === 'api' || e.source === 'activity';
+const bearsActivity = (entry: RosterEntry): boolean => entry.lastActivityAt !== undefined || entry.source === 'api' || entry.source === 'activity';
 
 /**
  * Indexes the roster. Returns null when it has no usable entry. The as-of date is `rosterAsOf` when it is a valid
@@ -60,8 +60,8 @@ export function buildLicenseIndex(roster: readonly RosterEntry[] | undefined, ro
     seats.set(key, entry);
     if (bearsActivity(entry)) hasActivity = true;
     for (const stamp of [entry.lastActivityAt, entry.lastAuthenticatedAt, entry.createdAt]) {
-      const d = dayOf(stamp);
-      if (d !== null && (latest === null || d > latest)) latest = d;
+      const day = dayOf(stamp);
+      if (day !== null && (latest === null || day > latest)) latest = day;
     }
   }
   if (seats.size === 0) return null;

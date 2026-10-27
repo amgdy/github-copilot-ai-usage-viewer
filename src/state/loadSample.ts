@@ -5,8 +5,8 @@ import { useApp } from './store';
 /** Name of the made-up file, as shown on the Data page. */
 export const SAMPLE_FILE_NAME = 'sample-usage-report.csv';
 
-const pad = (n: number) => String(n).padStart(2, '0');
-const isoDay = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const pad = (value: number) => String(value).padStart(2, '0');
+const isoDay = (date: Date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 
 /** The sample covers last month and this month up to yesterday, so it looks like a fresh export. */
 export function sampleRange(today = new Date()): { start: string; end: string } {
@@ -29,8 +29,8 @@ export async function loadSample(): Promise<boolean> {
     const { csv } = generateDemo(sampleRange());
     // Empty vars make the top bar translate the name when the language changes.
     return await loadSources([{ name: SAMPLE_FILE_NAME, data: csv }], { text: msg('Sample report (made-up data)'), vars: {} }, { sample: true });
-  } catch (err) {
-    setError(err instanceof Error ? err.message : String(err));
+  } catch (error) {
+    setError(error instanceof Error ? error.message : String(error));
     setLoading(null);
     return false;
   }

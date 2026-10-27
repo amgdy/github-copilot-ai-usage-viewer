@@ -21,16 +21,16 @@ const USES: { where: string; what: string }[] = [
 /** Compares the budget with the latest month. Only mounted when a report is loaded. */
 function BudgetStatus() {
   const { analysis } = useAnalysis();
-  const b = analysis.pool.budget;
-  if (!b) return <p className="text-xs text-fg-subtle">{t('The comparison with the latest month appears here once a budget is saved.')}</p>;
-  const values = { month: b.month, billed: fmtUSD(b.billedToDate), budget: fmtUSD(b.monthlyBudget), share: fmtPct(b.burn, 0) };
+  const budget = analysis.pool.budget;
+  if (!budget) return <p className="text-xs text-fg-subtle">{t('The comparison with the latest month appears here once a budget is saved.')}</p>;
+  const values = { month: budget.month, billed: fmtUSD(budget.billedToDate), budget: fmtUSD(budget.monthlyBudget), share: fmtPct(budget.burn, 0) };
   return (
     <p className="text-sm">
-      {b.projectedBilled !== null && b.projectedBurn !== null
+      {budget.projectedBilled !== null && budget.projectedBurn !== null
         ? t('{month}: {billed} billed so far of {budget} ({share}), projected to reach {projected} ({projectedShare}) by month end.', {
             ...values,
-            projected: fmtUSD(b.projectedBilled),
-            projectedShare: fmtPct(b.projectedBurn, 0),
+            projected: fmtUSD(budget.projectedBilled),
+            projectedShare: fmtPct(budget.projectedBurn, 0),
           })
         : t('{month}: {billed} billed so far of {budget} ({share}).', values)}
     </p>
@@ -38,13 +38,13 @@ function BudgetStatus() {
 }
 
 export function BudgetSection() {
-  const budget = useApp((s) => s.settings.budgetMonthlyBilled);
-  const hasData = useApp((s) => s.dataset !== null);
-  const updateSettings = useApp((s) => s.updateSettings);
+  const budget = useApp((state) => state.settings.budgetMonthlyBilled);
+  const hasData = useApp((state) => state.dataset !== null);
+  const updateSettings = useApp((state) => state.updateSettings);
 
-  const commit = (v: number | null): string | null => {
-    if (v !== null && v <= 0) return t('Enter an amount above 0, or leave the field empty for no budget.');
-    updateSettings({ budgetMonthlyBilled: v });
+  const commit = (amount: number | null): string | null => {
+    if (amount !== null && amount <= 0) return t('Enter an amount above 0, or leave the field empty for no budget.');
+    updateSettings({ budgetMonthlyBilled: amount });
     return null;
   };
 
@@ -82,9 +82,9 @@ export function BudgetSection() {
         <div className="mt-4 border-t border-border-muted pt-3">
           <div className="text-xs font-medium text-fg-muted">{t('Where the budget is used')}</div>
           <ul className="mt-1.5 space-y-1.5">
-            {USES.map((u) => (
-              <li key={u.where} className="text-sm">
-                <span className="font-medium">{t(u.where)}:</span> <span className="text-fg-muted">{t(u.what)}</span>
+            {USES.map((budgetUse) => (
+              <li key={budgetUse.where} className="text-sm">
+                <span className="font-medium">{t(budgetUse.where)}:</span> <span className="text-fg-muted">{t(budgetUse.what)}</span>
               </li>
             ))}
           </ul>

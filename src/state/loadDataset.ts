@@ -24,27 +24,27 @@ export interface LoadOptions {
 }
 
 /** Parses the sources, prepares them for analysis and makes them the active dataset. Resolves true on success. */
-export async function loadSources(sources: TextSource[], label: LabelText = labelFromNames(sources.map((s) => s.name)), options: LoadOptions = {}): Promise<boolean> {
+export async function loadSources(sources: TextSource[], label: LabelText = labelFromNames(sources.map((source) => source.name)), options: LoadOptions = {}): Promise<boolean> {
   const { setLoading, setError, setDataset } = useApp.getState();
   setError(null);
   setLoading({ label: t('Reading…'), fraction: 0, rows: 0 });
   try {
     const store = await ingestSources(sources, {
-      onProgress: (p) =>
+      onProgress: (progress) =>
         setLoading({
-          label: p.fileCount > 1 ? t('Reading {file} ({i} of {n})', { file: p.file, i: p.fileIndex + 1, n: p.fileCount }) : t('Reading {file}', { file: p.file }),
-          fraction: p.fraction,
-          rows: p.rows,
+          label: progress.fileCount > 1 ? t('Reading {file} ({i} of {n})', { file: progress.file, i: progress.fileIndex + 1, n: progress.fileCount }) : t('Reading {file}', { file: progress.file }),
+          fraction: progress.fraction,
+          rows: progress.rows,
         }),
     });
     if (store.n === 0) throw new Error(t('No usage rows were found. Is this an AI usage report export (CSV)?'));
     setLoading({ label: t('Preparing the analysis…'), fraction: 1, rows: store.n });
     await nextFrame();
-    const prep = prepareStore(store);
-    setDataset({ store, prep, label: label.text, labelVars: label.vars, loadedAt: Date.now(), ...(options.sample ? { sample: true } : {}) });
+    const prepared = prepareStore(store);
+    setDataset({ store, prep: prepared, label: label.text, labelVars: label.vars, loadedAt: Date.now(), ...(options.sample ? { sample: true } : {}) });
     return true;
-  } catch (err) {
-    setError(err instanceof Error ? err.message : String(err));
+  } catch (error) {
+    setError(error instanceof Error ? error.message : String(error));
     return false;
   } finally {
     setLoading(null);
@@ -52,5 +52,5 @@ export async function loadSources(sources: TextSource[], label: LabelText = labe
 }
 
 export function loadFiles(files: File[]): Promise<boolean> {
-  return loadSources(files.map((f) => ({ name: f.name, data: f })));
+  return loadSources(files.map((file) => ({ name: file.name, data: file })));
 }

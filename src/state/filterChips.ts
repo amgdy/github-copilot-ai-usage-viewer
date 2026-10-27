@@ -3,7 +3,7 @@ import type { Filters, ListFilterKey } from '../lib/analytics/filters';
 import type { Taxonomy } from '../lib/analytics/taxonomy';
 import type { DataStore, DimKey } from '../lib/types';
 import { CATEGORIES, labelOf } from '../lib/types';
-import { DOW_NAMES, fmtDay } from '../lib/utils/date';
+import { WEEKDAY_NAMES, fmtDay } from '../lib/utils/date';
 import { fmtUSD } from '../lib/utils/format';
 
 export interface FilterChip {
@@ -53,46 +53,46 @@ const WORD_VALUES = new Set<string>([msg('Other'), ...CATEGORIES]);
 const MAX_INDIVIDUAL = 3;
 
 /** Describes every active filter as a removable chip. */
-export function describeFilters(f: Filters, store: DataStore, taxonomy: Taxonomy): FilterChip[] {
+export function describeFilters(filters: Filters, store: DataStore, taxonomy: Taxonomy): FilterChip[] {
   const chips: FilterChip[] = [];
 
-  if (f.dateFrom !== null || f.dateTo !== null) {
+  if (filters.dateFrom !== null || filters.dateTo !== null) {
     chips.push({
       id: 'date',
       group: t('Dates'),
-      value: t('{from} to {to}', { from: fmtDay(f.dateFrom ?? store.minDay, true), to: fmtDay(f.dateTo ?? store.maxDay, true) }),
+      value: t('{from} to {to}', { from: fmtDay(filters.dateFrom ?? store.minDay, true), to: fmtDay(filters.dateTo ?? store.maxDay, true) }),
       clear: { dateFrom: null, dateTo: null },
     });
   }
 
   for (const spec of LISTS) {
-    const values = f[spec.key];
+    const values = filters[spec.key];
     if (!values.length) continue;
     const group = t(spec.group);
-    const text = (v: string): string => {
-      if (spec.dim) return labelOf(spec.dim, v);
-      if (spec.tax) return (taxonomy[spec.tax] as { id: string; label: string }[]).find((i) => i.id === v)?.label ?? v;
-      return WORD_VALUES.has(v) ? t(v) : v;
+    const text = (value: string): string => {
+      if (spec.dim) return labelOf(spec.dim, value);
+      if (spec.tax) return (taxonomy[spec.tax] as { id: string; label: string }[]).find((item) => item.id === value)?.label ?? value;
+      return WORD_VALUES.has(value) ? t(value) : value;
     };
     if (values.length <= MAX_INDIVIDUAL) {
-      for (const v of values) chips.push({ id: `${spec.key}:${v}`, group, value: text(v), clear: { [spec.key]: values.filter((x) => x !== v) } });
+      for (const value of values) chips.push({ id: `${spec.key}:${value}`, group, value: text(value), clear: { [spec.key]: values.filter((otherValue) => otherValue !== value) } });
     } else {
       chips.push({ id: spec.key, group, value: t('{n} selected', { n: values.length }), clear: { [spec.key]: [] } });
     }
   }
 
-  if (f.selection !== 'all') chips.push({ id: 'selection', group: t('Model selection'), value: f.selection === 'auto' ? t('Auto only') : t('Manual only'), clear: { selection: 'all' } });
-  if (f.billing !== 'all') chips.push({ id: 'billing', group: t('Billing'), value: f.billing === 'covered' ? t('Covered by included credits') : t('Billed overage'), clear: { billing: 'all' } });
-  if (f.attribution !== 'all')
-    chips.push({ id: 'attribution', group: t('Attribution'), value: f.attribution === 'attributed' ? t('Per-user usage') : t('Repository-level (no user)'), clear: { attribution: 'all' } });
-  for (const d of f.weekdays) chips.push({ id: `dow:${d}`, group: t('Weekday'), value: DOW_NAMES[d] ?? String(d), clear: { weekdays: f.weekdays.filter((x) => x !== d) } });
-  if (f.minRow !== null) chips.push({ id: 'minRow', group: t('Row cost'), value: t('at least {amount}', { amount: fmtUSD(f.minRow, 'auto') }), clear: { minRow: null } });
-  if (f.maxRow !== null) chips.push({ id: 'maxRow', group: t('Row cost'), value: t('at most {amount}', { amount: fmtUSD(f.maxRow, 'auto') }), clear: { maxRow: null } });
-  if (f.search.trim()) chips.push({ id: 'search', group: t('Search'), value: `“${f.search.trim()}”`, clear: { search: '' } });
-  if (f.minUserSpend !== null) chips.push({ id: 'minUserSpend', group: t('Usage per user'), value: t('at least {amount}', { amount: fmtUSD(f.minUserSpend, 'auto') }), clear: { minUserSpend: null } });
-  if (f.maxUserSpend !== null) chips.push({ id: 'maxUserSpend', group: t('Usage per user'), value: t('at most {amount}', { amount: fmtUSD(f.maxUserSpend, 'auto') }), clear: { maxUserSpend: null } });
+  if (filters.selection !== 'all') chips.push({ id: 'selection', group: t('Model selection'), value: filters.selection === 'auto' ? t('Auto only') : t('Manual only'), clear: { selection: 'all' } });
+  if (filters.billing !== 'all') chips.push({ id: 'billing', group: t('Billing'), value: filters.billing === 'covered' ? t('Covered by included credits') : t('Billed overage'), clear: { billing: 'all' } });
+  if (filters.attribution !== 'all')
+    chips.push({ id: 'attribution', group: t('Attribution'), value: filters.attribution === 'attributed' ? t('Per-user usage') : t('Repository-level (no user)'), clear: { attribution: 'all' } });
+  for (const weekday of filters.weekdays) chips.push({ id: `dow:${weekday}`, group: t('Weekday'), value: WEEKDAY_NAMES[weekday] ?? String(weekday), clear: { weekdays: filters.weekdays.filter((otherWeekday) => otherWeekday !== weekday) } });
+  if (filters.minRow !== null) chips.push({ id: 'minRow', group: t('Row cost'), value: t('at least {amount}', { amount: fmtUSD(filters.minRow, 'auto') }), clear: { minRow: null } });
+  if (filters.maxRow !== null) chips.push({ id: 'maxRow', group: t('Row cost'), value: t('at most {amount}', { amount: fmtUSD(filters.maxRow, 'auto') }), clear: { maxRow: null } });
+  if (filters.search.trim()) chips.push({ id: 'search', group: t('Search'), value: `“${filters.search.trim()}”`, clear: { search: '' } });
+  if (filters.minUserSpend !== null) chips.push({ id: 'minUserSpend', group: t('Usage per user'), value: t('at least {amount}', { amount: fmtUSD(filters.minUserSpend, 'auto') }), clear: { minUserSpend: null } });
+  if (filters.maxUserSpend !== null) chips.push({ id: 'maxUserSpend', group: t('Usage per user'), value: t('at most {amount}', { amount: fmtUSD(filters.maxUserSpend, 'auto') }), clear: { maxUserSpend: null } });
 
   return chips;
 }
 
-export const chipText = (c: FilterChip): string => `${c.group}: ${c.value}`;
+export const chipText = (chip: FilterChip): string => `${chip.group}: ${chip.value}`;

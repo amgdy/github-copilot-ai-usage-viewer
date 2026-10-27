@@ -23,7 +23,7 @@ interface Props {
 
 /** Caveats that depend on the data in view and on the selected lens. Renders nothing when there are none. */
 export function LensNotes({ data, segmentFiltered, users, assumedSeats, fallbackQuotaCredits }: Props) {
-  const missing = data.lens.id === 'trait' ? data.rows.filter((r) => r.unavailable) : [];
+  const missing = data.lens.id === 'trait' ? data.rows.filter((row) => row.unavailable) : [];
   if (!segmentFiltered && assumedSeats === 0 && missing.length === 0) return null;
 
   const assumed = t('{credits} credits ({amount}) a month', { credits: fmtInt(fallbackQuotaCredits), amount: fmtUSD(fallbackQuotaCredits * CREDIT_USD, 0) });
@@ -57,10 +57,10 @@ export function LensNotes({ data, segmentFiltered, users, assumedSeats, fallback
       {missing.length > 0 ? (
         <Callout tone="info" title={t('Some traits cannot be detected in this data')}>
           <ul className="mt-1 space-y-1">
-            {missing.map((r) => (
-              <li key={r.id} className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                <TaxBadge item={r.item} />
-                <span>{r.unavailable}</span>
+            {missing.map((row) => (
+              <li key={row.id} className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                <TaxBadge item={row.item} />
+                <span>{row.unavailable}</span>
               </li>
             ))}
           </ul>

@@ -17,16 +17,16 @@ export interface Measures {
   cacheWrite: Float64Array;
 }
 
-export const makeMeasures = (n: number): Measures => ({
-  rows: new Float64Array(n),
-  gross: new Float64Array(n),
-  discount: new Float64Array(n),
-  net: new Float64Array(n),
-  credits: new Float64Array(n),
-  input: new Float64Array(n),
-  output: new Float64Array(n),
-  cacheRead: new Float64Array(n),
-  cacheWrite: new Float64Array(n),
+export const makeMeasures = (size: number): Measures => ({
+  rows: new Float64Array(size),
+  gross: new Float64Array(size),
+  discount: new Float64Array(size),
+  net: new Float64Array(size),
+  credits: new Float64Array(size),
+  input: new Float64Array(size),
+  output: new Float64Array(size),
+  cacheRead: new Float64Array(size),
+  cacheWrite: new Float64Array(size),
 });
 
 export interface Totals {
@@ -154,59 +154,58 @@ class PairCounter {
   private dense: Uint8Array | null = null;
   private set: Set<number> | null = null;
   readonly counts: Int32Array;
-  constructor(
-    nU: number,
-    private readonly nD: number,
-  ) {
-    this.counts = new Int32Array(nD);
-    if (nU * nD <= 24_000_000) this.dense = new Uint8Array(nU * nD);
+  private readonly nD: number;
+  constructor(userCount: number, groupCount: number) {
+    this.nD = groupCount;
+    this.counts = new Int32Array(groupCount);
+    if (userCount * groupCount <= 24_000_000) this.dense = new Uint8Array(userCount * groupCount);
     else this.set = new Set();
   }
-  add(u: number, d: number): void {
-    const k = u * this.nD + d;
+  add(user: number, group: number): void {
+    const pairKey = user * this.nD + group;
     if (this.dense) {
-      if (this.dense[k] === 0) {
-        this.dense[k] = 1;
-        this.counts[d]++;
+      if (this.dense[pairKey] === 0) {
+        this.dense[pairKey] = 1;
+        this.counts[group]++;
       }
-    } else if (!this.set!.has(k)) {
-      this.set!.add(k);
-      this.counts[d]++;
+    } else if (!this.set!.has(pairKey)) {
+      this.set!.add(pairKey);
+      this.counts[group]++;
     }
   }
 }
 
 function addRow(
-  t: Measures,
-  k: number,
-  g: number,
-  dsc: number,
-  nt: number,
-  q: number,
-  tin: number,
-  tout: number,
-  tcr: number,
-  tcw: number,
+  measures: Measures,
+  index: number,
+  gross: number,
+  discount: number,
+  net: number,
+  credits: number,
+  inputTokens: number,
+  outputTokens: number,
+  cacheReadTokens: number,
+  cacheWriteTokens: number,
 ): void {
-  t.rows[k]++;
-  t.gross[k] += g;
-  t.discount[k] += dsc;
-  t.net[k] += nt;
-  t.credits[k] += q;
-  t.input[k] += tin;
-  t.output[k] += tout;
-  t.cacheRead[k] += tcr;
-  t.cacheWrite[k] += tcw;
+  measures.rows[index]++;
+  measures.gross[index] += gross;
+  measures.discount[index] += discount;
+  measures.net[index] += net;
+  measures.credits[index] += credits;
+  measures.input[index] += inputTokens;
+  measures.output[index] += outputTokens;
+  measures.cacheRead[index] += cacheReadTokens;
+  measures.cacheWrite[index] += cacheWriteTokens;
 }
 
-function makeExtra(n: number): ExtraArrays {
+function makeExtra(size: number): ExtraArrays {
   return {
-    listCost: new Float64Array(n),
-    pricedGross: new Float64Array(n),
-    longPremium: new Float64Array(n),
-    autoGross: new Float64Array(n),
-    autoList: new Float64Array(n),
-    autoMeasuredGross: new Float64Array(n),
+    listCost: new Float64Array(size),
+    pricedGross: new Float64Array(size),
+    longPremium: new Float64Array(size),
+    autoGross: new Float64Array(size),
+    autoList: new Float64Array(size),
+    autoMeasuredGross: new Float64Array(size),
   };
 }
 
@@ -242,46 +241,46 @@ export const AUTO_MEASURE_BAND = { min: 0.5, max: 1.05 } as const;
 
 export function aggregate(
   store: DataStore,
-  prep: Prepared,
+  prepared: Prepared,
   models: ModelTable,
   mask: Uint8Array | null,
   range: { start: number; end: number },
-  opts: AggregateOptions,
+  options: AggregateOptions,
 ): Aggregates {
-  const nU = store.dicts.user.values.length;
-  const nP = store.dicts.product.values.length;
-  const nS = store.dicts.sku.values.length;
-  const nM = store.dicts.model.values.length;
-  const nO = store.dicts.org.values.length;
-  const nA = store.dicts.app.values.length;
-  const nR = store.dicts.repo.values.length;
-  const nC = store.dicts.costCenter.values.length;
-  const nF = store.dicts.file.values.length;
-  const nPlans = Math.max(1, prep.planLabels.length);
+  const userCount = store.dicts.user.values.length;
+  const productCount = store.dicts.product.values.length;
+  const skuCount = store.dicts.sku.values.length;
+  const modelCount = store.dicts.model.values.length;
+  const orgCount = store.dicts.org.values.length;
+  const appCount = store.dicts.app.values.length;
+  const repoCount = store.dicts.repo.values.length;
+  const costCenterCount = store.dicts.costCenter.values.length;
+  const fileCount = store.dicts.file.values.length;
+  const nPlans = Math.max(1, prepared.planLabels.length);
   const start = Math.max(range.start, store.minDay);
   const end = Math.min(range.end, store.maxDay);
   const nDays = Math.max(0, end - start + 1);
-  const nMonths = Math.max(1, prep.nMonths);
-  const longRatio = opts.longRatio ?? 1.02;
+  const nMonths = Math.max(1, prepared.nMonths);
+  const longRatio = options.longRatio ?? 1.02;
 
   const days = { ...makeMeasures(nDays), activeUsers: new Int32Array(nDays), anyUsers: new Int32Array(nDays) };
-  const mUser = makeMeasures(nU);
-  const mProduct = makeMeasures(nP);
-  const mSku = makeMeasures(nS);
-  const mModel = makeMeasures(nM);
-  const mOrg = makeMeasures(nO);
-  const mApp = makeMeasures(nA);
-  const mRepo = makeMeasures(nR);
-  const mCc = makeMeasures(nC);
-  const mFile = makeMeasures(nF);
-  const mSel = makeMeasures(2);
+  const mUser = makeMeasures(userCount);
+  const mProduct = makeMeasures(productCount);
+  const skuMeasures = makeMeasures(skuCount);
+  const mModel = makeMeasures(modelCount);
+  const orgMeasures = makeMeasures(orgCount);
+  const appMeasures = makeMeasures(appCount);
+  const mRepo = makeMeasures(repoCount);
+  const costCenterMeasures = makeMeasures(costCenterCount);
+  const mFile = makeMeasures(fileCount);
+  const selectionMeasures = makeMeasures(2);
   const mPlan = makeMeasures(nPlans);
-  const mDow = makeMeasures(7);
+  const dayOfWeekMeasures = makeMeasures(7);
   const totals = emptyTotals();
-  const modelExtra = makeExtra(nM);
+  const modelExtra = makeExtra(modelCount);
 
-  const ua: UserAcc = {
-    ...makeExtra(nU),
+  const perUser: UserAcc = {
+    ...makeExtra(userCount),
     gross: mUser.gross,
     discount: mUser.discount,
     net: mUser.net,
@@ -291,64 +290,64 @@ export function aggregate(
     output: mUser.output,
     cacheRead: mUser.cacheRead,
     cacheWrite: mUser.cacheWrite,
-    tier: new Float64Array(nU * CATEGORIES.length),
-    estIn: new Float64Array(nU),
-    estCr: new Float64Array(nU),
-    estCw: new Float64Array(nU),
-    estOut: new Float64Array(nU),
-    firstDay: new Int32Array(nU).fill(2_000_000_000),
-    lastDay: new Int32Array(nU).fill(-1),
-    org: new Int32Array(nU).fill(-1),
-    costCenter: new Int32Array(nU).fill(-1),
-    orgMixed: new Uint8Array(nU),
-    costCenterMixed: new Uint8Array(nU),
-    quotaMax: new Float32Array(nU),
-    recent: new Float64Array(nU),
-    prior: new Float64Array(nU),
-    activeDays: new Int32Array(nU),
-    peakDay: new Float64Array(nU),
-    peakDayIdx: new Int32Array(nU).fill(-1),
-    daysN: new Int32Array(nU),
-    daysSum: new Float64Array(nU),
-    daysSumSq: new Float64Array(nU),
+    tier: new Float64Array(userCount * CATEGORIES.length),
+    estIn: new Float64Array(userCount),
+    estCr: new Float64Array(userCount),
+    estCw: new Float64Array(userCount),
+    estOut: new Float64Array(userCount),
+    firstDay: new Int32Array(userCount).fill(2_000_000_000),
+    lastDay: new Int32Array(userCount).fill(-1),
+    org: new Int32Array(userCount).fill(-1),
+    costCenter: new Int32Array(userCount).fill(-1),
+    orgMixed: new Uint8Array(userCount),
+    costCenterMixed: new Uint8Array(userCount),
+    quotaMax: new Float32Array(userCount),
+    recent: new Float64Array(userCount),
+    prior: new Float64Array(userCount),
+    activeDays: new Int32Array(userCount),
+    peakDay: new Float64Array(userCount),
+    peakDayIdx: new Int32Array(userCount).fill(-1),
+    daysN: new Int32Array(userCount),
+    daysSum: new Float64Array(userCount),
+    daysSumSq: new Float64Array(userCount),
   };
 
-  const keepUserModel = nU * nM <= 30_000_000;
-  const userModel = keepUserModel ? new Float32Array(nU * nM) : null;
-  const monthQuota = new Float32Array(nU * nMonths);
-  const userMonthGross = new Float64Array(nU * nMonths);
-  const pcModel = new PairCounter(nU, nM);
-  const pcProduct = new PairCounter(nU, nP);
-  const pcOrg = new PairCounter(nU, nO);
-  const pcCc = new PairCounter(nU, nC);
-  const pcRepo = new PairCounter(nU, nR);
-  const pcApp = new PairCounter(nU, nA);
-  const seenUser = new Uint8Array(nU);
+  const keepUserModel = userCount * modelCount <= 30_000_000;
+  const userModel = keepUserModel ? new Float32Array(userCount * modelCount) : null;
+  const monthQuota = new Float32Array(userCount * nMonths);
+  const userMonthGross = new Float64Array(userCount * nMonths);
+  const pcModel = new PairCounter(userCount, modelCount);
+  const pcProduct = new PairCounter(userCount, productCount);
+  const pcOrg = new PairCounter(userCount, orgCount);
+  const costCenterUsers = new PairCounter(userCount, costCenterCount);
+  const pcRepo = new PairCounter(userCount, repoCount);
+  const pcApp = new PairCounter(userCount, appCount);
+  const seenUser = new Uint8Array(userCount);
 
   const {
-    day: sDay,
+    day: dayOfRow,
     user: sUser,
     product: sProduct,
-    sku: sSku,
+    sku: skuOfRow,
     model: sModel,
-    org: sOrg,
-    app: sApp,
+    org: orgOfRow,
+    app: appOfRow,
     repo: sRepo,
-    costCenter: sCc,
+    costCenter: costCenterOfRow,
     file: sFile,
     auto: sAuto,
-    qty: sQty,
+    qty: creditsOfRow,
     gross: sGross,
     discount: sDisc,
-    net: sNet,
+    net: netOfRow,
     quota: sQuota,
-    input: sIn,
-    output: sOut,
-    cacheRead: sCr,
-    cacheWrite: sCw,
+    input: inputOfRow,
+    output: outputOfRow,
+    cacheRead: cacheReadOfRow,
+    cacheWrite: cacheWriteOfRow,
   } = store;
-  const { priced, rIn, rCr, rCw, rOut, hasLong, longThr, lIn, lCr, lCw, lOut, cat } = models;
-  const n = store.n;
+  const { priced, rIn: inputRate, rCr: cacheReadRate, rCw: cacheWriteRate, rOut: outputRate, hasLong, longThr, lIn: longInputRate, lCr: longCacheReadRate, lCw: longCacheWriteRate, lOut: longOutputRate, cat: categoryOfModel } = models;
+  const rowCount = store.n;
   const minDay = store.minDay;
   const recentStart = end - 6;
   const priorStart = end - 13;
@@ -357,221 +356,221 @@ export function aggregate(
   let lastDay = Number.NEGATIVE_INFINITY;
   const tierN = CATEGORIES.length;
 
-  for (let i = 0; i < n; i++) {
+  for (let i = 0; i < rowCount; i++) {
     if (mask !== null && mask[i] === 0) continue;
-    const d = sDay[i];
-    if (d < start || d > end) continue;
+    const day = dayOfRow[i];
+    if (day < start || day > end) continue;
     included++;
-    const u = sUser[i];
-    const m = sModel[i];
-    const di = d - start;
-    const g = sGross[i];
-    const dsc = sDisc[i];
-    const nt = sNet[i];
-    const q = sQty[i];
-    const tin = sIn[i];
-    const tout = sOut[i];
-    const tcr = sCr[i];
-    const tcw = sCw[i];
+    const user = sUser[i];
+    const model = sModel[i];
+    const dayIndex = day - start;
+    const gross = sGross[i];
+    const discount = sDisc[i];
+    const net = netOfRow[i];
+    const credits = creditsOfRow[i];
+    const inputTokens = inputOfRow[i];
+    const outputTokens = outputOfRow[i];
+    const cacheReadTokens = cacheReadOfRow[i];
+    const cacheWriteTokens = cacheWriteOfRow[i];
     const auto = sAuto[i];
 
-    if (d < firstDay) firstDay = d;
-    if (d > lastDay) lastDay = d;
+    if (day < firstDay) firstDay = day;
+    if (day > lastDay) lastDay = day;
 
     // Row-level list-cost estimate on the default tier.
-    let D = 0;
-    let cIn = 0;
-    let cCr = 0;
-    let cCw = 0;
-    let cOut = 0;
-    if (priced[m] === 1) {
-      cIn = tin * rIn[m];
-      cCr = tcr * rCr[m];
-      cCw = tcw * rCw[m];
-      cOut = tout * rOut[m];
-      D = cIn + cCr + cCw + cOut;
+    let listCost = 0;
+    let inputCost = 0;
+    let cacheReadCost = 0;
+    let cacheWriteCost = 0;
+    let outputCost = 0;
+    if (priced[model] === 1) {
+      inputCost = inputTokens * inputRate[model];
+      cacheReadCost = cacheReadTokens * cacheReadRate[model];
+      cacheWriteCost = cacheWriteTokens * cacheWriteRate[model];
+      outputCost = outputTokens * outputRate[model];
+      listCost = inputCost + cacheReadCost + cacheWriteCost + outputCost;
     }
     let premium = 0;
-    if (D > 0) {
-      const ratio = g / D;
-      totals.listCost += D;
-      totals.pricedGross += g;
-      modelExtra.listCost[m] += D;
-      modelExtra.pricedGross[m] += g;
-      ua.listCost[u] += D;
-      ua.pricedGross[u] += g;
-      const eIn = cIn * ratio;
-      const eCr = cCr * ratio;
-      const eCw = cCw * ratio;
-      const eOut = cOut * ratio;
-      totals.est.input += eIn;
-      totals.est.cacheRead += eCr;
-      totals.est.cacheWrite += eCw;
-      totals.est.output += eOut;
-      ua.estIn[u] += eIn;
-      ua.estCr[u] += eCr;
-      ua.estCw[u] += eCw;
-      ua.estOut[u] += eOut;
-      if (hasLong[m] === 1 && ratio > longRatio && tin + tcr + tcw > longThr[m]) {
-        const L = tin * lIn[m] + tcr * lCr[m] + tcw * lCw[m] + tout * lOut[m];
-        premium = Math.min(g, L) - D;
+    if (listCost > 0) {
+      const ratio = gross / listCost;
+      totals.listCost += listCost;
+      totals.pricedGross += gross;
+      modelExtra.listCost[model] += listCost;
+      modelExtra.pricedGross[model] += gross;
+      perUser.listCost[user] += listCost;
+      perUser.pricedGross[user] += gross;
+      const estimatedInput = inputCost * ratio;
+      const estimatedCacheRead = cacheReadCost * ratio;
+      const estimatedCacheWrite = cacheWriteCost * ratio;
+      const estimatedOutput = outputCost * ratio;
+      totals.est.input += estimatedInput;
+      totals.est.cacheRead += estimatedCacheRead;
+      totals.est.cacheWrite += estimatedCacheWrite;
+      totals.est.output += estimatedOutput;
+      perUser.estIn[user] += estimatedInput;
+      perUser.estCr[user] += estimatedCacheRead;
+      perUser.estCw[user] += estimatedCacheWrite;
+      perUser.estOut[user] += estimatedOutput;
+      if (hasLong[model] === 1 && ratio > longRatio && inputTokens + cacheReadTokens + cacheWriteTokens > longThr[model]) {
+        const longContextCost = inputTokens * longInputRate[model] + cacheReadTokens * longCacheReadRate[model] + cacheWriteTokens * longCacheWriteRate[model] + outputTokens * longOutputRate[model];
+        premium = Math.min(gross, longContextCost) - listCost;
         if (premium < 0) premium = 0;
       }
     } else {
-      totals.unpricedGross += g;
+      totals.unpricedGross += gross;
     }
     if (premium > 0) {
       totals.longPremium += premium;
       totals.longPremiumRows++;
-      modelExtra.longPremium[m] += premium;
-      ua.longPremium[u] += premium;
+      modelExtra.longPremium[model] += premium;
+      perUser.longPremium[user] += premium;
     }
 
     // Totals
     totals.rows++;
-    totals.gross += g;
-    totals.discount += dsc;
-    totals.net += nt;
-    totals.credits += q;
-    totals.input += tin;
-    totals.output += tout;
-    totals.cacheRead += tcr;
-    totals.cacheWrite += tcw;
-    totals.tierGross[cat[m]] += g;
-    if (u === BLANK_ID) totals.unattributedGross += g;
-    else totals.attributedGross += g;
+    totals.gross += gross;
+    totals.discount += discount;
+    totals.net += net;
+    totals.credits += credits;
+    totals.input += inputTokens;
+    totals.output += outputTokens;
+    totals.cacheRead += cacheReadTokens;
+    totals.cacheWrite += cacheWriteTokens;
+    totals.tierGross[categoryOfModel[model]] += gross;
+    if (user === BLANK_ID) totals.unattributedGross += gross;
+    else totals.attributedGross += gross;
     if (auto === 1) {
-      totals.autoGross += g;
-      modelExtra.autoGross[m] += g;
-      ua.autoGross[u] += g;
+      totals.autoGross += gross;
+      modelExtra.autoGross[model] += gross;
+      perUser.autoGross[user] += gross;
       // The original price is only measured where it is unambiguous: a priced model with token counts and a standard-tier request.
       // Long-context rows are left out because the tier they were billed on cannot be told from the file.
-      if (D > 0 && premium === 0) {
-        const r = g / D;
-        if (r >= AUTO_MEASURE_BAND.min && r <= AUTO_MEASURE_BAND.max) {
-          totals.autoList += D;
-          totals.autoMeasuredGross += g;
-          modelExtra.autoList[m] += D;
-          modelExtra.autoMeasuredGross[m] += g;
-          ua.autoList[u] += D;
-          ua.autoMeasuredGross[u] += g;
+      if (listCost > 0 && premium === 0) {
+        const ratio = gross / listCost;
+        if (ratio >= AUTO_MEASURE_BAND.min && ratio <= AUTO_MEASURE_BAND.max) {
+          totals.autoList += listCost;
+          totals.autoMeasuredGross += gross;
+          modelExtra.autoList[model] += listCost;
+          modelExtra.autoMeasuredGross[model] += gross;
+          perUser.autoList[user] += listCost;
+          perUser.autoMeasuredGross[user] += gross;
         }
       }
     }
 
     // Per-dimension measures
-    addRow(days, di, g, dsc, nt, q, tin, tout, tcr, tcw);
-    addRow(mUser, u, g, dsc, nt, q, tin, tout, tcr, tcw);
-    addRow(mProduct, sProduct[i], g, dsc, nt, q, tin, tout, tcr, tcw);
-    addRow(mSku, sSku[i], g, dsc, nt, q, tin, tout, tcr, tcw);
-    addRow(mModel, m, g, dsc, nt, q, tin, tout, tcr, tcw);
-    addRow(mOrg, sOrg[i], g, dsc, nt, q, tin, tout, tcr, tcw);
-    addRow(mApp, sApp[i], g, dsc, nt, q, tin, tout, tcr, tcw);
-    addRow(mRepo, sRepo[i], g, dsc, nt, q, tin, tout, tcr, tcw);
-    addRow(mCc, sCc[i], g, dsc, nt, q, tin, tout, tcr, tcw);
-    addRow(mFile, sFile[i], g, dsc, nt, q, tin, tout, tcr, tcw);
-    addRow(mSel, auto, g, dsc, nt, q, tin, tout, tcr, tcw);
-    addRow(mPlan, prep.planOfRow[i], g, dsc, nt, q, tin, tout, tcr, tcw);
-    addRow(mDow, prep.dowOfDay[d - minDay], g, dsc, nt, q, tin, tout, tcr, tcw);
+    addRow(days, dayIndex, gross, discount, net, credits, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens);
+    addRow(mUser, user, gross, discount, net, credits, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens);
+    addRow(mProduct, sProduct[i], gross, discount, net, credits, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens);
+    addRow(skuMeasures, skuOfRow[i], gross, discount, net, credits, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens);
+    addRow(mModel, model, gross, discount, net, credits, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens);
+    addRow(orgMeasures, orgOfRow[i], gross, discount, net, credits, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens);
+    addRow(appMeasures, appOfRow[i], gross, discount, net, credits, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens);
+    addRow(mRepo, sRepo[i], gross, discount, net, credits, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens);
+    addRow(costCenterMeasures, costCenterOfRow[i], gross, discount, net, credits, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens);
+    addRow(mFile, sFile[i], gross, discount, net, credits, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens);
+    addRow(selectionMeasures, auto, gross, discount, net, credits, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens);
+    addRow(mPlan, prepared.planOfRow[i], gross, discount, net, credits, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens);
+    addRow(dayOfWeekMeasures, prepared.dowOfDay[day - minDay], gross, discount, net, credits, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens);
 
     // Per-user detail
-    ua.tier[u * tierN + cat[m]] += g;
-    if (d < ua.firstDay[u]) ua.firstDay[u] = d;
-    if (d > ua.lastDay[u]) ua.lastDay[u] = d;
-    const org = sOrg[i];
+    perUser.tier[user * tierN + categoryOfModel[model]] += gross;
+    if (day < perUser.firstDay[user]) perUser.firstDay[user] = day;
+    if (day > perUser.lastDay[user]) perUser.lastDay[user] = day;
+    const org = orgOfRow[i];
     if (org !== BLANK_ID) {
-      if (ua.org[u] === -1) ua.org[u] = org;
-      else if (ua.org[u] !== org) ua.orgMixed[u] = 1;
+      if (perUser.org[user] === -1) perUser.org[user] = org;
+      else if (perUser.org[user] !== org) perUser.orgMixed[user] = 1;
     }
-    const cc = sCc[i];
-    if (cc !== BLANK_ID) {
-      if (ua.costCenter[u] === -1) ua.costCenter[u] = cc;
-      else if (ua.costCenter[u] !== cc) ua.costCenterMixed[u] = 1;
+    const costCenter = costCenterOfRow[i];
+    if (costCenter !== BLANK_ID) {
+      if (perUser.costCenter[user] === -1) perUser.costCenter[user] = costCenter;
+      else if (perUser.costCenter[user] !== costCenter) perUser.costCenterMixed[user] = 1;
     }
-    const qt = sQuota[i];
-    if (qt > ua.quotaMax[u]) ua.quotaMax[u] = qt;
-    const mk = u * nMonths + prep.monthOfDay[d - minDay];
-    if (qt > monthQuota[mk]) monthQuota[mk] = qt;
-    userMonthGross[mk] += g;
-    if (d >= recentStart) ua.recent[u] += g;
-    else if (d >= priorStart) ua.prior[u] += g;
-    if (userModel) userModel[u * nM + m] += g;
+    const quota = sQuota[i];
+    if (quota > perUser.quotaMax[user]) perUser.quotaMax[user] = quota;
+    const userMonthIndex = user * nMonths + prepared.monthOfDay[day - minDay];
+    if (quota > monthQuota[userMonthIndex]) monthQuota[userMonthIndex] = quota;
+    userMonthGross[userMonthIndex] += gross;
+    if (day >= recentStart) perUser.recent[user] += gross;
+    else if (day >= priorStart) perUser.prior[user] += gross;
+    if (userModel) userModel[user * modelCount + model] += gross;
 
-    if (u !== BLANK_ID) {
-      seenUser[u] = 1;
-      pcModel.add(u, m);
-      pcProduct.add(u, sProduct[i]);
-      pcOrg.add(u, org);
-      pcCc.add(u, cc);
-      pcRepo.add(u, sRepo[i]);
-      pcApp.add(u, sApp[i]);
+    if (user !== BLANK_ID) {
+      seenUser[user] = 1;
+      pcModel.add(user, model);
+      pcProduct.add(user, sProduct[i]);
+      pcOrg.add(user, org);
+      costCenterUsers.add(user, costCenter);
+      pcRepo.add(user, sRepo[i]);
+      pcApp.add(user, appOfRow[i]);
     }
   }
 
   let users = 0;
-  for (let u = 0; u < nU; u++) users += seenUser[u];
+  for (let user = 0; user < userCount; user++) users += seenUser[user];
   totals.users = users;
 
   // Day-grouped pass: active days, peak days and per-day distinct users.
   if (included > 0 && nDays > 0) {
     const offsets = new Int32Array(nDays + 1);
-    for (let i = 0; i < n; i++) {
+    for (let i = 0; i < rowCount; i++) {
       if (mask !== null && mask[i] === 0) continue;
-      const d = sDay[i];
-      if (d < start || d > end) continue;
-      offsets[d - start + 1]++;
+      const day = dayOfRow[i];
+      if (day < start || day > end) continue;
+      offsets[day - start + 1]++;
     }
     for (let k = 0; k < nDays; k++) offsets[k + 1] += offsets[k];
     const cursor = offsets.slice(0, nDays);
     const order = new Int32Array(included);
-    for (let i = 0; i < n; i++) {
+    for (let i = 0; i < rowCount; i++) {
       if (mask !== null && mask[i] === 0) continue;
-      const d = sDay[i];
-      if (d < start || d > end) continue;
-      order[cursor[d - start]++] = i;
+      const day = dayOfRow[i];
+      if (day < start || day > end) continue;
+      order[cursor[day - start]++] = i;
     }
-    const stamp = new Int32Array(nU).fill(-1);
-    const dayG = new Float64Array(nU);
-    const touched = new Int32Array(nU);
-    const thr = opts.activeThreshold;
-    for (let di = 0; di < nDays; di++) {
-      const a = offsets[di];
-      const b = offsets[di + 1];
-      if (a === b) continue;
-      let nt = 0;
-      for (let k = a; k < b; k++) {
-        const i = order[k];
-        const u = sUser[i];
-        if (u === BLANK_ID) continue;
-        if (stamp[u] !== di) {
-          stamp[u] = di;
-          touched[nt++] = u;
+    const stamp = new Int32Array(userCount).fill(-1);
+    const dayGross = new Float64Array(userCount);
+    const touched = new Int32Array(userCount);
+    const activeThreshold = options.activeThreshold;
+    for (let dayIndex = 0; dayIndex < nDays; dayIndex++) {
+      const dayStart = offsets[dayIndex];
+      const dayEnd = offsets[dayIndex + 1];
+      if (dayStart === dayEnd) continue;
+      let touchedCount = 0;
+      for (let k = dayStart; k < dayEnd; k++) {
+        const rowIndex = order[k];
+        const user = sUser[rowIndex];
+        if (user === BLANK_ID) continue;
+        if (stamp[user] !== dayIndex) {
+          stamp[user] = dayIndex;
+          touched[touchedCount++] = user;
         }
-        dayG[u] += sGross[i];
+        dayGross[user] += sGross[rowIndex];
       }
-      days.anyUsers[di] = nt;
-      let act = 0;
-      for (let t = 0; t < nt; t++) {
-        const u = touched[t];
-        const g = dayG[u];
-        dayG[u] = 0;
-        if (g >= thr) {
-          act++;
-          ua.activeDays[u]++;
-          ua.daysN[u]++;
-          ua.daysSum[u] += g;
-          ua.daysSumSq[u] += g * g;
+      days.anyUsers[dayIndex] = touchedCount;
+      let activeCount = 0;
+      for (let index = 0; index < touchedCount; index++) {
+        const user = touched[index];
+        const gross = dayGross[user];
+        dayGross[user] = 0;
+        if (gross >= activeThreshold) {
+          activeCount++;
+          perUser.activeDays[user]++;
+          perUser.daysN[user]++;
+          perUser.daysSum[user] += gross;
+          perUser.daysSumSq[user] += gross * gross;
         }
-        if (g > ua.peakDay[u]) {
-          ua.peakDay[u] = g;
-          ua.peakDayIdx[u] = di + start;
+        if (gross > perUser.peakDay[user]) {
+          perUser.peakDay[user] = gross;
+          perUser.peakDayIdx[user] = dayIndex + start;
         }
       }
-      days.activeUsers[di] = act;
+      days.activeUsers[dayIndex] = activeCount;
     }
   }
 
-  const grouped = (c: PairCounter) => c.counts;
+  const grouped = (counter: PairCounter) => counter.counts;
   return {
     rowsIncluded: included,
     range: { start, end, length: nDays },
@@ -581,28 +580,28 @@ export function aggregate(
     days,
     user: mUser,
     product: mProduct,
-    sku: mSku,
+    sku: skuMeasures,
     model: mModel,
-    org: mOrg,
-    app: mApp,
+    org: orgMeasures,
+    app: appMeasures,
     repo: mRepo,
-    costCenter: mCc,
+    costCenter: costCenterMeasures,
     file: mFile,
-    selection: mSel,
+    selection: selectionMeasures,
     plan: mPlan,
-    dow: mDow,
+    dow: dayOfWeekMeasures,
     usersIn: {
       model: grouped(pcModel),
       product: grouped(pcProduct),
       org: grouped(pcOrg),
-      costCenter: grouped(pcCc),
+      costCenter: grouped(costCenterUsers),
       repo: grouped(pcRepo),
       app: grouped(pcApp),
     },
-    userAcc: ua,
+    userAcc: perUser,
     modelExtra,
     userModel,
-    nModels: nM,
+    nModels: modelCount,
     monthQuota,
     userMonthGross,
     nMonths,
@@ -622,33 +621,33 @@ export interface QuickTotals {
 export function quickTotals(store: DataStore, mask: Uint8Array | null, from: number, to: number): QuickTotals {
   const seen = new Uint8Array(store.dicts.user.values.length);
   const out: QuickTotals = { rows: 0, gross: 0, net: 0, discount: 0, credits: 0, users: 0 };
-  const { day, user, gross, net, discount, qty } = store;
+  const { day, user, gross, net, discount, qty: credits } = store;
   for (let i = 0; i < store.n; i++) {
     if (mask !== null && mask[i] === 0) continue;
-    const d = day[i];
-    if (d < from || d > to) continue;
+    const rowDay = day[i];
+    if (rowDay < from || rowDay > to) continue;
     out.rows++;
     out.gross += gross[i];
     out.net += net[i];
     out.discount += discount[i];
-    out.credits += qty[i];
+    out.credits += credits[i];
     if (user[i] !== BLANK_ID) seen[user[i]] = 1;
   }
-  for (let u = 0; u < seen.length; u++) out.users += seen[u];
+  for (let userId = 0; userId < seen.length; userId++) out.users += seen[userId];
   return out;
 }
 
 /** Sum a per-model measure into groups defined by a per-model group index (vendor / category). */
-export function rollupModels(m: Measures, groupOf: Uint8Array, nGroups: number): Measures {
+export function rollupModels(modelMeasures: Measures, groupOf: Uint8Array, nGroups: number): Measures {
   const out = makeMeasures(nGroups);
   for (let k = 0; k < groupOf.length; k++) {
-    const g = groupOf[k];
-    for (const key of Object.keys(out) as (keyof Measures)[]) out[key][g] += m[key][k];
+    const group = groupOf[k];
+    for (const key of Object.keys(out) as (keyof Measures)[]) out[key][group] += modelMeasures[key][k];
   }
   return out;
 }
 
-export const rollupByCategory = (models: ModelTable, m: Measures): Measures =>
-  rollupModels(m, models.cat, CATEGORIES.length);
-export const rollupByVendor = (models: ModelTable, m: Measures): Measures =>
-  rollupModels(m, models.vendor, VENDORS.length);
+export const rollupByCategory = (models: ModelTable, modelMeasures: Measures): Measures =>
+  rollupModels(modelMeasures, models.cat, CATEGORIES.length);
+export const rollupByVendor = (models: ModelTable, modelMeasures: Measures): Measures =>
+  rollupModels(modelMeasures, models.vendor, VENDORS.length);

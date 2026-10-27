@@ -8,12 +8,12 @@ const NO_PLAN = /^(unknown|none|n\/a|na|null|undefined|-|--)$/i;
 
 /** A strict number: "12", "12.5", "1,234.5", "$12". Null for anything else. */
 function parseNumber(text: string): number | null {
-  let t = text.trim().replace(/^\$\s*/, '').trim();
-  if (t === '') return null;
-  if (GROUPED.test(t)) t = t.replace(/,/g, '');
-  if (!PLAIN.test(t)) return null;
-  const n = Number(t);
-  return Number.isFinite(n) ? n : null;
+  let cleaned = text.trim().replace(/^\$\s*/, '').trim();
+  if (cleaned === '') return null;
+  if (GROUPED.test(cleaned)) cleaned = cleaned.replace(/,/g, '');
+  if (!PLAIN.test(cleaned)) return null;
+  const value = Number(cleaned);
+  return Number.isFinite(value) ? value : null;
 }
 
 /**
@@ -21,10 +21,10 @@ function parseNumber(text: string): number | null {
  * credits and a smaller number as US dollars of included credits, so small amounts are kept as dollars.
  */
 export function canonicalPlan(credits: number): string {
-  const c = Math.round(credits * 100) / 100;
-  if (c === BUSINESS) return 'Business';
-  if (c === ENTERPRISE) return 'Enterprise';
-  return c >= 1000 ? String(c) : String(Math.round((c / 100) * 1e6) / 1e6);
+  const roundedCredits = Math.round(credits * 100) / 100;
+  if (roundedCredits === BUSINESS) return 'Business';
+  if (roundedCredits === ENTERPRISE) return 'Enterprise';
+  return roundedCredits >= 1000 ? String(roundedCredits) : String(Math.round((roundedCredits / 100) * 1e6) / 1e6);
 }
 
 /**
@@ -34,29 +34,29 @@ export function canonicalPlan(credits: number): string {
  * the English names and labels are read. Text that was translated for display is not a plan.
  */
 export function readPlan(raw: string): string | undefined | null {
-  const t = raw
+  const text = raw
     .trim()
     .replace(/^["']+|["']+$/g, '')
     .trim();
-  if (!t || NO_PLAN.test(t)) return undefined;
-  const lower = t.toLowerCase();
+  if (!text || NO_PLAN.test(text)) return undefined;
+  const lower = text.toLowerCase();
   if (lower.includes('enterprise')) return 'Enterprise';
   if (lower.includes('business')) return 'Business';
   const custom = customPlanCredits(lower);
   if (Number.isFinite(custom)) return custom > 1e9 ? null : canonicalPlan(custom);
   const dollars = lower.includes('$') || /\b(usd|dollars?)\b/.test(lower);
   const credits = /\bcredits?\b/.test(lower);
-  const n = parseNumber(lower.replace(/\b(credits?|usd|dollars?)\b/g, '').replace(/[$\s]/g, ''));
-  if (n === null || n <= 0 || n > 1e9) return null;
-  if (dollars) return canonicalPlan(n * 100);
-  if (credits) return canonicalPlan(n);
-  return canonicalPlan(n >= 1000 ? n : n * 100);
+  const amount = parseNumber(lower.replace(/\b(credits?|usd|dollars?)\b/g, '').replace(/[$\s]/g, ''));
+  if (amount === null || amount <= 0 || amount > 1e9) return null;
+  if (dollars) return canonicalPlan(amount * 100);
+  if (credits) return canonicalPlan(amount);
+  return canonicalPlan(amount >= 1000 ? amount : amount * 100);
 }
 
 /** How much a plan includes, for ranking plans. Zero when the plan is unset or cannot be read. */
 export function planRank(plan: string | undefined): number {
-  const c = planCredits(plan);
-  return Number.isFinite(c) ? c : 0;
+  const credits = planCredits(plan);
+  return Number.isFinite(credits) ? credits : 0;
 }
 
 /** The higher of two plans (Enterprise over Business over unset). The first one wins a tie. */

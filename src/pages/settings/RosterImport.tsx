@@ -14,15 +14,15 @@ hubot,Enterprise
 monalisa,3900
 # lines that start with # are ignored`;
 
-const seats = (n: number) => tp(n, '{n} seat', '{n} seats', { n: fmtInt(n) });
-const users = (n: number) => tp(n, '{n} user', '{n} users', { n: fmtInt(n) });
+const seats = (seatCount: number) => tp(seatCount, '{n} seat', '{n} seats', { n: fmtInt(seatCount) });
+const users = (userCount: number) => tp(userCount, '{n} user', '{n} users', { n: fmtInt(userCount) });
 
-function mergeMessage(r: { added: number; updated: number; unchanged: number; roster: RosterEntry[] }): string {
+function mergeMessage(mergeResult: { added: number; updated: number; unchanged: number; roster: RosterEntry[] }): string {
   return t('Added {added}, updated the plan of {updated}, left {unchanged} unchanged. The license list now has {total}.', {
-    added: seats(r.added),
-    updated: seats(r.updated),
-    unchanged: seats(r.unchanged),
-    total: seats(r.roster.length),
+    added: seats(mergeResult.added),
+    updated: seats(mergeResult.updated),
+    unchanged: seats(mergeResult.unchanged),
+    total: seats(mergeResult.roster.length),
   });
 }
 
@@ -34,8 +34,8 @@ interface RosterImportProps {
 /** Adds seats by hand: pasted usernames, or the users of the loaded report. Files go through LicenseImport. */
 export function RosterImport({ roster, onChange }: RosterImportProps) {
   // The sample's made-up users must never end up in the saved license list.
-  const sample = useApp((s) => s.dataset?.sample === true);
-  const store = useApp((s) => (s.dataset?.sample ? null : s.dataset?.store)) ?? null;
+  const sample = useApp((state) => state.dataset?.sample === true);
+  const store = useApp((state) => (state.dataset?.sample ? null : state.dataset?.store)) ?? null;
   const [text, setText] = useState('');
   const [mode, setMode] = useState<Mode>('merge');
   const [result, setResult] = useState<string | null>(null);
@@ -58,9 +58,9 @@ export function RosterImport({ roster, onChange }: RosterImportProps) {
       onChange(parse.entries);
       setResult(t('Replaced the license list with {seats}.', { seats: seats(found) }));
     } else {
-      const r = mergeRoster(roster, parse.entries, true);
-      onChange(r.roster);
-      setResult(mergeMessage(r));
+      const mergeResult = mergeRoster(roster, parse.entries, true);
+      onChange(mergeResult.roster);
+      setResult(mergeMessage(mergeResult));
     }
     setText('');
   };
@@ -72,9 +72,9 @@ export function RosterImport({ roster, onChange }: RosterImportProps) {
       onChange(entries);
       setResult(t('Replaced the license list with the {users} in the report.', { users: users(entries.length) }));
     } else {
-      const r = mergeRoster(roster, entries, false);
-      onChange(r.roster);
-      setResult(t('{users} in the report. {result}', { users: users(entries.length), result: mergeMessage(r) }));
+      const mergeResult = mergeRoster(roster, entries, false);
+      onChange(mergeResult.roster);
+      setResult(t('{users} in the report. {result}', { users: users(entries.length), result: mergeMessage(mergeResult) }));
     }
   };
 
@@ -93,7 +93,7 @@ export function RosterImport({ roster, onChange }: RosterImportProps) {
         dir="ltr"
         placeholder={PLACEHOLDER}
         value={text}
-        onChange={(e) => edit(e.target.value)}
+        onChange={(event) => edit(event.target.value)}
       />
       <p className="mt-1.5 text-xs text-fg-muted">
         <T
@@ -118,7 +118,7 @@ export function RosterImport({ roster, onChange }: RosterImportProps) {
             <div className="mt-1 text-xs text-warn">
               {tp(parse.unreadablePlans, '{n} plan could not be read, for example {samples}. Those users are added without a plan.', '{n} plans could not be read, for example {samples}. Those users are added without a plan.', {
                 n: fmtInt(parse.unreadablePlans),
-                samples: parse.unreadableSamples.map((s) => `"${s}"`).join(', '),
+                samples: parse.unreadableSamples.map((unreadablePlan) => `"${unreadablePlan}"`).join(', '),
               })}
             </div>
           ) : null}
@@ -126,9 +126,9 @@ export function RosterImport({ roster, onChange }: RosterImportProps) {
             <details className="mt-1.5 text-xs">
               <summary className="cursor-pointer text-fg-muted hover:text-fg">{t('Show ignored lines')}</summary>
               <ul className="mt-1 space-y-0.5">
-                {parse.ignored.slice(0, 20).map((l) => (
-                  <li key={l.line} className="text-fg-muted">
-                    <span className="num">{t('Line {n}:', { n: fmtInt(l.line) })}</span> <code className="font-mono">{l.text}</code>. {t(l.reason)}.
+                {parse.ignored.slice(0, 20).map((ignoredLine) => (
+                  <li key={ignoredLine.line} className="text-fg-muted">
+                    <span className="num">{t('Line {n}:', { n: fmtInt(ignoredLine.line) })}</span> <code className="font-mono">{ignoredLine.text}</code>. {t(ignoredLine.reason)}.
                   </li>
                 ))}
               </ul>

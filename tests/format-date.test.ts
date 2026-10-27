@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { CsvTokenizer } from '../src/lib/csv/tokenizer';
 import {
   DAYS_PER_MONTH,
-  DOW_NAMES,
+  WEEKDAY_NAMES,
   MONTH_NAMES,
   dayFromYMD,
   dayToDate,
@@ -17,7 +17,7 @@ import {
   monthStartDay,
   parseIsoDay,
   workdaysBetween,
-  ymd,
+  dateParts,
 } from '../src/lib/utils/date';
 import {
   csvEscape,
@@ -33,17 +33,17 @@ import {
   pluralize,
   toCsv,
 } from '../src/lib/utils/format';
-import { mulberry32 } from './helpers';
+import { isoOf, mulberry32, weekdayOf } from './helpers';
 
 const DASH = '\u2013';
 const TIMES = '\u00d7';
 
 /** Parses a formatted number back, e.g. "-$1,234.50" or "12.3K" (the suffix is applied). */
-function parseMoney(s: string): number {
-  const m = /^(-?)\$?([\d,]+(?:\.\d+)?)([KMBT]?)$/.exec(s);
-  if (!m) return NaN;
-  const mult = { '': 1, K: 1e3, M: 1e6, B: 1e9, T: 1e12 }[m[3] as '' | 'K' | 'M' | 'B' | 'T'];
-  return (m[1] === '-' ? -1 : 1) * Number(m[2].replace(/,/g, '')) * mult;
+function parseMoney(text: string): number {
+  const match = /^(-?)\$?([\d,]+(?:\.\d+)?)([KMBT]?)$/.exec(text);
+  if (!match) return NaN;
+  const multiplier = { '': 1, K: 1e3, M: 1e6, B: 1e9, T: 1e12 }[match[3] as '' | 'K' | 'M' | 'B' | 'T'];
+  return (match[1] === '-' ? -1 : 1) * Number(match[2].replace(/,/g, '')) * multiplier;
 }
 
 describe('fmtUSD', () => {
@@ -64,7 +64,7 @@ describe('fmtUSD', () => {
       [-5, '-$5.00'],
       [-12_345.6, '-$12,346'],
     ];
-    for (const [v, want] of cases) expect(fmtUSD(v), String(v)).toBe(want);
+    for (const [amount, want] of cases) expect(fmtUSD(amount), String(amount)).toBe(want);
   });
 
   it('honours an explicit number of decimals', () => {
@@ -78,22 +78,22 @@ describe('fmtUSD', () => {
   });
 
   it('shows an en dash instead of NaN or infinity', () => {
-    for (const v of [NaN, Infinity, -Infinity]) {
-      for (const digits of [0, 2, 4, 'auto'] as const) expect(fmtUSD(v, digits)).toBe(DASH);
+    for (const amount of [NaN, Infinity, -Infinity]) {
+      for (const digits of [0, 2, 4, 'auto'] as const) expect(fmtUSD(amount, digits)).toBe(DASH);
     }
   });
 
   it('stays within half a unit of the displayed precision of the real value', () => {
-    const rand = mulberry32(11);
+    const random = mulberry32(11);
     const bad: string[] = [];
     for (let i = 0; i < 4000; i++) {
-      const v = (rand() < 0.5 ? -1 : 1) * 10 ** (rand() * 11 - 5);
-      const a = Math.abs(v);
-      const decimals = a >= 10_000 ? 0 : a >= 1 ? 2 : 4;
-      const s = fmtUSD(v);
-      const back = parseMoney(s);
-      if (!(Math.abs(back - v) <= 0.5 * 10 ** -decimals + 1e-9 * Math.max(1, a))) bad.push(`${v} -> ${s}`);
-      if (!/^-?\$[\d,]+(\.\d+)?$/.test(s)) bad.push(`shape ${v} -> ${s}`);
+      const amount = (random() < 0.5 ? -1 : 1) * 10 ** (random() * 11 - 5);
+      const magnitude = Math.abs(amount);
+      const decimals = magnitude >= 10_000 ? 0 : magnitude >= 1 ? 2 : 4;
+      const formatted = fmtUSD(amount);
+      const back = parseMoney(formatted);
+      if (!(Math.abs(back - amount) <= 0.5 * 10 ** -decimals + 1e-9 * Math.max(1, magnitude))) bad.push(`${amount} -> ${formatted}`);
+      if (!/^-?\$[\d,]+(\.\d+)?$/.test(formatted)) bad.push(`shape ${amount} -> ${formatted}`);
     }
     expect(bad).toEqual([]);
   });
@@ -120,21 +120,21 @@ describe('fmtUSDCompact', () => {
       [-1234.5, '-$1,235'],
       [-2_500_000, '-$2.50M'],
     ];
-    for (const [v, want] of cases) expect(fmtUSDCompact(v), String(v)).toBe(want);
+    for (const [amount, want] of cases) expect(fmtUSDCompact(amount), String(amount)).toBe(want);
   });
 
   it('shows an en dash instead of NaN or infinity', () => {
-    for (const v of [NaN, Infinity, -Infinity]) expect(fmtUSDCompact(v)).toBe(DASH);
+    for (const amount of [NaN, Infinity, -Infinity]) expect(fmtUSDCompact(amount)).toBe(DASH);
   });
 
   it('stays close to the real value over twelve orders of magnitude', () => {
-    const rand = mulberry32(12);
+    const random = mulberry32(12);
     const bad: string[] = [];
     for (let i = 0; i < 4000; i++) {
-      const v = (rand() < 0.5 ? -1 : 1) * 10 ** (rand() * 15 - 3);
-      const s = fmtUSDCompact(v);
-      const back = parseMoney(s);
-      if (!(Math.abs(back - v) <= 0.006 * Math.abs(v) + 0.00051)) bad.push(`${v} -> ${s}`);
+      const amount = (random() < 0.5 ? -1 : 1) * 10 ** (random() * 15 - 3);
+      const formatted = fmtUSDCompact(amount);
+      const back = parseMoney(formatted);
+      if (!(Math.abs(back - amount) <= 0.006 * Math.abs(amount) + 0.00051)) bad.push(`${amount} -> ${formatted}`);
     }
     expect(bad).toEqual([]);
   });
@@ -146,8 +146,8 @@ describe('fmtUSDCompact', () => {
       [999_999_999, '$1.00B'],
       [-999_999, '-$1.00M'],
     ];
-    for (const [v, want] of cases) expect(fmtUSDCompact(v), String(v)).toBe(want);
-    for (const v of [999_950, 999_999, 999_999_000, 999_999_999]) expect(fmtUSDCompact(v), String(v)).not.toMatch(/\$1000/);
+    for (const [amount, want] of cases) expect(fmtUSDCompact(amount), String(amount)).toBe(want);
+    for (const amount of [999_950, 999_999, 999_999_000, 999_999_999]) expect(fmtUSDCompact(amount), String(amount)).not.toMatch(/\$1000/);
   });
 });
 
@@ -167,19 +167,19 @@ describe('fmtCompact', () => {
       [2e12, '2.00T'],
       [-1500, '-1.5K'],
     ];
-    for (const [v, want] of cases) expect(fmtCompact(v), String(v)).toBe(want);
+    for (const [value, want] of cases) expect(fmtCompact(value), String(value)).toBe(want);
     expect(fmtCompact(NaN)).toBe(DASH);
     expect(fmtCompact(Infinity)).toBe(DASH);
   });
 
   it('stays close to the real value', () => {
-    const rand = mulberry32(13);
+    const random = mulberry32(13);
     const bad: string[] = [];
     for (let i = 0; i < 4000; i++) {
-      const v = (rand() < 0.5 ? -1 : 1) * 10 ** (rand() * 16 - 2);
-      const s = fmtCompact(v);
-      const back = parseMoney(s.replace(/^(-?)/, '$1$'));
-      if (!(Math.abs(back - v) <= 0.051 * Math.abs(v) + 0.006)) bad.push(`${v} -> ${s}`);
+      const value = (random() < 0.5 ? -1 : 1) * 10 ** (random() * 16 - 2);
+      const formatted = fmtCompact(value);
+      const back = parseMoney(formatted.replace(/^(-?)/, '$1$'));
+      if (!(Math.abs(back - value) <= 0.051 * Math.abs(value) + 0.006)) bad.push(`${value} -> ${formatted}`);
     }
     expect(bad).toEqual([]);
   });
@@ -194,7 +194,7 @@ describe('fmtCompact', () => {
       [999_999_999_999, '1.00T'],
       [-999_999, '-1.00M'],
     ];
-    for (const [v, want] of cases) expect(fmtCompact(v), String(v)).toBe(want);
+    for (const [value, want] of cases) expect(fmtCompact(value), String(value)).toBe(want);
   });
 });
 
@@ -235,14 +235,14 @@ describe('fmtPct, fmtPctAuto and fmtDelta', () => {
   });
 
   it('fmtPct stays within half a unit of the displayed precision', () => {
-    const rand = mulberry32(14);
+    const random = mulberry32(14);
     const bad: string[] = [];
     for (let i = 0; i < 2000; i++) {
-      const v = (rand() - 0.5) * 10;
-      const digits = Math.floor(rand() * 4);
-      const s = fmtPct(v, digits);
-      const back = parseFloat(s) / 100;
-      if (!s.endsWith('%') || !(Math.abs(back - v) <= 0.5 * 10 ** -(digits + 2) + 1e-12)) bad.push(`${v}/${digits} -> ${s}`);
+      const ratio = (random() - 0.5) * 10;
+      const digits = Math.floor(random() * 4);
+      const formatted = fmtPct(ratio, digits);
+      const back = parseFloat(formatted) / 100;
+      if (!formatted.endsWith('%') || !(Math.abs(back - ratio) <= 0.5 * 10 ** -(digits + 2) + 1e-12)) bad.push(`${ratio}/${digits} -> ${formatted}`);
     }
     expect(bad).toEqual([]);
   });
@@ -315,7 +315,7 @@ describe('fmtMultiple and pluralize', () => {
 
 describe('csvEscape', () => {
   it('writes nothing for missing values and non-finite numbers', () => {
-    for (const v of [null, undefined, '', NaN, Infinity, -Infinity]) expect(csvEscape(v)).toBe('');
+    for (const value of [null, undefined, '', NaN, Infinity, -Infinity]) expect(csvEscape(value)).toBe('');
   });
 
   it('writes numbers and booleans plainly, including negative numbers', () => {
@@ -349,12 +349,12 @@ describe('csvEscape', () => {
     expect(csvEscape('-')).toBe("'-");
     expect(csvEscape('- 5')).toBe("'- 5");
     expect(csvEscape('=a,b')).toBe(`"'=a,b"`);
-    for (const s of ['-5', '+1.5', '-$5', '-5%', '-1e3', '+7']) expect(csvEscape(s), s).toBe(s);
+    for (const signedNumber of ['-5', '+1.5', '-$5', '-5%', '-1e3', '+7']) expect(csvEscape(signedNumber), signedNumber).toBe(signedNumber);
     expect(csvEscape('-1,234.56')).toBe('"-1,234.56"');
   });
 
   it('leaves formula characters alone when they are not the first character', () => {
-    for (const s of ['a=b', ' =x', '5-3', 'x@y.com', 'a+b']) expect(csvEscape(s), s).toBe(s);
+    for (const text of ['a=b', ' =x', '5-3', 'x@y.com', 'a+b']) expect(csvEscape(text), text).toBe(text);
   });
 });
 
@@ -373,33 +373,33 @@ describe('toCsv', () => {
     expect(toCsv(['a', 'b', 'c'], [[1], [1, 2, 3, 4]])).toBe('a,b,c\n1\n1,2,3,4');
   });
 
-  const rand = mulberry32(15);
+  const random = mulberry32(15);
   const ALPHABET = ['a', 'B', '7', ' ', ',', '"', '\n', '\r', '\t', "'", '=', '-', '+', '@', 'é', '日', '😀', '|', ';', '$', '%', '.'];
   const cell = (): string => {
-    const len = Math.floor(rand() * 6);
-    let s = '';
-    for (let i = 0; i < len; i++) s += ALPHABET[Math.floor(rand() * ALPHABET.length)];
-    return s;
+    const charCount = Math.floor(random() * 6);
+    let content = '';
+    for (let i = 0; i < charCount; i++) content += ALPHABET[Math.floor(random() * ALPHABET.length)];
+    return content;
   };
   const LEAD = new Set(['=', '+', '-', '@', '\t', '\r']);
 
   function parse(text: string, chunk = 0): string[][] {
     const out: string[][] = [];
-    const t = new CsvTokenizer(',', (f) => out.push(f));
-    if (chunk > 0) for (let i = 0; i < text.length; i += chunk) t.push(text.slice(i, i + chunk));
-    else t.push(text);
-    t.end();
+    const tokenizer = new CsvTokenizer(',', (fields) => out.push(fields));
+    if (chunk > 0) for (let i = 0; i < text.length; i += chunk) tokenizer.push(text.slice(i, i + chunk));
+    else tokenizer.push(text);
+    tokenizer.end();
     return out;
   }
 
   it('is read back cell by cell by the CSV tokenizer of the product, however the text is chunked', () => {
     const headers = ['id', 'text', 'value', 'note'];
     const rows: unknown[][] = [];
-    for (let r = 0; r < 300; r++) {
+    for (let rowIndex = 0; rowIndex < 300; rowIndex++) {
       const row: unknown[] = [];
-      for (let c = 0; c < headers.length; c++) {
-        const k = rand();
-        row.push(k < 0.15 ? Math.round((rand() - 0.5) * 1e6) / 100 : k < 0.2 ? NaN : k < 0.25 ? null : cell());
+      for (let columnIndex = 0; columnIndex < headers.length; columnIndex++) {
+        const roll = random();
+        row.push(roll < 0.15 ? Math.round((random() - 0.5) * 1e6) / 100 : roll < 0.2 ? NaN : roll < 0.25 ? null : cell());
       }
       rows.push(row);
     }
@@ -411,23 +411,23 @@ describe('toCsv', () => {
     expect(whole[0]).toEqual(headers);
 
     const problems: string[] = [];
-    rows.forEach((row, r) => {
-      const got = whole[r + 1];
+    rows.forEach((row, rowIndex) => {
+      const got = whole[rowIndex + 1];
       if (got.length !== headers.length) {
-        problems.push(`row ${r}: ${got.length} cells`);
+        problems.push(`row ${rowIndex}: ${got.length} cells`);
         return;
       }
-      row.forEach((v, c) => {
-        const g = got[c];
-        if (typeof v === 'number') {
-          if (g !== (Number.isFinite(v) ? String(v) : '')) problems.push(`row ${r} col ${c}: number ${v} -> ${JSON.stringify(g)}`);
-        } else if (v === null || v === undefined) {
-          if (g !== '') problems.push(`row ${r} col ${c}: null -> ${JSON.stringify(g)}`);
+      row.forEach((value, columnIndex) => {
+        const parsed = got[columnIndex];
+        if (typeof value === 'number') {
+          if (parsed !== (Number.isFinite(value) ? String(value) : '')) problems.push(`row ${rowIndex} col ${columnIndex}: number ${value} -> ${JSON.stringify(parsed)}`);
+        } else if (value === null || value === undefined) {
+          if (parsed !== '') problems.push(`row ${rowIndex} col ${columnIndex}: null -> ${JSON.stringify(parsed)}`);
         } else {
-          const s = v as string;
-          if (g !== s && g !== `'${s}`) problems.push(`row ${r} col ${c}: ${JSON.stringify(s)} -> ${JSON.stringify(g)}`);
-          if (g !== s && !LEAD.has(s[0])) problems.push(`row ${r} col ${c}: ${JSON.stringify(s)} defused without a leading formula character`);
-          if (g === s && s.length > 0 && LEAD.has(s[0]) && !/^[+-]?\$?\d/.test(s)) problems.push(`row ${r} col ${c}: ${JSON.stringify(s)} left as a formula`);
+          const cellText = value as string;
+          if (parsed !== cellText && parsed !== `'${cellText}`) problems.push(`row ${rowIndex} col ${columnIndex}: ${JSON.stringify(cellText)} -> ${JSON.stringify(parsed)}`);
+          if (parsed !== cellText && !LEAD.has(cellText[0])) problems.push(`row ${rowIndex} col ${columnIndex}: ${JSON.stringify(cellText)} defused without a leading formula character`);
+          if (parsed === cellText && cellText.length > 0 && LEAD.has(cellText[0]) && !/^[+-]?\$?\d/.test(cellText)) problems.push(`row ${rowIndex} col ${columnIndex}: ${JSON.stringify(cellText)} left as a formula`);
         }
       });
     });
@@ -436,34 +436,34 @@ describe('toCsv', () => {
 });
 
 describe('date utils: independent calendar oracle', () => {
-  const isLeap = (y: number): boolean => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+  const isLeap = (year: number): boolean => (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
   const MONTH_LEN = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-  const lenOf = (y: number, m0: number): number => (m0 === 1 && isLeap(y) ? 29 : MONTH_LEN[m0]);
+  const lenOf = (year: number, zeroBasedMonth: number): number => (zeroBasedMonth === 1 && isLeap(year) ? 29 : MONTH_LEN[zeroBasedMonth]);
 
   // Howard Hinnant's days-from-civil and civil-from-days algorithms (m is 1-12).
-  function daysFromCivil(y: number, m: number, d: number): number {
-    const yy = m <= 2 ? y - 1 : y;
-    const era = Math.floor(yy / 400);
-    const yoe = yy - era * 400;
-    const doy = Math.floor((153 * (m > 2 ? m - 3 : m + 9) + 2) / 5) + d - 1;
-    const doe = yoe * 365 + Math.floor(yoe / 4) - Math.floor(yoe / 100) + doy;
-    return era * 146097 + doe - 719468;
+  function daysFromCivil(year: number, month: number, day: number): number {
+    const marchYear = month <= 2 ? year - 1 : year;
+    const era = Math.floor(marchYear / 400);
+    const yearOfEra = marchYear - era * 400;
+    const dayOfYear = Math.floor((153 * (month > 2 ? month - 3 : month + 9) + 2) / 5) + day - 1;
+    const dayOfEra = yearOfEra * 365 + Math.floor(yearOfEra / 4) - Math.floor(yearOfEra / 100) + dayOfYear;
+    return era * 146097 + dayOfEra - 719468;
   }
-  function civilFromDays(z0: number): { y: number; m: number; d: number } {
-    const z = z0 + 719468;
-    const era = Math.floor(z / 146097);
-    const doe = z - era * 146097;
-    const yoe = Math.floor((doe - Math.floor(doe / 1460) + Math.floor(doe / 36524) - Math.floor(doe / 146096)) / 365);
-    const doy = doe - (365 * yoe + Math.floor(yoe / 4) - Math.floor(yoe / 100));
-    const mp = Math.floor((5 * doy + 2) / 153);
-    const d = doy - Math.floor((153 * mp + 2) / 5) + 1;
-    const m = mp < 10 ? mp + 3 : mp - 9;
-    return { y: yoe + era * 400 + (m <= 2 ? 1 : 0), m, d };
+  function civilFromDays(daysSinceEpoch: number): { y: number; m: number; d: number } {
+    const shiftedDays = daysSinceEpoch + 719468;
+    const era = Math.floor(shiftedDays / 146097);
+    const dayOfEra = shiftedDays - era * 146097;
+    const yearOfEra = Math.floor((dayOfEra - Math.floor(dayOfEra / 1460) + Math.floor(dayOfEra / 36524) - Math.floor(dayOfEra / 146096)) / 365);
+    const dayOfYear = dayOfEra - (365 * yearOfEra + Math.floor(yearOfEra / 4) - Math.floor(yearOfEra / 100));
+    const monthFromMarch = Math.floor((5 * dayOfYear + 2) / 153);
+    const day = dayOfYear - Math.floor((153 * monthFromMarch + 2) / 5) + 1;
+    const month = monthFromMarch < 10 ? monthFromMarch + 3 : monthFromMarch - 9;
+    return { y: yearOfEra + era * 400 + (month <= 2 ? 1 : 0), m: month, d: day };
   }
 
   const FIRST = -800; // 1967-10-12
   const LAST = daysFromCivil(2100, 12, 31);
-  const pad = (n: number, w: number): string => String(n).padStart(w, '0');
+  const pad = (value: number, width: number): string => String(value).padStart(width, '0');
 
   it('the oracle itself agrees with known anchors', () => {
     expect(daysFromCivil(1970, 1, 1)).toBe(0);
@@ -479,11 +479,11 @@ describe('date utils: independent calendar oracle', () => {
   it('dayFromYMD, ymd and isoDate agree with the oracle for every day from 1967 to 2100', () => {
     const bad: string[] = [];
     for (let day = FIRST; day <= LAST; day++) {
-      const o = civilFromDays(day);
-      const got = ymd(day);
-      if (got.y !== o.y || got.m0 !== o.m - 1 || got.d !== o.d) bad.push(`ymd(${day}) = ${JSON.stringify(got)}, want ${JSON.stringify(o)}`);
-      if (dayFromYMD(o.y, o.m - 1, o.d) !== day) bad.push(`dayFromYMD(${o.y}, ${o.m - 1}, ${o.d}) != ${day}`);
-      const iso = `${pad(o.y, 4)}-${pad(o.m, 2)}-${pad(o.d, 2)}`;
+      const expected = civilFromDays(day);
+      const got = dateParts(day);
+      if (got.y !== expected.y || got.m0 !== expected.m - 1 || got.d !== expected.d) bad.push(`ymd(${day}) = ${JSON.stringify(got)}, want ${JSON.stringify(expected)}`);
+      if (dayFromYMD(expected.y, expected.m - 1, expected.d) !== day) bad.push(`dayFromYMD(${expected.y}, ${expected.m - 1}, ${expected.d}) != ${day}`);
+      const iso = `${pad(expected.y, 4)}-${pad(expected.m, 2)}-${pad(expected.d, 2)}`;
       if (isoDate(day) !== iso) bad.push(`isoDate(${day}) = ${isoDate(day)}, want ${iso}`);
       if (parseIsoDay(iso) !== day) bad.push(`parseIsoDay(${iso}) != ${day}`);
       if (bad.length > 5) break;
@@ -491,22 +491,22 @@ describe('date utils: independent calendar oracle', () => {
     expect(bad).toEqual([]);
   });
 
-  it('dowOf counts Monday as 0 and agrees with the JavaScript calendar for every day', () => {
+  it('dowOf counts Monday as 0 and agrees with the Temporal calendar for every day', () => {
     const bad: number[] = [];
     for (let day = FIRST; day <= LAST; day++) {
-      if (dowOf(day) !== (new Date(day * 86_400_000).getUTCDay() + 6) % 7) bad.push(day);
+      if (dowOf(day) !== weekdayOf(isoOf(day))) bad.push(day);
     }
     expect(bad).toEqual([]);
     expect(dowOf(0)).toBe(3);
     expect(dowOf(-1)).toBe(2);
-    expect(DOW_NAMES[dowOf(daysFromCivil(2026, 10, 2))]).toBe('Fri');
-    expect(DOW_NAMES[dowOf(daysFromCivil(2026, 10, 4))]).toBe('Sun');
-    expect(DOW_NAMES[dowOf(daysFromCivil(2026, 10, 5))]).toBe('Mon');
+    expect(WEEKDAY_NAMES[dowOf(daysFromCivil(2026, 10, 2))]).toBe('Fri');
+    expect(WEEKDAY_NAMES[dowOf(daysFromCivil(2026, 10, 4))]).toBe('Sun');
+    expect(WEEKDAY_NAMES[dowOf(daysFromCivil(2026, 10, 5))]).toBe('Mon');
   });
 
   it('a week always walks through seven different weekdays', () => {
     for (let start = 20_000; start < 20_014; start++) {
-      expect(new Set(Array.from({ length: 7 }, (_, i) => dowOf(start + i))).size).toBe(7);
+      expect(new Set(Array.from({ length: 7 }, (_, offset) => dowOf(start + offset))).size).toBe(7);
       expect(dowOf(start + 7)).toBe(dowOf(start));
     }
   });
@@ -520,59 +520,59 @@ describe('date utils: independent calendar oracle', () => {
   it('isoDate is fixed width, so text order is date order', () => {
     const days = [-1, 0, 365, 20_697, 20_728, 20_757, 20_758, 47_000];
     const iso = days.map(isoDate);
-    for (const s of iso) expect(s).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    for (const dateText of iso) expect(dateText).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect([...iso].sort()).toEqual(iso);
   });
 
   it('month helpers agree with the oracle for every month from 1970 to 2100', () => {
     const bad: string[] = [];
-    for (let y = 1970; y <= 2100; y++) {
-      for (let m0 = 0; m0 < 12; m0++) {
-        const idx = y * 12 + m0;
-        const start = daysFromCivil(y, m0 + 1, 1);
-        const len = lenOf(y, m0);
-        if (monthStartDay(idx) !== start) bad.push(`monthStartDay ${y}-${m0 + 1}`);
-        if (daysInMonth(idx) !== len) bad.push(`daysInMonth ${y}-${m0 + 1}: ${daysInMonth(idx)} != ${len}`);
-        if (monthEndDay(idx) !== start + len - 1) bad.push(`monthEndDay ${y}-${m0 + 1}`);
-        if (monthIndexOf(start) !== idx || monthIndexOf(start + len - 1) !== idx) bad.push(`monthIndexOf ${y}-${m0 + 1}`);
-        if (monthIndexOf(start + len) !== idx + 1 || monthIndexOf(start - 1) !== idx - 1) bad.push(`neighbour months ${y}-${m0 + 1}`);
-        if (monthKey(idx) !== `${y}-${pad(m0 + 1, 2)}`) bad.push(`monthKey ${y}-${m0 + 1}: ${monthKey(idx)}`);
-        if (monthLabel(idx) !== `${MONTH_NAMES[m0]} ${y}`) bad.push(`monthLabel ${y}-${m0 + 1}: ${monthLabel(idx)}`);
+    for (let year = 1970; year <= 2100; year++) {
+      for (let zeroBasedMonth = 0; zeroBasedMonth < 12; zeroBasedMonth++) {
+        const monthIndex = year * 12 + zeroBasedMonth;
+        const start = daysFromCivil(year, zeroBasedMonth + 1, 1);
+        const monthLength = lenOf(year, zeroBasedMonth);
+        if (monthStartDay(monthIndex) !== start) bad.push(`monthStartDay ${year}-${zeroBasedMonth + 1}`);
+        if (daysInMonth(monthIndex) !== monthLength) bad.push(`daysInMonth ${year}-${zeroBasedMonth + 1}: ${daysInMonth(monthIndex)} != ${monthLength}`);
+        if (monthEndDay(monthIndex) !== start + monthLength - 1) bad.push(`monthEndDay ${year}-${zeroBasedMonth + 1}`);
+        if (monthIndexOf(start) !== monthIndex || monthIndexOf(start + monthLength - 1) !== monthIndex) bad.push(`monthIndexOf ${year}-${zeroBasedMonth + 1}`);
+        if (monthIndexOf(start + monthLength) !== monthIndex + 1 || monthIndexOf(start - 1) !== monthIndex - 1) bad.push(`neighbour months ${year}-${zeroBasedMonth + 1}`);
+        if (monthKey(monthIndex) !== `${year}-${pad(zeroBasedMonth + 1, 2)}`) bad.push(`monthKey ${year}-${zeroBasedMonth + 1}: ${monthKey(monthIndex)}`);
+        if (monthLabel(monthIndex) !== `${MONTH_NAMES[zeroBasedMonth]} ${year}`) bad.push(`monthLabel ${year}-${zeroBasedMonth + 1}: ${monthLabel(monthIndex)}`);
       }
     }
     expect(bad).toEqual([]);
   });
 
   it('February follows the leap year rule, including the century exceptions', () => {
-    const feb = (y: number): number => daysInMonth(y * 12 + 1);
-    expect(feb(2026)).toBe(28);
-    expect(feb(2027)).toBe(28);
-    expect(feb(2028)).toBe(29);
-    expect(feb(2024)).toBe(29);
-    expect(feb(2000)).toBe(29);
-    expect(feb(2100)).toBe(28);
-    expect(feb(1900)).toBe(28);
+    const daysInFebruary = (year: number): number => daysInMonth(year * 12 + 1);
+    expect(daysInFebruary(2026)).toBe(28);
+    expect(daysInFebruary(2027)).toBe(28);
+    expect(daysInFebruary(2028)).toBe(29);
+    expect(daysInFebruary(2024)).toBe(29);
+    expect(daysInFebruary(2000)).toBe(29);
+    expect(daysInFebruary(2100)).toBe(28);
+    expect(daysInFebruary(1900)).toBe(28);
     expect(fmtDay(monthEndDay(2028 * 12 + 1))).toBe('Feb 29');
     expect(fmtDay(monthEndDay(2026 * 12 + 1))).toBe('Feb 28');
     expect(monthEndDay(2028 * 12 + 1) + 1).toBe(dayFromYMD(2028, 2, 1));
   });
 
   it('knows the months of the sample period', () => {
-    const oct = monthIndexOf(dayFromYMD(2026, 9, 2));
-    expect(oct).toBe(2026 * 12 + 9);
-    expect(monthKey(oct)).toBe('2026-10');
-    expect(monthLabel(oct)).toBe('Oct 2026');
-    expect(monthStartDay(oct)).toBe(20_727);
-    expect(monthEndDay(oct)).toBe(20_757);
-    expect(daysInMonth(oct)).toBe(31);
-    expect(daysInMonth(oct - 1)).toBe(30);
+    const octoberIndex = monthIndexOf(dayFromYMD(2026, 9, 2));
+    expect(octoberIndex).toBe(2026 * 12 + 9);
+    expect(monthKey(octoberIndex)).toBe('2026-10');
+    expect(monthLabel(octoberIndex)).toBe('Oct 2026');
+    expect(monthStartDay(octoberIndex)).toBe(20_727);
+    expect(monthEndDay(octoberIndex)).toBe(20_757);
+    expect(daysInMonth(octoberIndex)).toBe(31);
+    expect(daysInMonth(octoberIndex - 1)).toBe(30);
     expect(monthLabel(2027 * 12)).toBe('Jan 2027');
     expect(monthKey(2027 * 12 + 11)).toBe('2027-12');
   });
 
   it('month keys sort like month indexes', () => {
-    const idx = Array.from({ length: 120 }, (_, i) => 2024 * 12 + i);
-    const keys = idx.map(monthKey);
+    const monthIndexes = Array.from({ length: 120 }, (_, offset) => 2024 * 12 + offset);
+    const keys = monthIndexes.map(monthKey);
     expect([...keys].sort()).toEqual(keys);
     expect(new Set(keys).size).toBe(keys.length);
   });
@@ -583,8 +583,8 @@ describe('date utils: independent calendar oracle', () => {
     expect(fmtDay(0, true)).toBe('Jan 1, 1970');
     const bad: string[] = [];
     for (let day = daysFromCivil(2028, 1, 1); day <= daysFromCivil(2028, 12, 31); day++) {
-      const o = civilFromDays(day);
-      if (fmtDay(day) !== `${MONTH_NAMES[o.m - 1]} ${o.d}` || fmtDay(day, true) !== `${MONTH_NAMES[o.m - 1]} ${o.d}, 2028`) bad.push(isoDate(day));
+      const expected = civilFromDays(day);
+      if (fmtDay(day) !== `${MONTH_NAMES[expected.m - 1]} ${expected.d}` || fmtDay(day, true) !== `${MONTH_NAMES[expected.m - 1]} ${expected.d}, 2028`) bad.push(isoDate(day));
     }
     expect(bad).toEqual([]);
   });
@@ -594,35 +594,35 @@ describe('date utils: independent calendar oracle', () => {
     expect(parseIsoDay('2026-10-03T12:00:00Z')).toBe(20_729);
     expect(parseIsoDay('2026-10-03 23:59')).toBe(20_729);
     expect(parseIsoDay('1969-12-31')).toBe(-1);
-    for (const s of ['', ' 2026-10-03', '26-10-03', '2026-1-3', '2026-10', 'abc', '10/03/2026']) expect(parseIsoDay(s), JSON.stringify(s)).toBeNaN();
+    for (const text of ['', ' 2026-10-03', '26-10-03', '2026-1-3', '2026-10', 'abc', '10/03/2026']) expect(parseIsoDay(text), JSON.stringify(text)).toBeNaN();
   });
 
   it('workdaysBetween counts Monday to Friday days of an inclusive range', () => {
     const naive = (a: number, b: number): number => {
-      let n = 0;
-      for (let d = a; d <= b; d++) if ((new Date(d * 86_400_000).getUTCDay() + 6) % 7 < 5) n++;
-      return n;
+      let workdayCount = 0;
+      for (let day = a; day <= b; day++) if (weekdayOf(isoOf(day)) < 5) workdayCount++;
+      return workdayCount;
     };
     const bad: string[] = [];
-    for (let a = 20_690; a < 20_725; a++) {
-      for (let b = a - 3; b < a + 75; b++) {
-        if (workdaysBetween(a, b) !== naive(a, b)) bad.push(`${isoDate(a)}..${isoDate(b)}: ${workdaysBetween(a, b)} != ${naive(a, b)}`);
+    for (let startDay = 20_690; startDay < 20_725; startDay++) {
+      for (let endDay = startDay - 3; endDay < startDay + 75; endDay++) {
+        if (workdaysBetween(startDay, endDay) !== naive(startDay, endDay)) bad.push(`${isoDate(startDay)}..${isoDate(endDay)}: ${workdaysBetween(startDay, endDay)} != ${naive(startDay, endDay)}`);
       }
     }
-    const rand = mulberry32(16);
+    const random = mulberry32(16);
     for (let i = 0; i < 400; i++) {
-      const a = Math.floor(rand() * 40_000) - 2000;
-      const b = a + Math.floor(rand() * 1500) - 10;
-      if (workdaysBetween(a, b) !== naive(a, b)) bad.push(`random ${a}..${b}`);
+      const startDay = Math.floor(random() * 40_000) - 2000;
+      const endDay = startDay + Math.floor(random() * 1500) - 10;
+      if (workdaysBetween(startDay, endDay) !== naive(startDay, endDay)) bad.push(`random ${startDay}..${endDay}`);
     }
     expect(bad.slice(0, 5)).toEqual([]);
   });
 
   it('workdaysBetween on calendar facts', () => {
-    const D = dayFromYMD;
-    expect(workdaysBetween(D(2026, 8, 1), D(2026, 8, 30))).toBe(22);
-    expect(workdaysBetween(D(2026, 9, 1), D(2026, 9, 31))).toBe(22);
-    expect(workdaysBetween(D(2026, 0, 1), D(2026, 11, 31))).toBe(261);
+    const dayOf = dayFromYMD;
+    expect(workdaysBetween(dayOf(2026, 8, 1), dayOf(2026, 8, 30))).toBe(22);
+    expect(workdaysBetween(dayOf(2026, 9, 1), dayOf(2026, 9, 31))).toBe(22);
+    expect(workdaysBetween(dayOf(2026, 0, 1), dayOf(2026, 11, 31))).toBe(261);
     expect(workdaysBetween(20_731, 20_735)).toBe(5);
     expect(workdaysBetween(20_731, 20_738)).toBe(6);
     expect(workdaysBetween(20_728, 20_728)).toBe(1);
@@ -632,7 +632,7 @@ describe('date utils: independent calendar oracle', () => {
   });
 
   it('exposes the constants the rest of the code relies on', () => {
-    expect(DOW_NAMES).toEqual(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
+    expect(WEEKDAY_NAMES).toEqual(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
     expect(MONTH_NAMES).toEqual(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']);
     expect(DAYS_PER_MONTH).toBeCloseTo(365.25 / 12, 12);
   });

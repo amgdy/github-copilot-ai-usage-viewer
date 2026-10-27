@@ -1,7 +1,7 @@
 import type { Dict } from '../core';
 
 /** Arabic text for the Methodology page, the calculation button and the names of the Methodology sections. */
-const ar: Dict = {
+const arabic: Dict = {
   'How this is calculated: {name}': 'طريقة الحساب: {name}',
   'How this is calculated': 'طريقة الحساب',
   'Open in Methodology': 'فتح في صفحة المنهجية',
@@ -34,4 +34,4 @@ const ar: Dict = {
   'Try fewer words, or set the area and the kind of number back to all.': 'جرّب كلمات أقل، أو أعد القسم ونوع الرقم إلى "الكل".',
 };
 
-export default ar;
+export default arabic;

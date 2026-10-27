@@ -12,9 +12,9 @@ describe('parseStoredSettings', () => {
   });
 
   it('does not hand back the shared defaults object', () => {
-    const a = parseStoredSettings(null);
-    a.tiers.minimal = 0.99;
-    a.roster.push({ user: 'x' });
+    const settings = parseStoredSettings(null);
+    settings.tiers.minimal = 0.99;
+    settings.roster.push({ user: 'x' });
     expect(DEFAULT_SETTINGS.tiers.minimal).toBe(0.1);
     expect(DEFAULT_SETTINGS.roster).toEqual([]);
   });
@@ -40,22 +40,22 @@ describe('parseStoredSettings', () => {
   });
 
   it('falls back to the default for each wrong or out-of-range value and keeps the rest', () => {
-    const s = parseStoredSettings('{"tiers":{"minimal":"x","light":null},"engagement":5,"pareto":[1,2],"budgetMonthlyBilled":"500","extraSeats":{"business":"a","enterprise":-5},"topN":"ten","lapsedDays":-5,"newUserDays":1e12,"activeThreshold":0.2}');
-    expect(s.tiers).toEqual(DEFAULT_SETTINGS.tiers);
-    expect(s.engagement).toEqual(DEFAULT_SETTINGS.engagement);
-    expect(s.pareto).toEqual(DEFAULT_SETTINGS.pareto);
-    expect(s.budgetMonthlyBilled).toBeNull();
-    expect(s.extraSeats).toEqual(DEFAULT_SETTINGS.extraSeats);
-    expect(s.topN).toBe(DEFAULT_SETTINGS.topN);
-    expect(s.lapsedDays).toBe(DEFAULT_SETTINGS.lapsedDays);
-    expect(s.newUserDays).toBe(DEFAULT_SETTINGS.newUserDays);
-    expect(s.activeThreshold).toBe(0.2);
+    const settings = parseStoredSettings('{"tiers":{"minimal":"x","light":null},"engagement":5,"pareto":[1,2],"budgetMonthlyBilled":"500","extraSeats":{"business":"a","enterprise":-5},"topN":"ten","lapsedDays":-5,"newUserDays":1e12,"activeThreshold":0.2}');
+    expect(settings.tiers).toEqual(DEFAULT_SETTINGS.tiers);
+    expect(settings.engagement).toEqual(DEFAULT_SETTINGS.engagement);
+    expect(settings.pareto).toEqual(DEFAULT_SETTINGS.pareto);
+    expect(settings.budgetMonthlyBilled).toBeNull();
+    expect(settings.extraSeats).toEqual(DEFAULT_SETTINGS.extraSeats);
+    expect(settings.topN).toBe(DEFAULT_SETTINGS.topN);
+    expect(settings.lapsedDays).toBe(DEFAULT_SETTINGS.lapsedDays);
+    expect(settings.newUserDays).toBe(DEFAULT_SETTINGS.newUserDays);
+    expect(settings.activeThreshold).toBe(0.2);
   });
 
   it('leaves out settings this version does not know', () => {
-    const s = parseStoredSettings('{"topN":7,"surprise":1}') as unknown as Record<string, unknown>;
-    expect(s.topN).toBe(7);
-    expect('surprise' in s).toBe(false);
+    const settings = parseStoredSettings('{"topN":7,"surprise":1}') as unknown as Record<string, unknown>;
+    expect(settings.topN).toBe(7);
+    expect('surprise' in settings).toBe(false);
   });
 
   it('treats a budget of zero as no budget', () => {
@@ -68,7 +68,7 @@ describe('loadStoredSettings', () => {
 
   it('reads the saved text from local storage', () => {
     const store = new Map<string, string>([[SETTINGS_STORAGE_KEY, '{"topN":3}']]);
-    vi.stubGlobal('localStorage', { getItem: (k: string) => store.get(k) ?? null });
+    vi.stubGlobal('localStorage', { getItem: (key: string) => store.get(key) ?? null });
     expect(loadStoredSettings().topN).toBe(3);
   });
 

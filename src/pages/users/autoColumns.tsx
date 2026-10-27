@@ -15,30 +15,30 @@ export function autoColumns({ coverage, taxonomy }: ColumnContext): Column<UserP
     key: string,
     header: string,
     hint: string,
-    pick: (p: UserProfile) => number,
+    pick: (user: UserProfile) => number,
     tone?: 'good' | 'warn',
   ): Column<UserProfile> => ({
     key,
     header,
     hint: known ? hint : noModels,
-    value: (p) => (known ? pick(p) : Number.NaN),
-    render: (p) =>
-      known ? <span className={cx(tone === 'good' && pick(p) > 0.005 && 'text-good', tone === 'warn' && pick(p) > 0.005 && 'text-warn')}>{usd(pick(p))}</span> : none,
+    value: (user) => (known ? pick(user) : Number.NaN),
+    render: (user) =>
+      known ? <span className={cx(tone === 'good' && pick(user) > 0.005 && 'text-good', tone === 'warn' && pick(user) > 0.005 && 'text-warn')}>{usd(pick(user))}</span> : none,
     align: 'end',
     total: (rows) => (known ? usd(sum(rows, pick)) : '–'),
   });
 
   return [
     {
-      ...money('autoDiscount', t('Auto discount received'), t('What the Auto discount took off the Auto usage of the user'), (p) => p.auto.discount, 'good'),
+      ...money('autoDiscount', t('Auto discount received'), t('What the Auto discount took off the Auto usage of the user'), (user) => user.auto.discount, 'good'),
       calc: 'auto-discount',
     },
     {
-      ...money('autoOriginal', t('Original price of Auto usage'), t('The Auto usage of the user at the price card, without the Auto discount'), (p) => p.auto.original),
+      ...money('autoOriginal', t('Original price of Auto usage'), t('The Auto usage of the user at the price card, without the Auto discount'), (user) => user.auto.original),
       calc: 'auto-original-price',
     },
     {
-      ...money('handPicked', t('Hand-picked usage'), t('Usage on models the user picked by hand, not through Auto'), (p) => p.directBilled),
+      ...money('handPicked', t('Hand-picked usage'), t('Usage on models the user picked by hand, not through Auto'), (user) => user.directBilled),
       calc: 'user-hand-picked-usage',
     },
     {
@@ -46,7 +46,7 @@ export function autoColumns({ coverage, taxonomy }: ColumnContext): Column<UserP
         'autoMissed',
         t('Discount missed on hand-picked usage'),
         t('An estimate: hand-picked usage × the Auto discount rate of the plan of the user'),
-        (p) => p.autoMissed,
+        (user) => user.autoMissed,
         'warn',
       ),
       calc: ['auto-missed', 'auto-plan-rate'],
@@ -56,8 +56,8 @@ export function autoColumns({ coverage, taxonomy }: ColumnContext): Column<UserP
       header: t('Auto discount rate'),
       hint: known ? t('Auto discount received ÷ original price of Auto usage. A dash when the user has no Auto usage.') : noModels,
       calc: 'auto-discount',
-      value: (p) => (known && p.auto.billed > 0 ? p.auto.rate : Number.NaN),
-      render: (p) => (!known ? none : p.auto.billed > 0 ? fmtPct(p.auto.rate, 1) : <span className="text-fg-subtle">–</span>),
+      value: (user) => (known && user.auto.billed > 0 ? user.auto.rate : Number.NaN),
+      render: (user) => (!known ? none : user.auto.billed > 0 ? fmtPct(user.auto.rate, 1) : <span className="text-fg-subtle">–</span>),
       align: 'end',
     },
     {
@@ -65,8 +65,8 @@ export function autoColumns({ coverage, taxonomy }: ColumnContext): Column<UserP
       header: t('Auto use class'),
       hint: known ? t('Auto-first, Mixed or Direct models, from the share of usage on Auto') : noModels,
       calc: 'auto-use-class',
-      value: (p) => (known ? classes[p.autoUse].label : ''),
-      render: (p) => (known ? <TaxBadge item={classes[p.autoUse]} /> : none),
+      value: (user) => (known ? classes[user.autoUse].label : ''),
+      render: (user) => (known ? <TaxBadge item={classes[user.autoUse]} /> : none),
     },
   ];
 }

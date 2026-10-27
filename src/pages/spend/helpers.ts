@@ -16,7 +16,7 @@ import { fmtCompact, fmtInt } from '../../lib/utils/format';
 type Range = { start: number; end: number };
 
 /** A pool size is only a real figure when the pool was not exceeded and at least one seat is known. */
-export const capacityKnown = (m: MonthPool): boolean => !m.capacityExceeded && m.capacity > 0;
+export const capacityKnown = (month: MonthPool): boolean => !month.capacityExceeded && month.capacity > 0;
 
 export type PoolGap = 'billing' | 'sizes' | 'exceeded';
 
@@ -26,7 +26,7 @@ export type PoolGap = 'billing' | 'sizes' | 'exceeded';
  */
 export function poolGap(billing: boolean, months: MonthPool[]): PoolGap {
   if (!billing) return 'billing';
-  return months.some((m) => m.capacity <= 0) ? 'sizes' : 'exceeded';
+  return months.some((month) => month.capacity <= 0) ? 'sizes' : 'exceeded';
 }
 
 /** The sentence of the "Pool figures are not available" notice, shared with the Overview wording. */
@@ -47,25 +47,25 @@ export function poolColumnsText(coverage: Pick<DataCoverage, 'billing' | 'quota'
 }
 
 /** Rounds up to 1, 2, 2.5, 5 or 10 times a power of ten, for a tidy axis maximum. */
-export function niceMax(v: number): number {
-  if (!Number.isFinite(v) || v <= 0) return 1;
-  const pow = 10 ** Math.floor(Math.log10(v));
-  const f = v / pow;
-  const step = f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10;
-  return step * pow;
+export function niceMax(value: number): number {
+  if (!Number.isFinite(value) || value <= 0) return 1;
+  const powerOfTen = 10 ** Math.floor(Math.log10(value));
+  const scaled = value / powerOfTen;
+  const step = scaled <= 1 ? 1 : scaled <= 2 ? 2 : scaled <= 2.5 ? 2.5 : scaled <= 5 ? 5 : 10;
+  return step * powerOfTen;
 }
 
-function topPositive(values: ArrayLike<number>, n: number): number[] {
+function topPositive(values: ArrayLike<number>, limit: number): number[] {
   const ids: number[] = [];
   for (let i = 0; i < values.length; i++) if (values[i] > 0) ids.push(i);
   ids.sort((a, b) => values[b] - values[a]);
-  return ids.length > n ? ids.slice(0, n) : ids;
+  return ids.length > limit ? ids.slice(0, limit) : ids;
 }
 
 const countPositive = (values: ArrayLike<number>): number => {
-  let n = 0;
-  for (let i = 0; i < values.length; i++) if (values[i] > 0) n++;
-  return n;
+  let positiveCount = 0;
+  for (let i = 0; i < values.length; i++) if (values[i] > 0) positiveCount++;
+  return positiveCount;
 };
 
 export function busiestDay(gross: ArrayLike<number>, start: number): { day: number; gross: number } | null {
@@ -102,18 +102,18 @@ const SPLIT_ORDER: SplitBy[] = ['coverage', 'total', 'product', 'sku', 'tier', '
  * Splits that have at least two distinct values with usage. "Covered vs billed" needs the billing split, and
  * "Total usage" (one stack) stands in for it when the file does not say what was billed.
  */
-export function splitChoices(agg: Aggregates, models: ModelTable, billing: boolean): SplitBy[] {
+export function splitChoices(aggregates: Aggregates, models: ModelTable, billing: boolean): SplitBy[] {
   const distinct: Record<SplitBy, number> = {
     coverage: billing ? 2 : 0,
     total: billing ? 0 : 2,
-    product: countPositive(agg.product.gross),
-    sku: countPositive(agg.sku.gross),
-    tier: countPositive(rollupByCategory(models, agg.model).gross),
-    vendor: countPositive(rollupByVendor(models, agg.model).gross),
-    costCenter: countPositive(agg.costCenter.gross),
-    org: countPositive(agg.org.gross),
+    product: countPositive(aggregates.product.gross),
+    sku: countPositive(aggregates.sku.gross),
+    tier: countPositive(rollupByCategory(models, aggregates.model).gross),
+    vendor: countPositive(rollupByVendor(models, aggregates.model).gross),
+    costCenter: countPositive(aggregates.costCenter.gross),
+    org: countPositive(aggregates.org.gross),
   };
-  return SPLIT_ORDER.filter((k) => distinct[k] >= 2);
+  return SPLIT_ORDER.filter((split) => distinct[split] >= 2);
 }
 
 export interface UsageSeries {
@@ -139,37 +139,37 @@ export interface UsageSeriesInput {
 }
 
 /** Adds up a per-day series into the buckets of a bucketer (day i of the series is range.start + i). */
-function sumByBucket(b: Bucketer, rangeStart: number, values: ArrayLike<number>): Float64Array {
-  const out = new Float64Array(b.count);
+function sumByBucket(bucketer: Bucketer, rangeStart: number, values: ArrayLike<number>): Float64Array {
+  const out = new Float64Array(bucketer.count);
   for (let i = 0; i < values.length; i++) {
-    const k = b.indexOf(rangeStart + i);
-    if (k >= 0 && k < b.count) out[k] += values[i];
+    const bucketIndex = bucketer.indexOf(rangeStart + i);
+    if (bucketIndex >= 0 && bucketIndex < bucketer.count) out[bucketIndex] += values[i];
   }
   return out;
 }
 
-export function buildUsageSeries(a: UsageSeriesInput): UsageSeries {
-  const { store, mask, range, agg, models, bucket, split, colors } = a;
+export function buildUsageSeries(input: UsageSeriesInput): UsageSeries {
+  const { store, mask, range, agg: aggregates, models, bucket, split, colors } = input;
   if (split === 'total') {
-    const b = makeBucketer(range.start, range.end, bucket);
-    const usage = sumByBucket(b, range.start, agg.days.gross);
+    const bucketer = makeBucketer(range.start, range.end, bucket);
+    const usage = sumByBucket(bucketer, range.start, aggregates.days.gross);
     return {
-      bucketer: b,
-      labels: Array.from({ length: b.count }, (_, i) => b.label(i)),
+      bucketer: bucketer,
+      labels: Array.from({ length: bucketer.count }, (_, bucketIndex) => bucketer.label(bucketIndex)),
       series: [{ name: t('Usage'), data: usage, color: colors.accent }],
       other: null,
       totals: usage.slice(),
     };
   }
   if (split === 'coverage') {
-    const b = makeBucketer(range.start, range.end, bucket);
-    const covered = sumByBucket(b, range.start, agg.days.discount);
-    const billed = sumByBucket(b, range.start, agg.days.net);
-    const totals = new Float64Array(b.count);
-    for (let k = 0; k < b.count; k++) totals[k] = covered[k] + billed[k];
+    const bucketer = makeBucketer(range.start, range.end, bucket);
+    const covered = sumByBucket(bucketer, range.start, aggregates.days.discount);
+    const billed = sumByBucket(bucketer, range.start, aggregates.days.net);
+    const totals = new Float64Array(bucketer.count);
+    for (let k = 0; k < bucketer.count; k++) totals[k] = covered[k] + billed[k];
     return {
-      bucketer: b,
-      labels: Array.from({ length: b.count }, (_, i) => b.label(i)),
+      bucketer: bucketer,
+      labels: Array.from({ length: bucketer.count }, (_, bucketIndex) => bucketer.label(bucketIndex)),
       series: [
         { name: t('Covered by included credits'), data: covered, color: colors.accent },
         { name: t('Billed on top of seats'), data: billed, color: colors.warn },
@@ -179,33 +179,33 @@ export function buildUsageSeries(a: UsageSeriesInput): UsageSeries {
     };
   }
 
-  let dim: DimKey = 'model';
+  let dimension: DimKey = 'model';
   let ids: number[];
   let names: string[];
-  let groupOf: ((s: DataStore, i: number) => number) | undefined;
+  let groupOf: ((dataStore: DataStore, rowIndex: number) => number) | undefined;
   let paint: (name: string) => string | undefined = () => undefined;
   if (split === 'tier') {
-    ids = CATEGORIES.map((_, i) => i);
-    names = CATEGORIES.map((c) => t(c));
-    groupOf = (s, i) => models.cat[s.model[i]];
-    const colorOf = new Map(CATEGORIES.map((c, i) => [names[i], CATEGORY_COLORS[c]]));
-    paint = (n) => colorOf.get(n);
+    ids = CATEGORIES.map((_, categoryIndex) => categoryIndex);
+    names = CATEGORIES.map((category) => t(category));
+    groupOf = (dataStore, rowIndex) => models.cat[dataStore.model[rowIndex]];
+    const colorOf = new Map(CATEGORIES.map((category, categoryIndex) => [names[categoryIndex], CATEGORY_COLORS[category]]));
+    paint = (name) => colorOf.get(name);
   } else if (split === 'vendor') {
-    ids = VENDORS.map((_, i) => i);
+    ids = VENDORS.map((_, vendorIndex) => vendorIndex);
     // Vendor names are brand names and stay as they are; only the catch-all "Other" is a word to translate.
-    names = VENDORS.map((v) => (v === 'Other' ? t('Other') : v));
-    groupOf = (s, i) => models.vendor[s.model[i]];
+    names = VENDORS.map((vendor) => (vendor === 'Other' ? t('Other') : vendor));
+    groupOf = (dataStore, rowIndex) => models.vendor[dataStore.model[rowIndex]];
   } else {
-    dim = split;
-    ids = topPositive(agg[dim].gross, a.top ?? 7);
-    names = ids.map((id) => labelOf(dim, store.dicts[dim].values[id]));
+    dimension = split;
+    ids = topPositive(aggregates[dimension].gross, input.top ?? 7);
+    names = ids.map((id) => labelOf(dimension, store.dicts[dimension].values[id]));
   }
-  const s = stackedSeries(store, mask, range, dim, ids, 'gross', bucket, names, groupOf);
-  const series: TimeSeriesInput[] = s.series.filter((x) => x.data.some((v) => v !== 0)).map((x) => ({ name: x.name, data: x.data, color: paint(x.name) }));
-  const totals = new Float64Array(s.bucketer.count);
-  for (const x of s.series) for (let k = 0; k < totals.length; k++) totals[k] += x.data[k];
-  if (s.other) for (let k = 0; k < totals.length; k++) totals[k] += s.other[k];
-  return { bucketer: s.bucketer, labels: s.labels, series, other: s.other, totals };
+  const stacked = stackedSeries(store, mask, range, dimension, ids, 'gross', bucket, names, groupOf);
+  const series: TimeSeriesInput[] = stacked.series.filter((layer) => layer.data.some((value) => value !== 0)).map((layer) => ({ name: layer.name, data: layer.data, color: paint(layer.name) }));
+  const totals = new Float64Array(stacked.bucketer.count);
+  for (const layer of stacked.series) for (let k = 0; k < totals.length; k++) totals[k] += layer.data[k];
+  if (stacked.other) for (let k = 0; k < totals.length; k++) totals[k] += stacked.other[k];
+  return { bucketer: stacked.bucketer, labels: stacked.labels, series, other: stacked.other, totals };
 }
 
 export function cumulate(values: ArrayLike<number>): Float64Array {
@@ -218,12 +218,12 @@ export function cumulate(values: ArrayLike<number>): Float64Array {
   return out;
 }
 
-export function toCumulative(u: UsageSeries): UsageSeries {
+export function toCumulative(usage: UsageSeries): UsageSeries {
   return {
-    ...u,
-    series: u.series.map((s) => ({ ...s, data: cumulate(s.data) })),
-    other: u.other ? cumulate(u.other) : null,
-    totals: cumulate(u.totals),
+    ...usage,
+    series: usage.series.map((layer) => ({ ...layer, data: cumulate(layer.data) })),
+    other: usage.other ? cumulate(usage.other) : null,
+    totals: cumulate(usage.totals),
   };
 }
 
@@ -237,21 +237,21 @@ export interface AnomalyMark {
 
 export function anomalyMarks(anomalies: AnomalyDay[], bucketer: Bucketer, totals: ArrayLike<number>): AnomalyMark[] {
   const byBucket = new Map<number, AnomalyDay[]>();
-  for (const a of anomalies) {
-    const i = bucketer.indexOf(a.day);
-    if (i < 0 || i >= bucketer.count) continue;
-    const list = byBucket.get(i);
-    if (list) list.push(a);
-    else byBucket.set(i, [a]);
+  for (const anomaly of anomalies) {
+    const bucketIndex = bucketer.indexOf(anomaly.day);
+    if (bucketIndex < 0 || bucketIndex >= bucketer.count) continue;
+    const list = byBucket.get(bucketIndex);
+    if (list) list.push(anomaly);
+    else byBucket.set(bucketIndex, [anomaly]);
   }
   return [...byBucket.entries()]
-    .sort((x, y) => x[0] - y[0])
+    .sort((leftEntry, rightEntry) => leftEntry[0] - rightEntry[0])
     .map(([index, days]) => ({ index, value: totals[index] ?? 0, days }));
 }
 
 /** The day range of one bucket, for zooming into a clicked bar. */
-export function bucketRange(b: Bucketer, i: number, rangeEnd: number): { dateFrom: number; dateTo: number } {
-  return { dateFrom: b.start(i), dateTo: i + 1 < b.count ? b.start(i + 1) - 1 : rangeEnd };
+export function bucketRange(bucketer: Bucketer, bucketIndex: number, rangeEnd: number): { dateFrom: number; dateTo: number } {
+  return { dateFrom: bucketer.start(bucketIndex), dateTo: bucketIndex + 1 < bucketer.count ? bucketer.start(bucketIndex + 1) - 1 : rangeEnd };
 }
 
 // Months
@@ -281,57 +281,57 @@ export interface MonthRow {
 }
 
 /** Token totals of one month, read from the daily series (day i of the series is agg.range.start + i). */
-function monthTokens(agg: Aggregates, m: MonthPool): MonthTokens {
+function monthTokens(aggregates: Aggregates, month: MonthPool): MonthTokens {
   const sum: MonthTokens = { input: 0, cacheRead: 0, cacheWrite: 0, output: 0 };
-  const first = Math.max(m.monthStart, agg.range.start) - agg.range.start;
-  const last = Math.min(m.monthEnd, agg.range.end) - agg.range.start;
+  const first = Math.max(month.monthStart, aggregates.range.start) - aggregates.range.start;
+  const last = Math.min(month.monthEnd, aggregates.range.end) - aggregates.range.start;
   for (let i = first; i <= last; i++) {
-    sum.input += agg.days.input[i];
-    sum.cacheRead += agg.days.cacheRead[i];
-    sum.cacheWrite += agg.days.cacheWrite[i];
-    sum.output += agg.days.output[i];
+    sum.input += aggregates.days.input[i];
+    sum.cacheRead += aggregates.days.cacheRead[i];
+    sum.cacheWrite += aggregates.days.cacheWrite[i];
+    sum.output += aggregates.days.output[i];
   }
   return sum;
 }
 
 /** A token count: the whole number below 1,000 and a compact one (12.3M) above. */
-export const fmtTokens = (v: number): string => (Math.abs(v) >= 1000 ? fmtCompact(v) : fmtInt(v));
+export const fmtTokens = (tokenCount: number): string => (Math.abs(tokenCount) >= 1000 ? fmtCompact(tokenCount) : fmtInt(tokenCount));
 
-export function buildMonthRows(agg: Aggregates, store: DataStore, pool: PoolSummary, narrowed: boolean): MonthRow[] {
-  const nU = store.dicts.user.values.length;
-  const nM = agg.nMonths;
-  return pool.months.map((m) => {
+export function buildMonthRows(aggregates: Aggregates, store: DataStore, pool: PoolSummary, narrowed: boolean): MonthRow[] {
+  const userCount = store.dicts.user.values.length;
+  const monthCount = aggregates.nMonths;
+  return pool.months.map((month) => {
     let active = 0;
     let attributed = 0;
     let takers = 0;
     let takenUsd = 0;
-    for (let u = 1; u < nU; u++) {
-      const g = agg.userMonthGross[u * nM + m.slot];
-      if (g > 0) {
+    for (let userId = 1; userId < userCount; userId++) {
+      const userGross = aggregates.userMonthGross[userId * monthCount + month.slot];
+      if (userGross > 0) {
         active++;
-        attributed += g;
+        attributed += userGross;
       }
-      const quota = agg.monthQuota[u * nM + m.slot];
+      const quota = aggregates.monthQuota[userId * monthCount + month.slot];
       if (quota > 0) {
-        const over = g - quota * CREDIT_USD;
+        const over = userGross - quota * CREDIT_USD;
         if (over > 0.005) {
           takers++;
           takenUsd += over;
         }
       }
     }
-    const known = !narrowed && capacityKnown(m);
-    const partial = agg.range.start > Math.max(m.monthStart, store.minDay) || (m.complete && agg.range.end < Math.min(m.monthEnd, store.maxDay));
+    const known = !narrowed && capacityKnown(month);
+    const partial = aggregates.range.start > Math.max(month.monthStart, store.minDay) || (month.complete && aggregates.range.end < Math.min(month.monthEnd, store.maxDay));
     return {
-      m,
+      m: month,
       known,
       partial,
       activeUsers: active,
       perActiveUser: active > 0 ? attributed / active : Number.NaN,
       takers,
       takenUsd,
-      cost: known ? Math.max(m.capacity, m.gross) : Number.NaN,
-      tokens: monthTokens(agg, m),
+      cost: known ? Math.max(month.capacity, month.gross) : Number.NaN,
+      tokens: monthTokens(aggregates, month),
     };
   });
 }
@@ -345,22 +345,22 @@ export interface CostEstimate {
 
 /** Average monthly cost of seats plus overage: the larger of the pool and the usage, per month. */
 export function estimateMonthlyCost(pool: PoolSummary): CostEstimate {
-  const ms = pool.months;
-  if (!ms.length || !ms.every(capacityKnown)) return { known: false, perMonth: Number.NaN, seats: Number.NaN, overage: Number.NaN };
+  const months = pool.months;
+  if (!months.length || !months.every(capacityKnown)) return { known: false, perMonth: Number.NaN, seats: Number.NaN, overage: Number.NaN };
   let seats = 0;
   let overage = 0;
-  for (const m of ms) {
-    seats += m.capacity;
-    overage += Math.max(0, m.gross - m.capacity);
+  for (const month of months) {
+    seats += month.capacity;
+    overage += Math.max(0, month.gross - month.capacity);
   }
-  const n = ms.length;
-  return { known: true, perMonth: (seats + overage) / n, seats: seats / n, overage: overage / n };
+  const monthCount = months.length;
+  return { known: true, perMonth: (seats + overage) / monthCount, seats: seats / monthCount, overage: overage / monthCount };
 }
 
 /** Months between the first and last month with usage that have no usage rows at all (absolute month indexes). */
 export function gapMonths(months: MonthPool[]): number[] {
   if (months.length < 2) return [];
-  const have = new Set(months.map((m) => m.month));
+  const have = new Set(months.map((month) => month.month));
   const out: number[] = [];
   for (let k = months[0].month; k <= months[months.length - 1].month; k++) if (!have.has(k)) out.push(k);
   return out;
@@ -378,26 +378,26 @@ export interface DailyCurves {
  * Running totals for each calendar day of the month. Days before the selected range and, for a month in progress,
  * days after the last day with data stay null.
  */
-export function dailyCurves(m: MonthPool, range: Range): DailyCurves {
-  const n = m.daysInMonth;
-  const out: DailyCurves = { gross: new Array<number | null>(n).fill(null), discount: new Array<number | null>(n).fill(null), net: new Array<number | null>(n).fill(null) };
-  const from = Math.max(m.monthStart, range.start);
-  const to = m.complete ? Math.min(m.monthEnd, range.end) : m.lastDay;
-  let k = 0;
-  let g = 0;
-  let d = 0;
-  let nt = 0;
+export function dailyCurves(month: MonthPool, range: Range): DailyCurves {
+  const dayCount = month.daysInMonth;
+  const out: DailyCurves = { gross: new Array<number | null>(dayCount).fill(null), discount: new Array<number | null>(dayCount).fill(null), net: new Array<number | null>(dayCount).fill(null) };
+  const from = Math.max(month.monthStart, range.start);
+  const to = month.complete ? Math.min(month.monthEnd, range.end) : month.lastDay;
+  let cumulativeIndex = 0;
+  let runningGross = 0;
+  let runningDiscount = 0;
+  let runningNet = 0;
   for (let day = from; day <= to; day++) {
-    while (k < m.cumulative.length && m.cumulative[k].day <= day) {
-      g = m.cumulative[k].gross;
-      d = m.cumulative[k].discount;
-      nt = m.cumulative[k].net;
-      k++;
+    while (cumulativeIndex < month.cumulative.length && month.cumulative[cumulativeIndex].day <= day) {
+      runningGross = month.cumulative[cumulativeIndex].gross;
+      runningDiscount = month.cumulative[cumulativeIndex].discount;
+      runningNet = month.cumulative[cumulativeIndex].net;
+      cumulativeIndex++;
     }
-    const i = day - m.monthStart;
-    out.gross[i] = g;
-    out.discount[i] = d;
-    out.net[i] = nt;
+    const dayIndex = day - month.monthStart;
+    out.gross[dayIndex] = runningGross;
+    out.discount[dayIndex] = runningDiscount;
+    out.net[dayIndex] = runningNet;
   }
   return out;
 }
@@ -411,20 +411,20 @@ export interface ProjectionPath {
 }
 
 /** Straight lines from usage so far to the projected month-end totals. */
-export function projectionPath(m: MonthPool): ProjectionPath | null {
-  const p = m.projection;
-  if (!p || p.daysLeft <= 0) return null;
-  const n = m.daysInMonth;
-  const start = p.asOf - m.monthStart;
-  if (start < 0 || start >= n) return null;
-  const line = (end: number): (number | null)[] => Array.from({ length: n }, (_, i) => (i < start ? null : p.mtdGross + ((end - p.mtdGross) * (i - start)) / p.daysLeft));
-  return { startIndex: start, mid: line(p.projGross), low: line(p.projGrossLow), high: line(p.projGrossHigh) };
+export function projectionPath(month: MonthPool): ProjectionPath | null {
+  const projection = month.projection;
+  if (!projection || projection.daysLeft <= 0) return null;
+  const dayCount = month.daysInMonth;
+  const start = projection.asOf - month.monthStart;
+  if (start < 0 || start >= dayCount) return null;
+  const line = (end: number): (number | null)[] => Array.from({ length: dayCount }, (_, dayIndex) => (dayIndex < start ? null : projection.mtdGross + ((end - projection.mtdGross) * (dayIndex - start)) / projection.daysLeft));
+  return { startIndex: start, mid: line(projection.projGross), low: line(projection.projGrossLow), high: line(projection.projGrossHigh) };
 }
 
 /** True when the billed projection of the month is a real figure. */
-export function billedProjectionKnown(m: MonthPool, narrowed: boolean): boolean {
-  if (narrowed || !m.projection) return false;
-  return m.exhaustedOn !== null || capacityKnown(m);
+export function billedProjectionKnown(month: MonthPool, narrowed: boolean): boolean {
+  if (narrowed || !month.projection) return false;
+  return month.exhaustedOn !== null || capacityKnown(month);
 }
 
 /** Color of a budget gauge: red once the budget is used or projected to be, amber from 80%. */
@@ -434,8 +434,8 @@ export function budgetTone(burn: number, projectedBurn: number | null): 'good' |
 }
 
 /** A share of the budget as a whole percent with thousands separators, so an extreme overrun stays readable. */
-export function fmtBudgetPct(v: number): string {
-  return Number.isFinite(v) ? `${Math.round(v * 100).toLocaleString('en-US')}%` : '–';
+export function fmtBudgetPct(share: number): string {
+  return Number.isFinite(share) ? `${Math.round(share * 100).toLocaleString('en-US')}%` : '–';
 }
 
 // SKU table
@@ -455,48 +455,48 @@ export interface SkuRow {
 }
 
 /** One scan over the rows in scope: which products each SKU belongs to and how many distinct users it has. */
-export function buildSkuRows(store: DataStore, mask: Uint8Array | null, range: Range, agg: Aggregates): SkuRow[] {
-  const nS = store.dicts.sku.values.length;
-  const nU = store.dicts.user.values.length;
-  const products: Set<number>[] = Array.from({ length: nS }, () => new Set<number>());
-  const dense = nS * nU <= 30_000_000 ? new Uint8Array(nS * nU) : null;
+export function buildSkuRows(store: DataStore, mask: Uint8Array | null, range: Range, aggregates: Aggregates): SkuRow[] {
+  const skuCount = store.dicts.sku.values.length;
+  const userCount = store.dicts.user.values.length;
+  const products: Set<number>[] = Array.from({ length: skuCount }, () => new Set<number>());
+  const dense = skuCount * userCount <= 30_000_000 ? new Uint8Array(skuCount * userCount) : null;
   const sparse = dense ? null : new Set<number>();
-  const users = new Int32Array(nS);
+  const users = new Int32Array(skuCount);
   for (let i = 0; i < store.n; i++) {
     if (mask !== null && mask[i] === 0) continue;
-    const d = store.day[i];
-    if (d < range.start || d > range.end) continue;
-    const s = store.sku[i];
-    products[s].add(store.product[i]);
-    const u = store.user[i];
-    if (u === BLANK_ID) continue;
-    const key = s * nU + u;
+    const day = store.day[i];
+    if (day < range.start || day > range.end) continue;
+    const skuId = store.sku[i];
+    products[skuId].add(store.product[i]);
+    const userId = store.user[i];
+    if (userId === BLANK_ID) continue;
+    const key = skuId * userCount + userId;
     if (dense) {
       if (dense[key] === 0) {
         dense[key] = 1;
-        users[s]++;
+        users[skuId]++;
       }
     } else if (!sparse!.has(key)) {
       sparse!.add(key);
-      users[s]++;
+      users[skuId]++;
     }
   }
-  const total = agg.totals.gross;
+  const total = aggregates.totals.gross;
   const rows: SkuRow[] = [];
-  for (let s = 0; s < nS; s++) {
-    if (agg.sku.rows[s] === 0) continue;
-    const productIds = [...products[s]].map((p) => store.dicts.product.values[p]);
+  for (let skuId = 0; skuId < skuCount; skuId++) {
+    if (aggregates.sku.rows[skuId] === 0) continue;
+    const productIds = [...products[skuId]].map((productIndex) => store.dicts.product.values[productIndex]);
     rows.push({
-      id: s,
-      sku: labelOf('sku', store.dicts.sku.values[s]),
-      products: productIds.map((p) => labelOf('product', p)).join(', '),
+      id: skuId,
+      sku: labelOf('sku', store.dicts.sku.values[skuId]),
+      products: productIds.map((productId) => labelOf('product', productId)).join(', '),
       productIds,
-      credits: agg.sku.credits[s],
-      gross: agg.sku.gross[s],
-      covered: agg.sku.discount[s],
-      billed: agg.sku.net[s],
-      share: total > 0 ? agg.sku.gross[s] / total : 0,
-      users: users[s],
+      credits: aggregates.sku.credits[skuId],
+      gross: aggregates.sku.gross[skuId],
+      covered: aggregates.sku.discount[skuId],
+      billed: aggregates.sku.net[skuId],
+      share: total > 0 ? aggregates.sku.gross[skuId] / total : 0,
+      users: users[skuId],
     });
   }
   return rows;

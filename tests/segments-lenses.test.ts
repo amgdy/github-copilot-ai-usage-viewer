@@ -57,21 +57,21 @@ function fixture(): RowSpec[] {
 
 const withModels = (): Promise<Pipeline> => analyzeCsv(makeCsv(fixture()));
 const withoutModelColumn = (): Promise<Pipeline> =>
-  analyzeCsv(makeCsv(fixture(), { columns: CSV_HEADER.filter((c) => c !== 'model') }));
-const withBlankModels = (): Promise<Pipeline> => analyzeCsv(makeCsv(fixture().map((r) => ({ ...r, model: '' }))));
+  analyzeCsv(makeCsv(fixture(), { columns: CSV_HEADER.filter((column) => column !== 'model') }));
+const withBlankModels = (): Promise<Pipeline> => analyzeCsv(makeCsv(fixture().map((row) => ({ ...row, model: '' }))));
 
 /** The same flags the page passes to the lenses. */
-const availabilityOf = (p: Pipeline): Availability => ({
-  hasTokens: p.store.hasTokens,
-  hasModels: p.analysis.coverage.models,
-  trendReliable: p.analysis.population.trendReliable,
-  hasCostCenters: p.analysis.population.hasCostCenters,
+const availabilityOf = (pipeline: Pipeline): Availability => ({
+  hasTokens: pipeline.store.hasTokens,
+  hasModels: pipeline.analysis.coverage.models,
+  trendReliable: pipeline.analysis.population.trendReliable,
+  hasCostCenters: pipeline.analysis.population.hasCostCenters,
 });
 
-const lensOf = (p: Pipeline, id: LensId): LensData =>
-  buildLens(LENS_BY_ID[id], buildTaxonomy(p.settings), p.analysis.population, [], 1, availabilityOf(p));
+const lensOf = (pipeline: Pipeline, id: LensId): LensData =>
+  buildLens(LENS_BY_ID[id], buildTaxonomy(pipeline.settings), pipeline.analysis.population, [], 1, availabilityOf(pipeline));
 
-const usersIn = (d: LensData): Record<string, number> => Object.fromEntries(d.rows.map((r) => [r.id, r.users]));
+const usersIn = (lensData: LensData): Record<string, number> => Object.fromEntries(lensData.rows.map((group) => [group.id, group.users]));
 
 const ALL: Availability = { hasTokens: true, hasModels: true, trendReliable: true, hasCostCenters: true };
 const NEEDS_TOKENS = 'Needs token columns, and this report has none.';
@@ -79,13 +79,13 @@ const NEEDS_MODELS = 'Needs model names, and this report has none.';
 
 describe('the lens list', () => {
   it('has the seven lenses, each with a filter key and a doc that exists', () => {
-    expect(LENSES.map((l) => l.id)).toEqual(['persona', 'tier', 'engagement', 'profile', 'pareto', 'autoUse', 'trait']);
-    expect(new Set(LENSES.map((l) => l.filterKey)).size).toBe(LENSES.length);
-    for (const l of LENSES) expect(metricDoc(l.calc), l.id).toBeDefined();
+    expect(LENSES.map((lens) => lens.id)).toEqual(['persona', 'tier', 'engagement', 'profile', 'pareto', 'autoUse', 'trait']);
+    expect(new Set(LENSES.map((lens) => lens.filterKey)).size).toBe(LENSES.length);
+    for (const lens of LENSES) expect(metricDoc(lens.calc), lens.id).toBeDefined();
   });
 
   it('names the lenses as the page does', () => {
-    expect(LENSES.map((l) => l.label)).toEqual(['Persona', 'Usage tier', 'Engagement', 'Usage profile', 'Pareto class', 'Auto use class', 'Traits']);
+    expect(LENSES.map((lens) => lens.label)).toEqual(['Persona', 'Usage tier', 'Engagement', 'Usage profile', 'Pareto class', 'Auto use class', 'Traits']);
   });
 });
 
@@ -95,23 +95,23 @@ describe('which traits the report can show', () => {
   });
 
   it('needs token columns for the cache and long-context traits', () => {
-    const a = { ...ALL, hasTokens: false };
-    expect(unavailableReason('trait', 'lowCache', a)).toBe(NEEDS_TOKENS);
-    expect(unavailableReason('trait', 'longContext', a)).toBe(NEEDS_TOKENS);
-    expect(unavailableReason('trait', 'lowAuto', a)).toBeNull();
-    expect(unavailableReason('trait', 'multiModel', a)).toBeNull();
+    const noTokens = { ...ALL, hasTokens: false };
+    expect(unavailableReason('trait', 'lowCache', noTokens)).toBe(NEEDS_TOKENS);
+    expect(unavailableReason('trait', 'longContext', noTokens)).toBe(NEEDS_TOKENS);
+    expect(unavailableReason('trait', 'lowAuto', noTokens)).toBeNull();
+    expect(unavailableReason('trait', 'multiModel', noTokens)).toBeNull();
   });
 
   it('needs model names for the traits that look at models, even when there are token columns', () => {
-    const a = { ...ALL, hasModels: false };
-    for (const id of ['lowCache', 'longContext', 'lowAuto', 'multiModel']) expect(unavailableReason('trait', id, a), id).toBe(NEEDS_MODELS);
-    for (const id of ['spiky', 'accelerating', 'fading', 'noCostCenter']) expect(unavailableReason('trait', id, a), id).toBeNull();
+    const noModels = { ...ALL, hasModels: false };
+    for (const id of ['lowCache', 'longContext', 'lowAuto', 'multiModel']) expect(unavailableReason('trait', id, noModels), id).toBe(NEEDS_MODELS);
+    for (const id of ['spiky', 'accelerating', 'fading', 'noCostCenter']) expect(unavailableReason('trait', id, noModels), id).toBeNull();
   });
 
   it('names the token columns first when both are missing', () => {
-    const a = { ...ALL, hasTokens: false, hasModels: false };
-    expect(unavailableReason('trait', 'lowCache', a)).toBe(NEEDS_TOKENS);
-    expect(unavailableReason('trait', 'lowAuto', a)).toBe(NEEDS_MODELS);
+    const noTokensOrModels = { ...ALL, hasTokens: false, hasModels: false };
+    expect(unavailableReason('trait', 'lowCache', noTokensOrModels)).toBe(NEEDS_TOKENS);
+    expect(unavailableReason('trait', 'lowAuto', noTokensOrModels)).toBe(NEEDS_MODELS);
   });
 
   it('needs 14 days for the trend traits and cost centers for the cost center trait', () => {
@@ -130,24 +130,24 @@ describe('which traits the report can show', () => {
 
 describe('a report with model names', () => {
   it('offers every lens', async () => {
-    const p = await withModels();
-    expect(p.analysis.coverage.models).toBe(true);
-    for (const l of LENSES) {
-      expect(lensUnavailableReason(l.id, availabilityOf(p)), l.id).toBeNull();
-      expect(lensOf(p, l.id).unsupported, l.id).toBeNull();
+    const pipeline = await withModels();
+    expect(pipeline.analysis.coverage.models).toBe(true);
+    for (const lens of LENSES) {
+      expect(lensUnavailableReason(lens.id, availabilityOf(pipeline)), lens.id).toBeNull();
+      expect(lensOf(pipeline, lens.id).unsupported, lens.id).toBeNull();
     }
   });
 
   it('groups the users by the documented Auto use and usage profile rules', async () => {
-    const p = await withModels();
-    expect(usersIn(lensOf(p, 'autoUse'))).toEqual({ autoFirst: 1, mixed: 1, direct: 2, unknown: 0 });
-    expect(usersIn(lensOf(p, 'profile'))).toEqual({ frontier: 1, balanced: 1, efficient: 2 });
+    const pipeline = await withModels();
+    expect(usersIn(lensOf(pipeline, 'autoUse'))).toEqual({ autoFirst: 1, mixed: 1, direct: 2, unknown: 0 });
+    expect(usersIn(lensOf(pipeline, 'profile'))).toEqual({ frontier: 1, balanced: 1, efficient: 2 });
   });
 
   it('groups the users by spend tier and Pareto class from usage and seat size alone', async () => {
-    const p = await withModels();
-    expect(usersIn(lensOf(p, 'tier'))).toEqual({ minimal: 0, light: 0, core: 2, power: 2, runaway: 0 });
-    expect(usersIn(lensOf(p, 'pareto'))).toEqual({ A: 3, B: 1, C: 0 });
+    const pipeline = await withModels();
+    expect(usersIn(lensOf(pipeline, 'tier'))).toEqual({ minimal: 0, light: 0, core: 2, power: 2, runaway: 0 });
+    expect(usersIn(lensOf(pipeline, 'pareto'))).toEqual({ A: 3, B: 1, C: 0 });
   });
 });
 
@@ -156,35 +156,35 @@ describe.each([
   ['has a model column with no values', withBlankModels],
 ])('a report that %s', (_name, load) => {
   it('is read as having no model names, but still has token columns', async () => {
-    const p = await load();
-    expect(p.analysis.coverage.models).toBe(false);
-    expect(p.store.hasTokens).toBe(true);
+    const pipeline = await load();
+    expect(pipeline.analysis.coverage.models).toBe(false);
+    expect(pipeline.store.hasTokens).toBe(true);
   });
 
   it('explains the Auto use class and usage profile lenses instead of offering their groups', async () => {
-    const p = await load();
-    const a = availabilityOf(p);
+    const pipeline = await load();
+    const availability = availabilityOf(pipeline);
     for (const id of ['autoUse', 'profile'] as const) {
-      expect(lensUnavailableReason(id, a), id).toMatch(/no model names/);
-      expect(lensOf(p, id).unsupported, id).toBe(lensUnavailableReason(id, a));
+      expect(lensUnavailableReason(id, availability), id).toMatch(/no model names/);
+      expect(lensOf(pipeline, id).unsupported, id).toBe(lensUnavailableReason(id, availability));
     }
-    expect(lensUnavailableReason('autoUse', a)).toMatch(/Not enough data/);
-    expect(lensUnavailableReason('profile', a)).toMatch(/Balanced/);
+    expect(lensUnavailableReason('autoUse', availability)).toMatch(/Not enough data/);
+    expect(lensUnavailableReason('profile', availability)).toMatch(/Balanced/);
     for (const id of ['persona', 'tier', 'engagement', 'pareto', 'trait'] as const) {
-      expect(lensUnavailableReason(id, a), id).toBeNull();
-      expect(lensOf(p, id).unsupported, id).toBeNull();
+      expect(lensUnavailableReason(id, availability), id).toBeNull();
+      expect(lensOf(pipeline, id).unsupported, id).toBeNull();
     }
   });
 
   it('would otherwise put every user in Not enough data and in Balanced', async () => {
-    const p = await load();
-    expect(usersIn(lensOf(p, 'autoUse'))).toEqual({ autoFirst: 0, mixed: 0, direct: 0, unknown: 4 });
-    expect(usersIn(lensOf(p, 'profile'))).toEqual({ frontier: 0, balanced: 4, efficient: 0 });
+    const pipeline = await load();
+    expect(usersIn(lensOf(pipeline, 'autoUse'))).toEqual({ autoFirst: 0, mixed: 0, direct: 0, unknown: 4 });
+    expect(usersIn(lensOf(pipeline, 'profile'))).toEqual({ frontier: 0, balanced: 4, efficient: 0 });
   });
 
   it('marks the traits that need model names as not detectable and gives them no users', async () => {
-    const p = await load();
-    const byId = Object.fromEntries(lensOf(p, 'trait').rows.map((r) => [r.id, r]));
+    const pipeline = await load();
+    const byId = Object.fromEntries(lensOf(pipeline, 'trait').rows.map((group) => [group.id, group]));
     for (const id of ['lowCache', 'longContext', 'lowAuto', 'multiModel']) {
       expect(byId[id].unavailable, id).toBe(NEEDS_MODELS);
       expect(byId[id].users, id).toBe(0);
@@ -192,8 +192,8 @@ describe.each([
   });
 
   it('groups by the lenses that do not need model names exactly as with model names', async () => {
-    const [p, full] = await Promise.all([load(), withModels()]);
-    for (const id of ['persona', 'tier', 'engagement', 'pareto'] as const) expect(usersIn(lensOf(p, id)), id).toEqual(usersIn(lensOf(full, id)));
+    const [bare, full] = await Promise.all([load(), withModels()]);
+    for (const id of ['persona', 'tier', 'engagement', 'pareto'] as const) expect(usersIn(lensOf(bare, id)), id).toEqual(usersIn(lensOf(full, id)));
   });
 });
 
@@ -214,12 +214,12 @@ describe('the lenses of the matrix', () => {
   });
 
   it('counts the users and the usage of each pair of groups', async () => {
-    const p = await withModels();
-    const m = buildMatrix(LENS_BY_ID.tier, LENS_BY_ID.pareto, buildTaxonomy(p.settings), p.analysis.population);
-    const at = (row: string, col: string) => m.cells[m.rows.findIndex((r) => r.id === row)][m.cols.findIndex((c) => c.id === col)];
-    expect(m.rows.map((r) => r.id)).toEqual(['core', 'power']);
-    expect(m.cols.map((c) => c.id)).toEqual(['A', 'B']);
-    expect(m.all.users).toBe(4);
+    const pipeline = await withModels();
+    const matrix = buildMatrix(LENS_BY_ID.tier, LENS_BY_ID.pareto, buildTaxonomy(pipeline.settings), pipeline.analysis.population);
+    const at = (row: string, column: string) => matrix.cells[matrix.rows.findIndex((rowGroup) => rowGroup.id === row)][matrix.cols.findIndex((columnGroup) => columnGroup.id === column)];
+    expect(matrix.rows.map((rowGroup) => rowGroup.id)).toEqual(['core', 'power']);
+    expect(matrix.cols.map((columnGroup) => columnGroup.id)).toEqual(['A', 'B']);
+    expect(matrix.all.users).toBe(4);
     expect(at('core', 'A').users).toBe(1);
     expect(at('core', 'A').gross).toBeCloseTo(15, 9);
     expect(at('core', 'B').users).toBe(1);
@@ -227,27 +227,27 @@ describe('the lenses of the matrix', () => {
     expect(at('power', 'A').users).toBe(2);
     expect(at('power', 'A').gross).toBeCloseTo(50, 9);
     expect(at('power', 'B').users).toBe(0);
-    expect(m.overlaps).toBe(false);
+    expect(matrix.overlaps).toBe(false);
   });
 
   it('flags the matrix when a lens has overlapping groups', async () => {
-    const p = await withModels();
-    const m = buildMatrix(LENS_BY_ID.tier, LENS_BY_ID.trait, buildTaxonomy(p.settings), p.analysis.population);
-    expect(m.overlaps).toBe(true);
+    const pipeline = await withModels();
+    const matrix = buildMatrix(LENS_BY_ID.tier, LENS_BY_ID.trait, buildTaxonomy(pipeline.settings), pipeline.analysis.population);
+    expect(matrix.overlaps).toBe(true);
   });
 });
 
 const PER_MONTH = 30.4375;
-const html = (el: ReactElement): string => renderToStaticMarkup(el);
+const html = (element: ReactElement): string => renderToStaticMarkup(element);
 const calcLabel = (id: string): string => `How this is calculated: ${metricDoc(id)?.title}`;
-const contextOf = (p: Pipeline): RuleContext => ({
-  settings: p.settings,
-  taxonomy: buildTaxonomy(p.settings),
-  availability: availabilityOf(p),
-  fallbackQuotaCredits: p.analysis.population.fallbackQuotaCredits,
+const contextOf = (pipeline: Pipeline): RuleContext => ({
+  settings: pipeline.settings,
+  taxonomy: buildTaxonomy(pipeline.settings),
+  availability: availabilityOf(pipeline),
+  fallbackQuotaCredits: pipeline.analysis.population.fallbackQuotaCredits,
 });
-const matrixOf = (p: Pipeline): string =>
-  html(createElement(CrossLensMatrix, { taxonomy: buildTaxonomy(p.settings), population: p.analysis.population, availability: availabilityOf(p) }));
+const matrixOf = (pipeline: Pipeline): string =>
+  html(createElement(CrossLensMatrix, { taxonomy: buildTaxonomy(pipeline.settings), population: pipeline.analysis.population, availability: availabilityOf(pipeline) }));
 
 describe('the rules of the labels', () => {
   it('say why the Auto use class and usage profile rules cannot be applied without model names', async () => {
@@ -262,13 +262,13 @@ describe('the rules of the labels', () => {
 
   it('link every lens to its explanation', async () => {
     const out = html(createElement(LabelRules, { current: 'tier', context: contextOf(await withModels()) }));
-    for (const l of LENSES) expect(out, l.id).toContain(calcLabel(l.calc));
+    for (const lens of LENSES) expect(out, lens.id).toContain(calcLabel(lens.calc));
   });
 
   it('use the live threshold values', async () => {
-    const p = await withModels();
-    const strict = { ...p.settings, tiers: { minimal: 0.2, light: 0.5, core: 1.5, power: 4 } };
-    const out = html(createElement(LabelRules, { current: 'tier', context: { ...contextOf(p), settings: strict, taxonomy: buildTaxonomy(strict) } }));
+    const pipeline = await withModels();
+    const strict = { ...pipeline.settings, tiers: { minimal: 0.2, light: 0.5, core: 1.5, power: 4 } };
+    const out = html(createElement(LabelRules, { current: 'tier', context: { ...contextOf(pipeline), settings: strict, taxonomy: buildTaxonomy(strict) } }));
     expect(out).toContain('400%');
   });
 });
@@ -290,11 +290,11 @@ describe('the matrix of two lenses', () => {
 
 describe('the sections of the page', () => {
   it('render for every lens of a report with model names, with a calc button on the numbers', async () => {
-    const p = await withModels();
-    const taxonomy = buildTaxonomy(p.settings);
-    const av = availabilityOf(p);
+    const pipeline = await withModels();
+    const taxonomy = buildTaxonomy(pipeline.settings);
+    const availability = availabilityOf(pipeline);
     for (const lens of LENSES) {
-      const data = buildLens(lens, taxonomy, p.analysis.population, [], PER_MONTH, av);
+      const data = buildLens(lens, taxonomy, pipeline.analysis.population, [], PER_MONTH, availability);
       const kpis = html(createElement(LensKpis, { data, perMonth: PER_MONTH }));
       for (const id of ['groups-in-use', 'largest-group', 'biggest-usage-share', 'heaviest-per-user', 'biggest-opportunity', 'group-potential-savings']) {
         expect(kpis, `${lens.id} ${id}`).toContain(calcLabel(id));
@@ -310,23 +310,23 @@ describe('the sections of the page', () => {
   });
 
   it('render the pool flow and the insights with a calc button', async () => {
-    const p = await withModels();
-    const data = lensOf(p, 'tier');
-    expect(html(createElement(PoolFlowCard, { analysis: p.analysis }))).toContain(calcLabel('segment-pool-flow'));
+    const pipeline = await withModels();
+    const data = lensOf(pipeline, 'tier');
+    expect(html(createElement(PoolFlowCard, { analysis: pipeline.analysis }))).toContain(calcLabel('segment-pool-flow'));
     expect(html(createElement(Insights, { data }))).toContain(calcLabel('segment-insights'));
   });
 
   it('show a dash instead of billed amounts when the report has no billing split', async () => {
-    const p = await analyzeCsv(makeCsv(fixture(), { columns: CSV_HEADER.filter((c) => c !== 'discount_amount' && c !== 'net_amount') }));
-    expect(p.analysis.coverage.billing).toBe(false);
-    const out = html(createElement(GroupTable, { data: lensOf(p, 'tier'), perMonth: PER_MONTH, showCredits: true, showPool: false, billingKnown: false }));
+    const pipeline = await analyzeCsv(makeCsv(fixture(), { columns: CSV_HEADER.filter((column) => column !== 'discount_amount' && column !== 'net_amount') }));
+    expect(pipeline.analysis.coverage.billing).toBe(false);
+    const out = html(createElement(GroupTable, { data: lensOf(pipeline, 'tier'), perMonth: PER_MONTH, showCredits: true, showPool: false, billingKnown: false }));
     expect(out).toContain('–');
     expect(out).not.toContain('$0.00');
   });
 
   it('list the traits that cannot be detected, with the reason', async () => {
-    const p = await withoutModelColumn();
-    const out = html(createElement(LensNotes, { data: lensOf(p, 'trait'), segmentFiltered: false, users: 4, assumedSeats: 0, fallbackQuotaCredits: 1900 }));
+    const pipeline = await withoutModelColumn();
+    const out = html(createElement(LensNotes, { data: lensOf(pipeline, 'trait'), segmentFiltered: false, users: 4, assumedSeats: 0, fallbackQuotaCredits: 1900 }));
     expect(out).toContain('Some traits cannot be detected in this data');
     expect(out).toContain(NEEDS_MODELS);
   });
@@ -341,8 +341,8 @@ describe('the sections of the page', () => {
   });
 
   it('replace the groups of an unsupported lens with the reason and a way to load other data', async () => {
-    const p = await withoutModelColumn();
-    const reason = lensUnavailableReason('autoUse', availabilityOf(p)) ?? '';
+    const pipeline = await withoutModelColumn();
+    const reason = lensUnavailableReason('autoUse', availabilityOf(pipeline)) ?? '';
     const out = html(createElement(UnsupportedLens, { lens: LENS_BY_ID.autoUse, reason, notice: null }));
     expect(out).toContain('Auto use class is not available for this report');
     expect(out).toContain('Every user would be Not enough data.');
@@ -351,8 +351,8 @@ describe('the sections of the page', () => {
 });
 
 describe('the whole page', () => {
-  const pageOf = async (p: Pipeline): Promise<string> => {
-    const dataset: Dataset = { store: p.store, prep: p.prep, label: 'synthetic.csv', loadedAt: 0 };
+  const pageOf = async (pipeline: Pipeline): Promise<string> => {
+    const dataset: Dataset = { store: pipeline.store, prep: pipeline.prep, label: 'synthetic.csv', loadedAt: 0 };
     return html(createElement(AnalysisProvider, { dataset, children: createElement(SegmentsPage) }));
   };
 

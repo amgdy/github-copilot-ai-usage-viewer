@@ -19,11 +19,11 @@ export interface Prepared {
 }
 
 export function planLabel(quotaCredits: number): string {
-  const q = Math.round(quotaCredits);
-  if (q <= 0) return 'No quota';
-  if (q === 1900) return 'Business';
-  if (q === 3900) return 'Enterprise';
-  return `Custom (${q.toLocaleString('en-US')} credits)`;
+  const quota = Math.round(quotaCredits);
+  if (quota <= 0) return 'No quota';
+  if (quota === 1900) return 'Business';
+  if (quota === 3900) return 'Enterprise';
+  return `Custom (${quota.toLocaleString('en-US')} credits)`;
 }
 
 export function prepareStore(store: DataStore): Prepared {
@@ -32,12 +32,12 @@ export function prepareStore(store: DataStore): Prepared {
   const dowOfDayArr = new Uint8Array(Math.max(nDays, 0));
   const firstMonth = store.n ? monthIndexOf(store.minDay) : 0;
   let lastMonth = firstMonth;
-  for (let d = 0; d < nDays; d++) {
-    const day = store.minDay + d;
-    const mi = monthIndexOf(day);
-    monthOfDay[d] = mi - firstMonth;
-    lastMonth = mi;
-    dowOfDayArr[d] = dowOf(day);
+  for (let dayIndex = 0; dayIndex < nDays; dayIndex++) {
+    const day = store.minDay + dayIndex;
+    const month = monthIndexOf(day);
+    monthOfDay[dayIndex] = month - firstMonth;
+    lastMonth = month;
+    dowOfDayArr[dayIndex] = dowOf(day);
   }
 
   const labelIndex = new Map<string, number>();
@@ -45,30 +45,30 @@ export function prepareStore(store: DataStore): Prepared {
   const quotaToPlan = new Map<number, number>();
   const planOfRow = new Uint8Array(store.n);
   for (let i = 0; i < store.n; i++) {
-    const q = store.quota[i];
-    let p = quotaToPlan.get(q);
-    if (p === undefined) {
-      const label = planLabel(q);
-      let idx = labelIndex.get(label);
-      if (idx === undefined) {
-        idx = planLabels.length;
+    const quota = store.quota[i];
+    let plan = quotaToPlan.get(quota);
+    if (plan === undefined) {
+      const label = planLabel(quota);
+      let labelId = labelIndex.get(label);
+      if (labelId === undefined) {
+        labelId = planLabels.length;
         planLabels.push(label);
-        labelIndex.set(label, idx);
+        labelIndex.set(label, labelId);
       }
-      p = idx;
-      quotaToPlan.set(q, p);
+      plan = labelId;
+      quotaToPlan.set(quota, plan);
     }
-    planOfRow[i] = p;
+    planOfRow[i] = plan;
   }
 
   const nUsers = store.dicts.user.values.length;
   const userFirstDay = new Int32Array(nUsers).fill(2_000_000_000);
   const userLastDay = new Int32Array(nUsers).fill(-1);
   for (let i = 0; i < store.n; i++) {
-    const u = store.user[i];
-    const d = store.day[i];
-    if (d < userFirstDay[u]) userFirstDay[u] = d;
-    if (d > userLastDay[u]) userLastDay[u] = d;
+    const user = store.user[i];
+    const day = store.day[i];
+    if (day < userFirstDay[user]) userFirstDay[user] = day;
+    if (day > userLastDay[user]) userLastDay[user] = day;
   }
 
   return {

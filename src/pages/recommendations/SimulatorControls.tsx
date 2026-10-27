@@ -54,11 +54,11 @@ export interface SimulatorControlsProps {
 export function SimulatorControls({ levers, onLevers, seatFlags, onSeatFlags, options, alone, atDefault, onReset }: SimulatorControlsProps) {
   const current = matchPreset(levers);
   const presetOptions: { value: PresetChoice; label: string; title: string }[] = [
-    ...PRESETS.map((p) => ({ value: p.id as PresetChoice, label: t(p.label), title: t(p.hint) })),
+    ...PRESETS.map((presetItem) => ({ value: presetItem.id as PresetChoice, label: t(presetItem.label), title: t(presetItem.hint) })),
     ...(current === 'custom' ? [{ value: 'custom' as PresetChoice, label: t('Custom'), title: t('A slider no longer matches a preset.') }] : []),
   ];
-  const preset = PRESETS.find((p) => p.id === current);
-  const targets = TARGET_OPTIONS.map((o) => ({ ...o, label: t(o.label) }));
+  const preset = PRESETS.find((candidate) => candidate.id === current);
+  const targets = TARGET_OPTIONS.map((targetOption) => ({ ...targetOption, label: t(targetOption.label) }));
 
   const set = (key: NumericLever, value: number) => onLevers({ ...levers, [key]: value });
 
@@ -86,8 +86,8 @@ export function SimulatorControls({ levers, onLevers, seatFlags, onSeatFlags, op
             value={current}
             options={presetOptions}
             onChange={(id) => {
-              const p = PRESETS.find((x) => x.id === id);
-              if (p) onLevers(applyPreset(levers, p));
+              const selectedPreset = PRESETS.find((candidate) => candidate.id === id);
+              if (selectedPreset) onLevers(applyPreset(levers, selectedPreset));
             }}
           />
           <p className="mt-1.5 text-xs text-fg-subtle">{preset ? t(preset.hint) : t('You changed a slider, so the values no longer match a preset.')}</p>
@@ -106,8 +106,8 @@ export function SimulatorControls({ levers, onLevers, seatFlags, onSeatFlags, op
                     min={0}
                     max={MAX_PERCENT[id] ?? 100}
                     step={5}
-                    format={(v) => `${v}%`}
-                    onChange={(v) => set(id, v / 100)}
+                    format={(percent) => `${percent}%`}
+                    onChange={(percent) => set(id, percent / 100)}
                     hint={
                       <>
                         {t(LEVER_META[id].description)}
@@ -128,7 +128,7 @@ export function SimulatorControls({ levers, onLevers, seatFlags, onSeatFlags, op
                       max={10}
                       step={0.5}
                       format={fmtMultiple}
-                      onChange={(v) => set('capUtil', v)}
+                      onChange={(multiple) => set('capUtil', multiple)}
                       hint={t("Usage above this multiple of the credits included with a user's seat counts as runaway. A lower multiple is a stricter limit.")}
                     />
                   ) : null}
@@ -141,14 +141,14 @@ export function SimulatorControls({ levers, onLevers, seatFlags, onSeatFlags, op
         <div>
           <SubHeading>{t('Seat actions')}</SubHeading>
           <div className="space-y-3">
-            {options.map((o) => (
+            {options.map((seatOption) => (
               <Toggle
-                key={o.key}
-                checked={seatFlags[o.key] && o.disabledReason === null}
-                disabled={o.disabledReason !== null}
-                onChange={(on) => onSeatFlags({ ...seatFlags, [o.key]: on })}
-                label={<WithCalc calc={SEAT_DOC[o.key]}>{o.label}</WithCalc>}
-                description={o.disabledReason ?? t('{seats}, {value} a month of seat value', { seats: pluralize(o.count, 'seat'), value: fmtMoney(o.value) })}
+                key={seatOption.key}
+                checked={seatFlags[seatOption.key] && seatOption.disabledReason === null}
+                disabled={seatOption.disabledReason !== null}
+                onChange={(on) => onSeatFlags({ ...seatFlags, [seatOption.key]: on })}
+                label={<WithCalc calc={SEAT_DOC[seatOption.key]}>{seatOption.label}</WithCalc>}
+                description={seatOption.disabledReason ?? t('{seats}, {value} a month of seat value', { seats: pluralize(seatOption.count, 'seat'), value: fmtMoney(seatOption.value) })}
               />
             ))}
           </div>

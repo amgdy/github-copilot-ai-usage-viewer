@@ -28,7 +28,7 @@ export interface EChartProps {
   option: EChartsOption;
   height?: number | string;
   className?: string;
-  onClick?: (p: ChartClick) => void;
+  onClick?: (event: ChartClick) => void;
   /** Accessible description of what the chart shows. */
   label?: string;
   /** Shows a hover button that downloads the chart as a PNG with this file name (no extension). */
@@ -50,15 +50,15 @@ export function EChart({ option, height = 280, className, onClick, label, export
   const colors = useChartColors();
 
   useEffect(() => {
-    const el = host.current;
-    if (!el) return;
-    const chart = echarts.init(el, themeObject(colors), { renderer: 'canvas' });
+    const container = host.current;
+    if (!container) return;
+    const chart = echarts.init(container, themeObject(colors), { renderer: 'canvas' });
     chartRef.current = chart;
-    chart.on('click', (p) => clickRef.current?.(p as unknown as ChartClick));
-    const ro = new ResizeObserver(() => chart.resize());
-    ro.observe(el);
+    chart.on('click', (event) => clickRef.current?.(event as unknown as ChartClick));
+    const resizeObserver = new ResizeObserver(() => chart.resize());
+    resizeObserver.observe(container);
     return () => {
-      ro.disconnect();
+      resizeObserver.disconnect();
       chart.dispose();
       chartRef.current = null;
     };
@@ -72,10 +72,10 @@ export function EChart({ option, height = 280, className, onClick, label, export
     () => () => {
       const chart = chartRef.current;
       if (!chart) return;
-      const a = document.createElement('a');
-      a.href = chart.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: colors.surface });
-      a.download = `${exportName ?? 'chart'}.png`;
-      a.click();
+      const link = document.createElement('a');
+      link.href = chart.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: colors.surface });
+      link.download = `${exportName ?? 'chart'}.png`;
+      link.click();
     },
     [exportName, colors],
   );

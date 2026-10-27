@@ -12,9 +12,9 @@ function Legend({ scale, unusual }: { scale: Scale; unusual: boolean }) {
   const colors = useChartColors();
   return (
     <ul className="flex flex-wrap items-center gap-x-3 gap-y-1" aria-label={t('Color key')}>
-      {scale.labels.map((label, i) => (
-        <li key={i} className="inline-flex items-center gap-1.5">
-          <span className="size-3 rounded-sm border border-border-muted" style={{ background: scale.fills[i] }} />
+      {scale.labels.map((label, index) => (
+        <li key={index} className="inline-flex items-center gap-1.5">
+          <span className="size-3 rounded-sm border border-border-muted" style={{ background: scale.fills[index] }} />
           <span className="num">{label}</span>
         </li>
       ))}
@@ -30,25 +30,25 @@ function Legend({ scale, unusual }: { scale: Scale; unusual: boolean }) {
 
 export default function CalendarCard() {
   const { analysis } = useAnalysis();
-  const { agg, range, anomalies } = analysis;
+  const { agg: aggregates, range, anomalies } = analysis;
   const colors = useChartColors();
 
-  const plan = useMemo(() => planCalendar(range, agg.days), [range, agg]);
-  const scale = useMemo(() => makeScale(colors, agg.days, range, plan.from, plan.to), [colors, agg, range, plan]);
+  const plan = useMemo(() => planCalendar(range, aggregates.days), [range, aggregates]);
+  const scale = useMemo(() => makeScale(colors, aggregates.days, range, plan.from, plan.to), [colors, aggregates, range, plan]);
   const options = useMemo(() => {
-    const byDay = new Map(anomalies.map((a) => [a.day, a]));
-    return plan.tiles.map((tile) => tileOption({ colors, scale, tile, mode: plan.mode, range, days: agg.days, anomalies: byDay }));
-  }, [colors, scale, plan, range, agg, anomalies]);
+    const byDay = new Map(anomalies.map((anomaly) => [anomaly.day, anomaly]));
+    return plan.tiles.map((tile) => tileOption({ colors, scale, tile, mode: plan.mode, range, days: aggregates.days, anomalies: byDay }));
+  }, [colors, scale, plan, range, aggregates, anomalies]);
 
-  const onClick = (p: ChartClick) => {
-    if (p.componentType !== 'series') return;
-    const day = cellDay(p.value);
+  const onClick = (event: ChartClick) => {
+    if (event.componentType !== 'series') return;
+    const day = cellDay(event.value);
     if (day !== null) drill({ dateFrom: day, dateTo: day }, { merge: true });
   };
 
-  const unusual = anomalies.some((a) => a.day >= plan.from && a.day <= plan.to);
-  const weeks = plan.tiles.reduce((m, tile) => Math.max(m, tile.weeks), 1);
-  const hasUsage = agg.totals.gross > 0;
+  const unusual = anomalies.some((anomaly) => anomaly.day >= plan.from && anomaly.day <= plan.to);
+  const weeks = plan.tiles.reduce((maxWeeks, tile) => Math.max(maxWeeks, tile.weeks), 1);
+  const hasUsage = aggregates.totals.gross > 0;
 
   return (
     <Card
@@ -80,7 +80,7 @@ export default function CalendarCard() {
         </div>
       ) : (
         <div className="grid grid-cols-[repeat(auto-fit,minmax(15rem,1fr))] gap-x-4 gap-y-3">
-          {plan.tiles.map((tile, i) => (
+          {plan.tiles.map((tile, tileIndex) => (
             <div key={tile.key} className="max-w-md">
               <div className="mb-1 flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 px-1">
                 <div className="flex items-center gap-1.5 text-sm font-medium">
@@ -92,7 +92,7 @@ export default function CalendarCard() {
                 </div>
               </div>
               <EChart
-                option={options[i]}
+                option={options[tileIndex]}
                 height={tileHeight(weeks)}
                 onClick={onClick}
                 exportName={`github-copilot-usage-calendar-${tile.key}`}

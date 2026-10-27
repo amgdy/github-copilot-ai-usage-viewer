@@ -2,7 +2,7 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { viteSingleFile } from 'vite-plugin-singlefile';
-import { fileURLToPath, URL } from 'node:url';
+import { join } from 'node:path';
 
 // `vite build --mode single` emits one self-contained dist/index.html that works offline (file://).
 export default defineConfig(({ mode }) => ({
@@ -10,7 +10,7 @@ export default defineConfig(({ mode }) => ({
   base: './',
   plugins: [react(), tailwindcss(), ...(mode === 'single' ? [viteSingleFile()] : [])],
   resolve: {
-    alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
+    alias: { '@': join(import.meta.dirname, 'src') },
   },
   build: {
     target: 'es2022',
@@ -22,5 +22,8 @@ export default defineConfig(({ mode }) => ({
     include: ['tests/**/*.test.ts'],
     // Glob-based guards must see dictionaries added since the previous test run.
     fsModuleCache: false,
+    // Node 26 turns on Web Storage. Without a storage file, every test run prints a warning.
+    // Turning it off keeps localStorage undefined in tests, the same as in Node 24.
+    execArgv: ['--no-experimental-webstorage'],
   },
 }));

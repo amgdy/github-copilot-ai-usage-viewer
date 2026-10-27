@@ -23,20 +23,20 @@ export type WorkerResponse =
   | { type: 'done'; store: WireStore }
   | { type: 'error'; message: string };
 
-const ctx = self as unknown as DedicatedWorkerGlobalScope;
+const workerScope = self as unknown as DedicatedWorkerGlobalScope;
 
-ctx.onmessage = async (e: MessageEvent<WorkerRequest>) => {
+workerScope.onmessage = async (event: MessageEvent<WorkerRequest>) => {
   try {
-    const store = await buildStore(e.data.sources, { dedupe: e.data.dedupe }, (p) => ctx.postMessage({ type: 'progress', ...p } satisfies WorkerResponse));
+    const store = await buildStore(event.data.sources, { dedupe: event.data.dedupe }, (progress) => workerScope.postMessage({ type: 'progress', ...progress } satisfies WorkerResponse));
     const dicts = {} as WireStore['dicts'];
-    for (const k of DIM_KEYS) dicts[k] = { values: store.dicts[k].values };
+    for (const dimension of DIM_KEYS) dicts[dimension] = { values: store.dicts[dimension].values };
     const wire: WireStore = { ...store, dicts };
     const transfer: Transferable[] = [];
-    for (const v of Object.values(store)) {
-      if (ArrayBuffer.isView(v)) transfer.push(v.buffer as ArrayBuffer);
+    for (const value of Object.values(store)) {
+      if (ArrayBuffer.isView(value)) transfer.push(value.buffer as ArrayBuffer);
     }
-    ctx.postMessage({ type: 'done', store: wire } satisfies WorkerResponse, transfer);
-  } catch (err) {
-    ctx.postMessage({ type: 'error', message: err instanceof Error ? err.message : String(err) } satisfies WorkerResponse);
+    workerScope.postMessage({ type: 'done', store: wire } satisfies WorkerResponse, transfer);
+  } catch (error) {
+    workerScope.postMessage({ type: 'error', message: error instanceof Error ? error.message : String(error) } satisfies WorkerResponse);
   }
 };

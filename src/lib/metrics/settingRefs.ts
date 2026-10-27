@@ -4,77 +4,77 @@ import { fmtInt, fmtUSD } from '../utils/format';
 import type { SettingRef } from './types';
 
 /** A percent without trailing zeros: 0.5 gives "50%", 0.125 gives "12.5%". */
-const pct = (v: number): string => `${Math.round(v * 1000) / 10}%`;
-const days = (n: number): string => tp(n, '{n} day', '{n} days', { n: fmtInt(n) });
+const pct = (share: number): string => `${Math.round(share * 1000) / 10}%`;
+const days = (dayCount: number): string => tp(dayCount, '{n} day', '{n} days', { n: fmtInt(dayCount) });
 
 interface RefSpec {
   /** The label of the setting on the Settings page, in English. Callers translate it with t(). */
   label: string;
   /** The current value in words, from the live settings, in the current language. */
-  value: (s: Settings) => string;
+  value: (settings: Settings) => string;
 }
 
 /** Every setting, so a setting added later cannot go without a label. */
 export const SETTING_REFS: Record<SettingRef, RefSpec> = {
-  activeThreshold: { label: msg('Active-day threshold'), value: (s) => t('{amount} of usage in a day', { amount: fmtUSD(s.activeThreshold, 2) }) },
+  activeThreshold: { label: msg('Active-day threshold'), value: (settings) => t('{amount} of usage in a day', { amount: fmtUSD(settings.activeThreshold, 2) }) },
   tiers: {
     label: msg('Spend tiers'),
-    value: (s) =>
+    value: (settings) =>
       t('Minimal up to {minimal}, Light up to {light}, Core up to {core}, Power up to {power} of own included credits', {
-        minimal: pct(s.tiers.minimal),
-        light: pct(s.tiers.light),
-        core: pct(s.tiers.core),
-        power: pct(s.tiers.power),
+        minimal: pct(settings.tiers.minimal),
+        light: pct(settings.tiers.light),
+        core: pct(settings.tiers.core),
+        power: pct(settings.tiers.power),
       }),
   },
   engagement: {
     label: msg('Engagement'),
-    value: (s) =>
+    value: (settings) =>
       t('Daily from {daily}, Regular from {regular}, Occasional from {occasional} of workdays', {
-        daily: pct(s.engagement.daily),
-        regular: pct(s.engagement.regular),
-        occasional: pct(s.engagement.occasional),
+        daily: pct(settings.engagement.daily),
+        regular: pct(settings.engagement.regular),
+        occasional: pct(settings.engagement.occasional),
       }),
   },
-  pareto: { label: msg('Pareto classes'), value: (s) => t('Class A to {a}, Class B to {b} of usage', { a: pct(s.pareto.a), b: pct(s.pareto.b) }) },
-  frontierHeavy: { label: msg('Frontier-heavy from'), value: (s) => t('{share} of usage on Powerful models', { share: pct(s.frontierHeavy) }) },
-  efficientShare: { label: msg('Efficient from'), value: (s) => t('{share} of usage on Versatile and Lightweight models', { share: pct(s.efficientShare) }) },
-  lapsedDays: { label: msg('Lapsed after'), value: (s) => days(s.lapsedDays) },
-  newUserDays: { label: msg('New user window'), value: (s) => days(s.newUserDays) },
-  spikeShare: { label: msg('Spiky usage from'), value: (s) => t('{share} of usage on the biggest day', { share: pct(s.spikeShare) }) },
-  lowAuto: { label: msg('Rarely uses Auto below'), value: (s) => t('{share} of usage through Auto', { share: pct(s.lowAuto) }) },
-  autoFirst: { label: msg('Auto first from'), value: (s) => t('{share} of usage through Auto', { share: pct(s.autoFirst) }) },
-  lowCacheHit: { label: msg('Low cache reuse below'), value: (s) => t('{share} cache hit rate', { share: pct(s.lowCacheHit) }) },
-  longContextShare: { label: msg('Long-context surcharges from'), value: (s) => t('{share} of usage', { share: pct(s.longContextShare) }) },
-  minSpendForTraits: { label: msg('Minimum usage for traits'), value: (s) => fmtUSD(s.minSpendForTraits, 2) },
+  pareto: { label: msg('Pareto classes'), value: (settings) => t('Class A to {a}, Class B to {b} of usage', { a: pct(settings.pareto.a), b: pct(settings.pareto.b) }) },
+  frontierHeavy: { label: msg('Frontier-heavy from'), value: (settings) => t('{share} of usage on Powerful models', { share: pct(settings.frontierHeavy) }) },
+  efficientShare: { label: msg('Efficient from'), value: (settings) => t('{share} of usage on Versatile and Lightweight models', { share: pct(settings.efficientShare) }) },
+  lapsedDays: { label: msg('Lapsed after'), value: (settings) => days(settings.lapsedDays) },
+  newUserDays: { label: msg('New user window'), value: (settings) => days(settings.newUserDays) },
+  spikeShare: { label: msg('Spiky usage from'), value: (settings) => t('{share} of usage on the biggest day', { share: pct(settings.spikeShare) }) },
+  lowAuto: { label: msg('Rarely uses Auto below'), value: (settings) => t('{share} of usage through Auto', { share: pct(settings.lowAuto) }) },
+  autoFirst: { label: msg('Auto first from'), value: (settings) => t('{share} of usage through Auto', { share: pct(settings.autoFirst) }) },
+  lowCacheHit: { label: msg('Low cache reuse below'), value: (settings) => t('{share} cache hit rate', { share: pct(settings.lowCacheHit) }) },
+  longContextShare: { label: msg('Long-context surcharges from'), value: (settings) => t('{share} of usage', { share: pct(settings.longContextShare) }) },
+  minSpendForTraits: { label: msg('Minimum usage for traits'), value: (settings) => fmtUSD(settings.minSpendForTraits, 2) },
   autoDiscount: {
     label: msg('Auto model discount'),
-    value: (s) =>
+    value: (settings) =>
       t('{share}, used for plans with no Auto usage to measure from. Plans with enough Auto usage use their measured discount.', {
-        share: pct(s.autoDiscount),
+        share: pct(settings.autoDiscount),
       }),
   },
-  budgetMonthlyBilled: { label: msg('Monthly budget'), value: (s) => (s.budgetMonthlyBilled === null ? t('Not set') : fmtUSD(s.budgetMonthlyBilled, 2)) },
-  roster: { label: msg('License list'), value: (s) => tp(s.roster.length, '{n} seat', '{n} seats', { n: fmtInt(s.roster.length) }) },
+  budgetMonthlyBilled: { label: msg('Monthly budget'), value: (settings) => (settings.budgetMonthlyBilled === null ? t('Not set') : fmtUSD(settings.budgetMonthlyBilled, 2)) },
+  roster: { label: msg('License list'), value: (settings) => tp(settings.roster.length, '{n} seat', '{n} seats', { n: fmtInt(settings.roster.length) }) },
   rosterAsOf: {
     label: msg('License list date'),
-    value: (s) =>
-      s.rosterAsOf
-        ? t('{date}. Days since last activity are counted from this day.', { date: s.rosterAsOf })
+    value: (settings) =>
+      settings.rosterAsOf
+        ? t('{date}. Days since last activity are counted from this day.', { date: settings.rosterAsOf })
         : t('Not set. The latest date in the license list is used.'),
   },
   extraSeats: {
     label: msg('Extra seats'),
-    value: (s) => t('{business} Business, {enterprise} Enterprise', { business: fmtInt(s.extraSeats.business), enterprise: fmtInt(s.extraSeats.enterprise) }),
+    value: (settings) => t('{business} Business, {enterprise} Enterprise', { business: fmtInt(settings.extraSeats.business), enterprise: fmtInt(settings.extraSeats.enterprise) }),
   },
   modelOverrides: {
     label: msg('Model pricing and tiers'),
-    value: (s) => {
-      const n = Object.keys(s.modelOverrides).length;
-      return n === 0 ? t('Price card as shipped') : tp(n, '{n} model edited', '{n} models edited', { n: fmtInt(n) });
+    value: (settings) => {
+      const editedCount = Object.keys(settings.modelOverrides).length;
+      return editedCount === 0 ? t('Price card as shipped') : tp(editedCount, '{n} model edited', '{n} models edited', { n: fmtInt(editedCount) });
     },
   },
-  topN: { label: msg('Top N users'), value: (s) => fmtInt(s.topN) },
+  topN: { label: msg('Top N users'), value: (settings) => fmtInt(settings.topN) },
 };
 
 /** The English label and the current value of a setting, for the explanation of a number. Translate the label with t(). */

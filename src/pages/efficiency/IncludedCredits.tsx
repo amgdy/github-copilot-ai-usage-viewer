@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useChartColors, type EChartsOption } from '../../components/charts/EChart';
-import { esc } from '../../components/charts/helpers';
+import { escapeHtml } from '../../components/charts/helpers';
 import type { ChartColors } from '../../components/charts/theme';
 import { Card, ChartCard, DocLinks, EmptyState, Section } from '../../components/ui';
 import { T, t, tp } from '../../i18n';
@@ -11,36 +11,36 @@ import { useAnalysis } from '../../state/analysis';
 import { drill } from '../../state/router';
 import { assumedAllotmentUsers, money, tierBuckets, type TierBucket } from './metrics';
 
-const usersText = (n: number): string => tp(n, '{n} user', '{n} users', { n: fmtInt(n) });
+const usersText = (userCount: number): string => tp(userCount, '{n} user', '{n} users', { n: fmtInt(userCount) });
 
-function tierOption(c: ChartColors, items: TaxonomyItem<TierId>[], buckets: TierBucket[]): EChartsOption {
+function tierOption(colors: ChartColors, items: TaxonomyItem<TierId>[], buckets: TierBucket[]): EChartsOption {
   return {
     grid: { left: 8, right: 16, top: 24, bottom: 8, containLabel: true },
     tooltip: {
       trigger: 'item',
-      formatter: (p: unknown) => {
-        const i = (p as { dataIndex: number }).dataIndex;
-        const item = items[i];
-        const b = buckets[i];
-        if (!item || !b) return '';
-        const usage = esc(t('{usage} usage ({share} of the total)', { usage: money(b.gross), share: fmtPct(b.share, 0) }));
-        return `<b>${esc(item.label)}</b><br/>${esc(usersText(b.users))}<br/>${usage}<br/><span style="opacity:.75">${esc(item.description)}</span>`;
+      formatter: (params: unknown) => {
+        const index = (params as { dataIndex: number }).dataIndex;
+        const item = items[index];
+        const bucket = buckets[index];
+        if (!item || !bucket) return '';
+        const usage = escapeHtml(t('{usage} usage ({share} of the total)', { usage: money(bucket.gross), share: fmtPct(bucket.share, 0) }));
+        return `<b>${escapeHtml(item.label)}</b><br/>${escapeHtml(usersText(bucket.users))}<br/>${usage}<br/><span style="opacity:.75">${escapeHtml(item.description)}</span>`;
       },
     },
-    xAxis: { type: 'category', data: items.map((i) => i.label), axisLabel: { interval: 0, width: 84, overflow: 'break', fontSize: 12 } },
-    yAxis: { type: 'value', minInterval: 1, name: t('Users'), nameTextStyle: { color: c.textMuted, fontSize: 12, align: 'left' } },
+    xAxis: { type: 'category', data: items.map((item) => item.label), axisLabel: { interval: 0, width: 84, overflow: 'break', fontSize: 12 } },
+    yAxis: { type: 'value', minInterval: 1, name: t('Users'), nameTextStyle: { color: colors.textMuted, fontSize: 12, align: 'left' } },
     series: [
       {
         type: 'bar',
         barMaxWidth: 56,
-        data: buckets.map((b, i) => ({ value: b.users, itemStyle: { color: items[i]?.color ?? c.muted } })),
-        label: { show: true, position: 'top', color: c.textMuted, fontSize: 12 },
+        data: buckets.map((bucket, index) => ({ value: bucket.users, itemStyle: { color: items[index]?.color ?? colors.muted } })),
+        label: { show: true, position: 'top', color: colors.textMuted, fontSize: 12 },
       },
     ],
   };
 }
 
-const sum = (xs: TierBucket[], f: (b: TierBucket) => number): number => xs.reduce((a, b) => a + f(b), 0);
+const sum = (buckets: TierBucket[], pick: (bucket: TierBucket) => number): number => buckets.reduce((a, b) => a + pick(b), 0);
 
 export function IncludedCredits() {
   const { analysis, taxonomy, settings } = useAnalysis();
@@ -52,8 +52,8 @@ export function IncludedCredits() {
   const assumed = useMemo(() => assumedAllotmentUsers(users.profiles), [users]);
   const known = users.profiles.length - assumed;
 
-  const underUsers = sum(buckets.filter((b) => b.id === 'minimal' || b.id === 'light'), (b) => b.users);
-  const overUsers = sum(buckets.filter((b) => b.id === 'power' || b.id === 'runaway'), (b) => b.users);
+  const underUsers = sum(buckets.filter((bucket) => bucket.id === 'minimal' || bucket.id === 'light'), (bucket) => bucket.users);
+  const overUsers = sum(buckets.filter((bucket) => bucket.id === 'power' || bucket.id === 'runaway'), (bucket) => bucket.users);
   const flow = users.poolFlow;
   const fallbackUsd = users.fallbackQuotaCredits * CREDIT_USD;
   const fallback = { amount: fmtUSD(fallbackUsd, 0) };
@@ -81,15 +81,15 @@ export function IncludedCredits() {
             height={280}
             exportName="github-copilot-included-credits-by-tier"
             label={t('Number of users in each included credit usage tier')}
-            onClick={(p) => {
-              const item = items[p.dataIndex];
+            onClick={(event) => {
+              const item = items[event.dataIndex];
               if (item) drill({ tiers: [item.id] }, { page: 'users', merge: true });
             }}
             footer={
               <div className="space-y-2">
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-                  {items.map((item, i) => {
-                    const b = buckets[i];
+                  {items.map((item, index) => {
+                    const bucket = buckets[index];
                     return (
                       <button
                         key={item.id}
@@ -102,8 +102,8 @@ export function IncludedCredits() {
                           <span className="size-2 shrink-0 rounded-xs" style={{ background: item.color }} />
                           <span className="truncate font-medium">{item.label}</span>
                         </span>
-                        <span className="num block text-fg">{usersText(b.users)}</span>
-                        <span className="num block text-fg-muted">{t('{usage}, {share} of usage', { usage: money(b.gross), share: fmtPct(b.share, 0) })}</span>
+                        <span className="num block text-fg">{usersText(bucket.users)}</span>
+                        <span className="num block text-fg-muted">{t('{usage}, {share} of usage', { usage: money(bucket.gross), share: fmtPct(bucket.share, 0) })}</span>
                       </button>
                     );
                   })}

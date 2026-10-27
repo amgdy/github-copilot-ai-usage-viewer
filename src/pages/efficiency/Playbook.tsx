@@ -48,7 +48,7 @@ const topicOf = (item: PlaybookItem): LinkTopic => ITEM_TOPIC[item.id] ?? (item.
 
 /** Links from the habit's reading list that the habit does not already link to. */
 function extraLinks(item: PlaybookItem): LinkId[] {
-  const own = new Set(item.docs.map((d) => d.url));
+  const own = new Set(item.docs.map((link) => link.url));
   const ids: readonly LinkId[] = TOPIC_LINKS[topicOf(item)];
   return ids.filter((id) => !own.has(LINKS[id].url)).slice(0, 2);
 }
@@ -104,10 +104,10 @@ function PlaybookCard({ entry }: { entry: Entry }) {
       </details>
       {item.docs.length || extra.length ? (
         <div className="mt-auto flex flex-wrap gap-x-4 gap-y-1 pt-1 text-xs">
-          {item.docs.map((d) => (
-            <a key={d.url} href={d.url} target="_blank" rel="noreferrer noopener" className="inline-flex items-center gap-1 text-accent hover:underline">
+          {item.docs.map((link) => (
+            <a key={link.url} href={link.url} target="_blank" rel="noreferrer noopener" className="inline-flex items-center gap-1 text-accent hover:underline">
               <ExternalLink size={12} />
-              {t(d.label)}
+              {t(link.label)}
             </a>
           ))}
           <DocLinks ids={extra} compact />
@@ -123,17 +123,17 @@ export function Playbook() {
   const [audience, setAudience] = useState<Audience>('all');
 
   const entries = useMemo(() => {
-    const standalone = new Map<LeverStep['id'], number>(analysis.plan.levers.steps.map((s) => [s.id, s.standalone * perMonth]));
+    const standalone = new Map<LeverStep['id'], number>(analysis.plan.levers.steps.map((step) => [step.id, step.standalone * perMonth]));
     return PLAYBOOK.map((item, index): Entry & { index: number } => ({
       item,
       index,
       saving: item.lever ? (standalone.get(item.lever) ?? 0) : null,
-      shared: item.lever ? PLAYBOOK.filter((o) => o.lever === item.lever).length - 1 : 0,
+      shared: item.lever ? PLAYBOOK.filter((otherItem) => otherItem.lever === item.lever).length - 1 : 0,
     })).sort((a, b) => (b.saving ?? -1) - (a.saving ?? -1) || a.index - b.index);
   }, [analysis.plan, perMonth]);
 
-  const shown = entries.filter((e) => audience === 'all' || e.item.audience === audience);
-  const options = OPTIONS.map((o) => ({ value: o.value, label: t(o.label), title: t(o.title) }));
+  const shown = entries.filter((entry) => audience === 'all' || entry.item.audience === audience);
+  const options = OPTIONS.map((option) => ({ value: option.value, label: t(option.label), title: t(option.title) }));
 
   return (
     <Section
@@ -142,8 +142,8 @@ export function Playbook() {
       actions={<Segmented size="sm" label={t('Audience')} value={audience} onChange={setAudience} options={options} />}
     >
       <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {shown.map((e) => (
-          <PlaybookCard key={e.item.id} entry={e} />
+        {shown.map((entry) => (
+          <PlaybookCard key={entry.item.id} entry={entry} />
         ))}
       </ul>
     </Section>

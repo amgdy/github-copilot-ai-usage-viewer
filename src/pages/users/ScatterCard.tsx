@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { EChart, useChartColors, type EChartsOption } from '../../components/charts/EChart';
-import { esc, usdCompact } from '../../components/charts/helpers';
+import { escapeHtml, usdCompact } from '../../components/charts/helpers';
 import { Card, EmptyState, Segmented, taxLookup } from '../../components/ui';
 import { fmtCount, hasQuota, quotaKnown } from '../../components/user/shared';
 import type { UserProfile } from '../../lib/analytics/users';
@@ -30,44 +30,44 @@ interface Measure {
   calc: string;
   needs?: Needs;
   /** NaN when the user has no value. */
-  value: (p: UserProfile) => number;
-  format: (v: number) => string;
+  value: (user: UserProfile) => number;
+  format: (value: number) => string;
   /** The whole "N users without … are not shown." sentence, in the reader's language. */
-  hidden?: (n: number) => string;
+  hidden?: (hiddenCount: number) => string;
 }
 
 const X_MEASURES: Record<XMode, Measure> = {
   days: {
     label: msg('Active days'),
     calc: 'user-active-days',
-    value: (p) => p.activeDays,
-    format: (v) => fmtInt(v),
-    hidden: (n) => tp(n, '{n} user without active days is not shown.', '{n} users without active days are not shown.', { n: fmtInt(n) }),
+    value: (user) => user.activeDays,
+    format: (value) => fmtInt(value),
+    hidden: (hiddenCount) => tp(hiddenCount, '{n} user without active days is not shown.', '{n} users without active days are not shown.', { n: fmtInt(hiddenCount) }),
   },
   util: {
     label: msg('Included credits used'),
     calc: 'user-credits-used',
     needs: 'quota',
-    value: (p) => (hasQuota(p) ? p.utilization : Number.NaN),
-    format: (v) => fmtPctAuto(v),
-    hidden: (n) =>
-      tp(n, '{n} user without known included credits is not shown.', '{n} users without known included credits are not shown.', { n: fmtInt(n) }),
+    value: (user) => (hasQuota(user) ? user.utilization : Number.NaN),
+    format: (value) => fmtPctAuto(value),
+    hidden: (hiddenCount) =>
+      tp(hiddenCount, '{n} user without known included credits is not shown.', '{n} users without known included credits are not shown.', { n: fmtInt(hiddenCount) }),
   },
   cache: {
     label: msg('Cache hit rate'),
     calc: 'cache-hit',
     needs: 'tokens',
-    value: (p) => p.cacheHit,
-    format: (v) => fmtPct(v, 0),
-    hidden: (n) => tp(n, '{n} user without prompt tokens is not shown.', '{n} users without prompt tokens are not shown.', { n: fmtInt(n) }),
+    value: (user) => user.cacheHit,
+    format: (value) => fmtPct(value, 0),
+    hidden: (hiddenCount) => tp(hiddenCount, '{n} user without prompt tokens is not shown.', '{n} users without prompt tokens are not shown.', { n: fmtInt(hiddenCount) }),
   },
   auto: {
     label: msg('Auto share of usage'),
     calc: 'auto-share',
     needs: 'models',
-    value: (p) => (p.gross > 0 ? p.autoShare : Number.NaN),
-    format: (v) => fmtPct(v, 0),
-    hidden: (n) => tp(n, '{n} user without usage is not shown.', '{n} users without usage are not shown.', { n: fmtInt(n) }),
+    value: (user) => (user.gross > 0 ? user.autoShare : Number.NaN),
+    format: (value) => fmtPct(value, 0),
+    hidden: (hiddenCount) => tp(hiddenCount, '{n} user without usage is not shown.', '{n} users without usage are not shown.', { n: fmtInt(hiddenCount) }),
   },
 };
 
@@ -75,32 +75,32 @@ const Y_MEASURES: Record<YMode, Measure> = {
   usage: {
     label: msg('Usage'),
     calc: 'usage',
-    value: (p) => p.gross,
-    format: (v) => fmtUSD(v),
-    hidden: (n) =>
-      tp(n, '{n} user without usage is not shown on the log scale.', '{n} users without usage are not shown on the log scale.', { n: fmtInt(n) }),
+    value: (user) => user.gross,
+    format: (value) => fmtUSD(value),
+    hidden: (hiddenCount) =>
+      tp(hiddenCount, '{n} user without usage is not shown on the log scale.', '{n} users without usage are not shown on the log scale.', { n: fmtInt(hiddenCount) }),
   },
   tokens: {
     label: msg('Total tokens'),
     calc: 'tokens-total',
     needs: 'tokens',
-    value: (p) => p.tokens,
-    format: (v) => fmtCount(v),
-    hidden: (n) =>
-      tp(n, '{n} user without tokens is not shown on the log scale.', '{n} users without tokens are not shown on the log scale.', { n: fmtInt(n) }),
+    value: (user) => user.tokens,
+    format: (value) => fmtCount(value),
+    hidden: (hiddenCount) =>
+      tp(hiddenCount, '{n} user without tokens is not shown on the log scale.', '{n} users without tokens are not shown on the log scale.', { n: fmtInt(hiddenCount) }),
   },
 };
 
 const SIZE_MEASURES: Record<SizeMode, Measure> = {
-  potential: { label: msg('Potential savings'), calc: 'user-potential', value: (p) => p.potential, format: (v) => fmtUSD(v) },
+  potential: { label: msg('Potential savings'), calc: 'user-potential', value: (user) => user.potential, format: (value) => fmtUSD(value) },
   missed: {
     label: msg('Discount missed on hand-picked usage'),
     calc: 'auto-missed',
     needs: 'models',
-    value: (p) => p.autoMissed,
-    format: (v) => fmtUSD(v),
+    value: (user) => user.autoMissed,
+    format: (value) => fmtUSD(value),
   },
-  tokens: { label: msg('Total tokens'), calc: 'tokens-total', needs: 'tokens', value: (p) => p.tokens, format: (v) => fmtCount(v) },
+  tokens: { label: msg('Total tokens'), calc: 'tokens-total', needs: 'tokens', value: (user) => user.tokens, format: (value) => fmtCount(value) },
 };
 
 /** Why a measure cannot be chosen, shown on the disabled option. */
@@ -117,39 +117,39 @@ const UNAVAILABLE: Record<Needs, string> = {
   models: msg('Auto share of usage and the discount missed on hand-picked usage cannot be chosen, because this file has no model names.'),
 };
 
-const usable = (m: Measure, have: Have): boolean => !m.needs || have[m.needs];
+const usable = (measure: Measure, have: Have): boolean => !measure.needs || have[measure.needs];
 
 function choices<T extends string>(measures: Record<T, Measure>, have: Have): SelectGroup<T>[] {
   return [
     {
       options: (Object.keys(measures) as T[]).map((value) => {
-        const m = measures[value];
-        const ok = usable(m, have);
-        return { value, label: t(m.label), disabled: !ok, title: !ok && m.needs ? t(REASONS[m.needs]) : undefined };
+        const measure = measures[value];
+        const ok = usable(measure, have);
+        return { value, label: t(measure.label), disabled: !ok, title: !ok && measure.needs ? t(REASONS[measure.needs]) : undefined };
       }),
     },
   ];
 }
 
-function preparePoints(profiles: readonly UserProfile[], x: Measure, y: Measure, yScale: YScale) {
+function preparePoints(profiles: readonly UserProfile[], xMeasure: Measure, yMeasure: Measure, yScale: YScale) {
   const ranked = [...profiles].sort((a, b) => b.gross - a.gross);
   const capped = ranked.length > MAX_POINTS;
   const plotted: UserProfile[] = [];
-  let noX = 0;
-  let noY = 0;
-  for (const p of capped ? ranked.slice(0, MAX_POINTS) : ranked) {
-    if (!Number.isFinite(x.value(p))) {
-      noX++;
+  let missingXCount = 0;
+  let missingYCount = 0;
+  for (const user of capped ? ranked.slice(0, MAX_POINTS) : ranked) {
+    if (!Number.isFinite(xMeasure.value(user))) {
+      missingXCount++;
       continue;
     }
-    const yv = y.value(p);
-    if (!Number.isFinite(yv) || (yScale === 'log' && yv <= 0)) {
-      noY++;
+    const yValue = yMeasure.value(user);
+    if (!Number.isFinite(yValue) || (yScale === 'log' && yValue <= 0)) {
+      missingYCount++;
       continue;
     }
-    plotted.push(p);
+    plotted.push(user);
   }
-  return { plotted, capped, total: ranked.length, noX, noY };
+  return { plotted, capped, total: ranked.length, noX: missingXCount, noY: missingYCount };
 }
 
 export function ScatterCard() {
@@ -168,11 +168,11 @@ export function ScatterCard() {
   const xMode: XMode = usable(X_MEASURES[xPick], have) ? xPick : 'days';
   const yMode: YMode = usable(Y_MEASURES[yPick], have) ? yPick : 'usage';
   const sizeMode: SizeMode = usable(SIZE_MEASURES[sizePick], have) ? sizePick : 'potential';
-  const x = X_MEASURES[xMode];
-  const y = Y_MEASURES[yMode];
+  const xMeasure = X_MEASURES[xMode];
+  const yMeasure = Y_MEASURES[yMode];
   const size = SIZE_MEASURES[sizeMode];
 
-  const prepared = useMemo(() => preparePoints(profiles, x, y, yScale), [profiles, x, y, yScale]);
+  const prepared = useMemo(() => preparePoints(profiles, xMeasure, yMeasure, yScale), [profiles, xMeasure, yMeasure, yScale]);
   const personas = useMemo(() => taxLookup(taxonomy.personas), [taxonomy]);
 
   const option = useMemo<EChartsOption | null>(() => {
@@ -180,32 +180,32 @@ export function ScatterCard() {
     if (plotted.length === 0) return null;
     let maxSize = 0;
     let minY = Infinity;
-    for (const p of plotted) {
-      const s = size.value(p);
-      if (s > maxSize) maxSize = s;
-      const v = y.value(p);
-      if (v > 0 && v < minY) minY = v;
+    for (const user of plotted) {
+      const sizeValue = size.value(user);
+      if (sizeValue > maxSize) maxSize = sizeValue;
+      const yValue = yMeasure.value(user);
+      if (yValue > 0 && yValue < minY) minY = yValue;
     }
-    const sizeOf = (p: UserProfile) => {
-      const s = size.value(p);
-      return maxSize > 0 && Number.isFinite(s) ? MIN_SIZE + SIZE_RANGE * Math.sqrt(Math.max(0, s) / maxSize) : MIN_SIZE + 2;
+    const sizeOf = (user: UserProfile) => {
+      const sizeValue = size.value(user);
+      return maxSize > 0 && Number.isFinite(sizeValue) ? MIN_SIZE + SIZE_RANGE * Math.sqrt(Math.max(0, sizeValue) / maxSize) : MIN_SIZE + 2;
     };
-    const yAxisLabel = (v: number) => (yMode === 'usage' ? usdCompact(v) : fmtCompact(v));
-    const byId = new Map(plotted.map((p) => [p.id, p]));
+    const yAxisLabel = (value: number) => (yMode === 'usage' ? usdCompact(value) : fmtCompact(value));
+    const byId = new Map(plotted.map((user) => [user.id, user]));
 
     const groups = taxonomy.personas
-      .map((item) => ({ item, users: plotted.filter((p) => p.persona === item.id) }))
-      .filter((g) => g.users.length > 0);
+      .map((item) => ({ item, users: plotted.filter((user) => user.persona === item.id) }))
+      .filter((group) => group.users.length > 0);
 
-    const series = groups.map(({ item, users }, i) => ({
+    const series = groups.map(({ item, users }, index) => ({
       name: item.label,
       type: 'scatter' as const,
-      data: users.map((p) => [x.value(p), y.value(p), p.id, sizeOf(p)]),
-      symbolSize: (v: number[]) => v[3],
+      data: users.map((user) => [xMeasure.value(user), yMeasure.value(user), user.id, sizeOf(user)]),
+      symbolSize: (point: number[]) => point[3],
       itemStyle: { color: item.color, opacity: 0.78, borderColor: colors.surface, borderWidth: 1 },
       emphasis: { focus: 'series' as const, itemStyle: { opacity: 1, borderColor: colors.text, borderWidth: 1.5 } },
       markLine:
-        xMode === 'util' && i === 0
+        xMode === 'util' && index === 0
           ? {
               symbol: 'none',
               silent: true,
@@ -219,35 +219,35 @@ export function ScatterCard() {
 
     return {
       grid: { left: 8, right: 24, top: 40, bottom: 36, containLabel: true },
-      legend: { top: 0, type: 'scroll', data: groups.map((g) => g.item.label) },
+      legend: { top: 0, type: 'scroll', data: groups.map((group) => group.item.label) },
       tooltip: {
         trigger: 'item',
         confine: true,
         formatter: (raw: unknown) => {
-          const d = (raw as { data?: number[] }).data;
-          const p = d ? byId.get(d[2]) : undefined;
-          if (!p) return '';
-          const line = (m: Measure) => esc(t('{label}: {value}', { label: t(m.label), value: m.format(m.value(p)) }));
+          const pointData = (raw as { data?: number[] }).data;
+          const user = pointData ? byId.get(pointData[2]) : undefined;
+          if (!user) return '';
+          const line = (measure: Measure) => escapeHtml(t('{label}: {value}', { label: t(measure.label), value: measure.format(measure.value(user)) }));
           const lines = [
-            `<b>${esc(p.name)}</b>`,
-            `<span style="opacity:.75">${esc(personas[p.persona]?.label ?? '')}</span>`,
-            line(y),
-            line(x),
-            size.label === y.label ? '' : line(size),
+            `<b>${escapeHtml(user.name)}</b>`,
+            `<span style="opacity:.75">${escapeHtml(personas[user.persona]?.label ?? '')}</span>`,
+            line(yMeasure),
+            line(xMeasure),
+            size.label === yMeasure.label ? '' : line(size),
           ];
           return lines.filter(Boolean).join('<br/>');
         },
       },
       xAxis: {
         type: 'value',
-        name: t(x.label),
+        name: t(xMeasure.label),
         nameLocation: 'middle',
         nameGap: 26,
         nameTextStyle: { color: colors.textMuted, fontSize: 12 },
         min: 0,
         max: xMode === 'cache' || xMode === 'auto' ? 1 : undefined,
         minInterval: xMode === 'days' ? 1 : undefined,
-        axisLabel: { formatter: (v: number) => (xMode === 'days' ? String(v) : x.format(v)) },
+        axisLabel: { formatter: (value: number) => (xMode === 'days' ? String(value) : xMeasure.format(value)) },
       },
       yAxis:
         yScale === 'log'
@@ -260,9 +260,9 @@ export function ScatterCard() {
           : { type: 'value', min: 0, axisLabel: { formatter: yAxisLabel } },
       series,
     };
-  }, [prepared, taxonomy, personas, colors, x, y, size, xMode, yMode, yScale]);
+  }, [prepared, taxonomy, personas, colors, xMeasure, yMeasure, size, xMode, yMode, yScale]);
 
-  const extraCalc = useMemo(() => Array.from(new Set([x.calc, y.calc, size.calc])), [x, y, size]);
+  const extraCalc = useMemo(() => Array.from(new Set([xMeasure.calc, yMeasure.calc, size.calc])), [xMeasure, yMeasure, size]);
   const xChoices = useMemo(() => choices(X_MEASURES, have), [have]);
   const yChoices = useMemo(() => choices(Y_MEASURES, have), [have]);
   const sizeChoices = useMemo(() => choices(SIZE_MEASURES, have), [have]);
@@ -271,8 +271,8 @@ export function ScatterCard() {
 
   const notes = [
     prepared.capped ? t('Showing the {n} users with the most usage of {total}.', { n: fmtInt(MAX_POINTS), total: fmtInt(prepared.total) }) : '',
-    prepared.noX > 0 && x.hidden ? x.hidden(prepared.noX) : '',
-    prepared.noY > 0 && y.hidden ? y.hidden(prepared.noY) : '',
+    prepared.noX > 0 && xMeasure.hidden ? xMeasure.hidden(prepared.noX) : '',
+    prepared.noY > 0 && yMeasure.hidden ? yMeasure.hidden(prepared.noY) : '',
     ...unavailable,
   ].filter(Boolean);
 
@@ -311,10 +311,10 @@ export function ScatterCard() {
             option={option}
             height={320}
             exportName="github-copilot-user-scatter"
-            label={t('Scatter chart of {y} against {x}, one dot per user', { y: t(y.label), x: t(x.label) })}
-            onClick={(p) => {
-              if (p.componentType !== 'series') return;
-              const id = Array.isArray(p.data) ? Number(p.data[2]) : Number.NaN;
+            label={t('Scatter chart of {y} against {x}, one dot per user', { y: t(yMeasure.label), x: t(xMeasure.label) })}
+            onClick={(event) => {
+              if (event.componentType !== 'series') return;
+              const id = Array.isArray(event.data) ? Number(event.data[2]) : Number.NaN;
               if (Number.isFinite(id)) useApp.getState().selectUser(id);
             }}
           />

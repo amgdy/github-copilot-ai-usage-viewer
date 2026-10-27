@@ -23,10 +23,10 @@ export const RULE_SUMMARY: Record<LensId, string> = {
   autoUse: msg('The share of the user’s usage that goes through Auto model selection.'),
 };
 
-const pct = (v: number): string => `${Number((v * 100).toFixed(1))}%`;
-const dollars = (v: number): string => `$${v.toLocaleString('en-US', { minimumFractionDigits: Number.isInteger(v) ? 0 : 2, maximumFractionDigits: 4 })}`;
-const int = (v: number): string => v.toLocaleString('en-US');
-const byId = (items: TaxonomyItem[]): Map<string, TaxonomyItem> => new Map(items.map((i) => [i.id, i]));
+const pct = (share: number): string => `${Number((share * 100).toFixed(1))}%`;
+const dollars = (amount: number): string => `$${amount.toLocaleString('en-US', { minimumFractionDigits: Number.isInteger(amount) ? 0 : 2, maximumFractionDigits: 4 })}`;
+const formatInteger = (count: number): string => count.toLocaleString('en-US');
+const byId = (items: TaxonomyItem[]): Map<string, TaxonomyItem> => new Map(items.map((item) => [item.id, item]));
 
 interface RuleItem {
   item?: TaxonomyItem;
@@ -38,15 +38,15 @@ function RuleList({ rules, ordered = false }: { rules: RuleItem[]; ordered?: boo
   const Tag = ordered ? 'ol' : 'ul';
   return (
     <Tag className="divide-y divide-border-muted">
-      {rules.map((r, i) => (
-        <li key={r.item?.id ?? i} className="flex flex-col gap-1.5 py-2.5 first:pt-0 last:pb-0 sm:flex-row sm:gap-3">
+      {rules.map((rule, index) => (
+        <li key={rule.item?.id ?? index} className="flex flex-col gap-1.5 py-2.5 first:pt-0 last:pb-0 sm:flex-row sm:gap-3">
           <div className="flex shrink-0 items-start gap-2 sm:w-56">
-            {ordered ? <span className="num grid size-5 shrink-0 place-items-center rounded-xs bg-surface-3 font-mono text-[11px] text-fg-muted">{i + 1}</span> : null}
-            <TaxBadge item={r.item} />
+            {ordered ? <span className="num grid size-5 shrink-0 place-items-center rounded-xs bg-surface-3 font-mono text-[11px] text-fg-muted">{index + 1}</span> : null}
+            <TaxBadge item={rule.item} />
           </div>
           <div className="num min-w-0 flex-1 text-sm text-fg-muted">
-            {r.text}
-            {r.warn ? <p className="mt-1 text-xs text-warn">{r.warn}</p> : null}
+            {rule.text}
+            {rule.warn ? <p className="mt-1 text-xs text-warn">{rule.warn}</p> : null}
           </div>
         </li>
       ))}
@@ -63,41 +63,41 @@ function Note({ children }: { children: ReactNode }) {
 }
 
 /** Why this lens has no real groups in the data in view. Renders nothing when the lens works. */
-function Unsupported({ lens, c }: { lens: LensId; c: RuleContext }) {
-  const reason = lensUnavailableReason(lens, c.availability);
+function Unsupported({ lens, c: context }: { lens: LensId; c: RuleContext }) {
+  const reason = lensUnavailableReason(lens, context.availability);
   return reason ? <p className="num mb-3 rounded-md border border-warn/30 bg-warn-soft p-2.5 text-xs text-fg">{reason}</p> : null;
 }
 
-function newRule(s: Settings): string {
+function newRule(settings: Settings): string {
   return t(
     'The user’s first use in the whole report is within the last {days} days of the period. Users already active in the first {days} days of the report are never new, because they cannot be told apart from long-time users.',
-    { days: int(s.newUserDays) },
+    { days: formatInteger(settings.newUserDays) },
   );
 }
 
-function lapsedRule(s: Settings): string {
-  return t('Not new, and the last usage was {days} days or more before the end of the period.', { days: int(s.lapsedDays) });
+function lapsedRule(settings: Settings): string {
+  return t('Not new, and the last usage was {days} days or more before the end of the period.', { days: formatInteger(settings.lapsedDays) });
 }
 
-function PersonaRules({ c }: { c: RuleContext }) {
-  const { settings: s, taxonomy } = c;
-  const p = byId(taxonomy.personas);
-  const name = (id: string): string => p.get(id)?.label ?? id;
-  const heavy = pct(s.tiers.light);
-  const often = pct(s.engagement.regular);
+function PersonaRules({ c: context }: { c: RuleContext }) {
+  const { settings: settings, taxonomy } = context;
+  const personas = byId(taxonomy.personas);
+  const name = (id: string): string => personas.get(id)?.label ?? id;
+  const heavy = pct(settings.tiers.light);
+  const often = pct(settings.engagement.regular);
   return (
     <>
       <Intro>{t('Each user gets exactly one persona. Go down this list: the first rule that fits decides.')}</Intro>
       <RuleList
         ordered
         rules={[
-          { item: p.get('runaway'), text: t('Usage is {share} or more of the user’s own included credits.', { share: pct(s.tiers.power) }) },
-          { item: p.get('new'), text: newRule(s) },
-          { item: p.get('lapsed'), text: lapsedRule(s) },
-          { item: p.get('champion'), text: t('Active on {often} or more of workdays, and usage is {heavy} or more of own included credits.', { often, heavy }) },
-          { item: p.get('burst'), text: t('Usage is {heavy} or more of own included credits, but active on fewer than {often} of workdays.', { often, heavy }) },
-          { item: p.get('steady'), text: t('Active on {often} or more of workdays, but usage is below {heavy} of own included credits.', { often, heavy }) },
-          { item: p.get('dormant'), text: t('Everything else: active on fewer than {often} of workdays and usage below {heavy} of own included credits.', { often, heavy }) },
+          { item: personas.get('runaway'), text: t('Usage is {share} or more of the user’s own included credits.', { share: pct(settings.tiers.power) }) },
+          { item: personas.get('new'), text: newRule(settings) },
+          { item: personas.get('lapsed'), text: lapsedRule(settings) },
+          { item: personas.get('champion'), text: t('Active on {often} or more of workdays, and usage is {heavy} or more of own included credits.', { often, heavy }) },
+          { item: personas.get('burst'), text: t('Usage is {heavy} or more of own included credits, but active on fewer than {often} of workdays.', { often, heavy }) },
+          { item: personas.get('steady'), text: t('Active on {often} or more of workdays, but usage is below {heavy} of own included credits.', { often, heavy }) },
+          { item: personas.get('dormant'), text: t('Everything else: active on fewer than {often} of workdays and usage below {heavy} of own included credits.', { often, heavy }) },
         ]}
       />
       <Note>
@@ -110,9 +110,9 @@ function PersonaRules({ c }: { c: RuleContext }) {
   );
 }
 
-function TierRules({ c }: { c: RuleContext }) {
-  const { settings: s, taxonomy } = c;
-  const tiers = s.tiers;
+function TierRules({ c: context }: { c: RuleContext }) {
+  const { settings: settings, taxonomy } = context;
+  const tiers = settings.tiers;
   const bounds: [number, number][] = [
     [0, tiers.minimal],
     [tiers.minimal, tiers.light],
@@ -120,8 +120,8 @@ function TierRules({ c }: { c: RuleContext }) {
     [tiers.core, tiers.power],
     [tiers.power, Number.POSITIVE_INFINITY],
   ];
-  const span = (lo: number, hi: number, fmt: (v: number) => string): string =>
-    lo <= 0 ? t('below {value}', { value: fmt(hi) }) : Number.isFinite(hi) ? t('{low} to below {high}', { low: fmt(lo), high: fmt(hi) }) : t('{value} or more', { value: fmt(lo) });
+  const span = (low: number, high: number, format: (value: number) => string): string =>
+    low <= 0 ? t('below {value}', { value: format(high) }) : Number.isFinite(high) ? t('{low} to below {high}', { low: format(low), high: format(high) }) : t('{value} or more', { value: format(low) });
   const seats = [
     { id: 'Business', name: t('Business'), price: PLAN_PRICE.Business },
     { id: 'Enterprise', name: t('Enterprise'), price: PLAN_PRICE.Enterprise },
@@ -132,11 +132,11 @@ function TierRules({ c }: { c: RuleContext }) {
         {t(
           'The tier compares a user’s usage with their own included credits in the period. Included credits are the monthly credits of the user’s seat, added up over the months in which the user’s rows show a seat size. A Business seat has {business} credits ({businessPrice}) a month and an Enterprise seat {enterprise} ({enterprisePrice}). When a user’s seat is unknown, {fallback} credits a month are assumed.',
           {
-            business: int(PLAN_CREDITS.Business),
+            business: formatInteger(PLAN_CREDITS.Business),
             businessPrice: dollars(PLAN_PRICE.Business),
-            enterprise: int(PLAN_CREDITS.Enterprise),
+            enterprise: formatInteger(PLAN_CREDITS.Enterprise),
             enterprisePrice: dollars(PLAN_PRICE.Enterprise),
-            fallback: int(c.fallbackQuotaCredits),
+            fallback: formatInteger(context.fallbackQuotaCredits),
           },
         )}
       </Intro>
@@ -150,25 +150,25 @@ function TierRules({ c }: { c: RuleContext }) {
               <th scope="col" className="py-1.5 pe-4 font-medium">
                 {t('Usage as a share of own included credits')}
               </th>
-              {seats.map((x) => (
-                <th key={x.id} scope="col" className="py-1.5 pe-4 font-medium">
-                  {t('{seat} seat, per month', { seat: x.name })}
+              {seats.map((seat) => (
+                <th key={seat.id} scope="col" className="py-1.5 pe-4 font-medium">
+                  {t('{seat} seat, per month', { seat: seat.name })}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {taxonomy.tiers.map((item, i) => {
-              const [lo, hi] = bounds[i] ?? [0, 0];
+            {taxonomy.tiers.map((item, index) => {
+              const [low, high] = bounds[index] ?? [0, 0];
               return (
                 <tr key={item.id}>
                   <td className="border-t border-border-muted py-2 pe-4">
                     <TaxBadge item={item} />
                   </td>
-                  <td className="border-t border-border-muted py-2 pe-4 text-fg-muted">{span(lo, hi, pct)}</td>
-                  {seats.map((x) => (
-                    <td key={x.id} className="border-t border-border-muted py-2 pe-4 text-fg-muted">
-                      {span(lo, hi, (v) => dollars(v * x.price))}
+                  <td className="border-t border-border-muted py-2 pe-4 text-fg-muted">{span(low, high, pct)}</td>
+                  {seats.map((seat) => (
+                    <td key={seat.id} className="border-t border-border-muted py-2 pe-4 text-fg-muted">
+                      {span(low, high, (share) => dollars(share * seat.price))}
                     </td>
                   ))}
                 </tr>
@@ -182,27 +182,27 @@ function TierRules({ c }: { c: RuleContext }) {
   );
 }
 
-function EngagementRules({ c }: { c: RuleContext }) {
-  const { settings: s, taxonomy } = c;
-  const e = s.engagement;
-  const l = byId(taxonomy.engagement);
-  const name = (id: string): string => l.get(id)?.label ?? id;
+function EngagementRules({ c: context }: { c: RuleContext }) {
+  const { settings: settings, taxonomy } = context;
+  const engagement = settings.engagement;
+  const levels = byId(taxonomy.engagement);
+  const name = (id: string): string => levels.get(id)?.label ?? id;
   return (
     <>
       <Intro>
         {t(
           'A day counts as active when the user’s usage that day is at least {amount}. The active rate is the number of active days divided by the workdays (Monday to Friday) from the user’s first day in the report, or the start of the period if that is later, to the end of the period. At least 5 workdays are used, so a new user is not rated on one or two days.',
-          { amount: dollars(s.activeThreshold) },
+          { amount: dollars(settings.activeThreshold) },
         )}
       </Intro>
       <RuleList
         rules={[
-          { item: l.get('daily'), text: t('Active rate of {share} or more.', { share: pct(e.daily) }) },
-          { item: l.get('regular'), text: t('Active rate of {low} to below {high}.', { low: pct(e.regular), high: pct(e.daily) }) },
-          { item: l.get('occasional'), text: t('Active rate of {low} to below {high}.', { low: pct(e.occasional), high: pct(e.regular) }) },
-          { item: l.get('rare'), text: t('Active rate below {share}.', { share: pct(e.occasional) }) },
-          { item: l.get('new'), text: t('A flag, not a level. {rule}', { rule: newRule(s) }) },
-          { item: l.get('lapsed'), text: t('A flag, not a level. {rule}', { rule: lapsedRule(s) }) },
+          { item: levels.get('daily'), text: t('Active rate of {share} or more.', { share: pct(engagement.daily) }) },
+          { item: levels.get('regular'), text: t('Active rate of {low} to below {high}.', { low: pct(engagement.regular), high: pct(engagement.daily) }) },
+          { item: levels.get('occasional'), text: t('Active rate of {low} to below {high}.', { low: pct(engagement.occasional), high: pct(engagement.regular) }) },
+          { item: levels.get('rare'), text: t('Active rate below {share}.', { share: pct(engagement.occasional) }) },
+          { item: levels.get('new'), text: t('A flag, not a level. {rule}', { rule: newRule(settings) }) },
+          { item: levels.get('lapsed'), text: t('A flag, not a level. {rule}', { rule: lapsedRule(settings) }) },
         ]}
       />
       <Note>
@@ -215,48 +215,48 @@ function EngagementRules({ c }: { c: RuleContext }) {
   );
 }
 
-function ProfileRules({ c }: { c: RuleContext }) {
-  const { settings: s, taxonomy } = c;
-  const p = byId(taxonomy.profiles);
+function ProfileRules({ c: context }: { c: RuleContext }) {
+  const { settings: settings, taxonomy } = context;
+  const profiles = byId(taxonomy.profiles);
   return (
     <>
-      <Unsupported lens="profile" c={c} />
+      <Unsupported lens="profile" c={context} />
       <Intro>{t('Usage is split by model tier: Powerful (frontier models), Versatile and Lightweight. Models without a known tier count toward none of the three shares.')}</Intro>
       <RuleList
         ordered
         rules={[
-          { item: p.get('frontier'), text: t('Powerful models make up {share} or more of the user’s usage.', { share: pct(s.frontierHeavy) }) },
-          { item: p.get('efficient'), text: t('Not {frontier}, and Versatile and Lightweight models together make up {share} or more.', { frontier: p.get('frontier')?.label ?? 'frontier', share: pct(s.efficientShare) }) },
-          { item: p.get('balanced'), text: t('Everything else: a mix with no clear lean.') },
+          { item: profiles.get('frontier'), text: t('Powerful models make up {share} or more of the user’s usage.', { share: pct(settings.frontierHeavy) }) },
+          { item: profiles.get('efficient'), text: t('Not {frontier}, and Versatile and Lightweight models together make up {share} or more.', { frontier: profiles.get('frontier')?.label ?? 'frontier', share: pct(settings.efficientShare) }) },
+          { item: profiles.get('balanced'), text: t('Everything else: a mix with no clear lean.') },
         ]}
       />
     </>
   );
 }
 
-function ParetoRules({ c }: { c: RuleContext }) {
-  const { a, b } = c.settings.pareto;
-  const p = byId(c.taxonomy.pareto);
+function ParetoRules({ c: context }: { c: RuleContext }) {
+  const { a: cutoffA, b: cutoffB } = context.settings.pareto;
+  const paretoClasses = byId(context.taxonomy.pareto);
   return (
     <>
       <Intro>{t('Users are ranked by usage, largest first. The class depends on the share of all usage held by the users ranked above.')}</Intro>
       <RuleList
         rules={[
-          { item: p.get('A'), text: t('The users above hold less than {share} of all usage. The user who takes the total past {share} is still in A.', { share: pct(a) }) },
-          { item: p.get('B'), text: t('The users above hold {low} to below {high} of all usage.', { low: pct(a), high: pct(b) }) },
-          { item: p.get('C'), text: t('The users above already hold {share} or more of all usage. This is the long tail.', { share: pct(b) }) },
+          { item: paretoClasses.get('A'), text: t('The users above hold less than {share} of all usage. The user who takes the total past {share} is still in A.', { share: pct(cutoffA) }) },
+          { item: paretoClasses.get('B'), text: t('The users above hold {low} to below {high} of all usage.', { low: pct(cutoffA), high: pct(cutoffB) }) },
+          { item: paretoClasses.get('C'), text: t('The users above already hold {share} or more of all usage. This is the long tail.', { share: pct(cutoffB) }) },
         ]}
       />
     </>
   );
 }
 
-function TraitRules({ c }: { c: RuleContext }) {
-  const { settings: s, taxonomy, availability: a } = c;
+function TraitRules({ c: context }: { c: RuleContext }) {
+  const { settings: settings, taxonomy, availability: availability } = context;
   const traits = byId(taxonomy.traits);
   const label = (id: string): string => traits.get(id)?.label ?? id;
-  const min = dollars(s.minSpendForTraits);
-  const warn = (id: string) => unavailableReason('trait', id, a);
+  const min = dollars(settings.minSpendForTraits);
+  const warn = (id: string) => unavailableReason('trait', id, availability);
   return (
     <>
       <Intro>
@@ -278,17 +278,17 @@ function TraitRules({ c }: { c: RuleContext }) {
           {
             item: traits.get('lowCache'),
             text: t('Cache reads are under {share} of prompt tokens (input, cache reads and cache writes), and at least half of the user’s usage has token counts and a known model price.', {
-              share: pct(s.lowCacheHit),
+              share: pct(settings.lowCacheHit),
             }),
             warn: warn('lowCache'),
           },
           {
             item: traits.get('longContext'),
-            text: t('Long-context surcharges, estimated from token counts, are {share} or more of the user’s usage.', { share: pct(s.longContextShare) }),
+            text: t('Long-context surcharges, estimated from token counts, are {share} or more of the user’s usage.', { share: pct(settings.longContextShare) }),
             warn: warn('longContext'),
           },
-          { item: traits.get('spiky'), text: t('At least 3 active days, and the busiest day is {share} or more of the user’s usage.', { share: pct(s.spikeShare) }) },
-          { item: traits.get('lowAuto'), text: t('Auto model selection is under {share} of the user’s usage.', { share: pct(s.lowAuto) }), warn: warn('lowAuto') },
+          { item: traits.get('spiky'), text: t('At least 3 active days, and the busiest day is {share} or more of the user’s usage.', { share: pct(settings.spikeShare) }) },
+          { item: traits.get('lowAuto'), text: t('Auto model selection is under {share} of the user’s usage.', { share: pct(settings.lowAuto) }), warn: warn('lowAuto') },
           { item: traits.get('multiModel'), text: t('The user used 4 or more different models. No minimum usage applies.'), warn: warn('multiModel') },
           {
             item: traits.get('accelerating'),
@@ -310,14 +310,14 @@ function TraitRules({ c }: { c: RuleContext }) {
   );
 }
 
-function AutoUseRules({ c }: { c: RuleContext }) {
-  const { settings: s, taxonomy } = c;
-  const p = byId(taxonomy.autoUse);
-  const lowAutoLabel = taxonomy.traits.find((x) => x.id === 'lowAuto')?.label ?? 'lowAuto';
-  const directLabel = p.get('direct')?.label ?? 'direct';
+function AutoUseRules({ c: context }: { c: RuleContext }) {
+  const { settings: settings, taxonomy } = context;
+  const groups = byId(taxonomy.autoUse);
+  const lowAutoLabel = taxonomy.traits.find((trait) => trait.id === 'lowAuto')?.label ?? 'lowAuto';
+  const directLabel = groups.get('direct')?.label ?? 'direct';
   return (
     <>
-      <Unsupported lens="autoUse" c={c} />
+      <Unsupported lens="autoUse" c={context} />
       <Intro>
         {t(
           'Each user gets exactly one group. The Auto share is the usage that went through Auto model selection divided by all of the user’s usage in the period. Go down this list: the first rule that fits decides.',
@@ -326,37 +326,37 @@ function AutoUseRules({ c }: { c: RuleContext }) {
       <RuleList
         ordered
         rules={[
-          { item: p.get('unknown'), text: t('The user has no usage, or the report has no model names and usage that went through Auto cannot be told apart.') },
-          { item: p.get('autoFirst'), text: t('The Auto share is {share} or more.', { share: pct(s.autoFirst) }) },
-          { item: p.get('direct'), text: t('The Auto share is under {share}.', { share: pct(s.lowAuto) }) },
-          { item: p.get('mixed'), text: t('The Auto share is {low} to under {high}.', { low: pct(s.lowAuto), high: pct(s.autoFirst) }) },
+          { item: groups.get('unknown'), text: t('The user has no usage, or the report has no model names and usage that went through Auto cannot be told apart.') },
+          { item: groups.get('autoFirst'), text: t('The Auto share is {share} or more.', { share: pct(settings.autoFirst) }) },
+          { item: groups.get('direct'), text: t('The Auto share is under {share}.', { share: pct(settings.lowAuto) }) },
+          { item: groups.get('mixed'), text: t('The Auto share is {low} to under {high}.', { low: pct(settings.lowAuto), high: pct(settings.autoFirst) }) },
         ]}
       />
       <Note>
         {t(
           'One setting, the low Auto threshold ({share}), decides both who is in {direct} and who has the {lowAuto} trait. Change it in Settings and both move together. The Auto-first threshold ({autoFirst}) is a separate setting.',
-          { share: pct(s.lowAuto), direct: directLabel, lowAuto: lowAutoLabel, autoFirst: pct(s.autoFirst) },
+          { share: pct(settings.lowAuto), direct: directLabel, lowAuto: lowAutoLabel, autoFirst: pct(settings.autoFirst) },
         )}
       </Note>
     </>
   );
 }
 
-export function RuleBlock({ lens, c }: { lens: LensId; c: RuleContext }) {
+export function RuleBlock({ lens, c: context }: { lens: LensId; c: RuleContext }) {
   switch (lens) {
     case 'persona':
-      return <PersonaRules c={c} />;
+      return <PersonaRules c={context} />;
     case 'tier':
-      return <TierRules c={c} />;
+      return <TierRules c={context} />;
     case 'engagement':
-      return <EngagementRules c={c} />;
+      return <EngagementRules c={context} />;
     case 'profile':
-      return <ProfileRules c={c} />;
+      return <ProfileRules c={context} />;
     case 'pareto':
-      return <ParetoRules c={c} />;
+      return <ParetoRules c={context} />;
     case 'autoUse':
-      return <AutoUseRules c={c} />;
+      return <AutoUseRules c={context} />;
     case 'trait':
-      return <TraitRules c={c} />;
+      return <TraitRules c={context} />;
   }
 }

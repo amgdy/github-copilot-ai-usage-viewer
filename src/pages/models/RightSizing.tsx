@@ -60,50 +60,50 @@ export function RightSizing({ rows, shift }: { rows: ModelRow[]; shift: ShiftRow
   const perMonth = usePerMonth();
 
   const stats = useMemo(() => {
-    const list = shift.filter((r) => r.ratio < 1);
-    const full = list.reduce((a, r) => a + r.savingsAtFull, 0);
-    const covered = new Set(list.map((r) => r.modelId));
-    const powerful = rows.filter((r) => r.tier === 'Powerful');
+    const list = shift.filter((shiftRow) => shiftRow.ratio < 1);
+    const full = list.reduce((total, shiftRow) => total + shiftRow.savingsAtFull, 0);
+    const covered = new Set(list.map((shiftRow) => shiftRow.modelId));
+    const powerful = rows.filter((model) => model.tier === 'Powerful');
     return {
       list,
       full,
       part: full * SHIFT,
       powerful: powerful.length,
-      powerfulGross: powerful.reduce((a, r) => a + r.gross, 0),
-      uncovered: powerful.filter((r) => !covered.has(r.id)),
+      powerfulGross: powerful.reduce((total, model) => total + model.gross, 0),
+      uncovered: powerful.filter((model) => !covered.has(model.id)),
     };
   }, [shift, rows]);
 
   // The pool model projects the last partial month, so cap the bill effect at the usage that is saved.
   const cash = useMemo(() => {
-    const c = monthlyCash(analysis, stats.part);
-    return c === null ? null : Math.min(c, stats.part * perMonth);
+    const uncappedCash = monthlyCash(analysis, stats.part);
+    return uncappedCash === null ? null : Math.min(uncappedCash, stats.part * perMonth);
   }, [analysis, stats.part, perMonth]);
 
-  const vendorById = useMemo(() => new Map(rows.map((r) => [r.id, r.vendor])), [rows]);
+  const vendorById = useMemo(() => new Map(rows.map((model) => [model.id, model.vendor])), [rows]);
 
   const columns = useMemo<Column<ShiftRow>[]>(
     () => [
       {
         key: 'model',
         header: t('Powerful model'),
-        value: (r) => labelOf('model', r.model),
-        render: (r) => (
-          <VendorName vendor={vendorById.get(r.modelId) ?? inferVendor(r.model)} className="font-medium whitespace-nowrap">
-            {labelOf('model', r.model)}
+        value: (shiftRow) => labelOf('model', shiftRow.model),
+        render: (shiftRow) => (
+          <VendorName vendor={vendorById.get(shiftRow.modelId) ?? inferVendor(shiftRow.model)} className="font-medium whitespace-nowrap">
+            {labelOf('model', shiftRow.model)}
           </VendorName>
         ),
       },
       {
         key: 'target',
         header: t('Cheaper option'),
-        value: (r) => r.target,
-        render: (r) => {
-          const hit = lookupCard(r.target);
+        value: (shiftRow) => shiftRow.target,
+        render: (shiftRow) => {
+          const hit = lookupCard(shiftRow.target);
           return (
             <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-              <VendorIcon vendor={hit?.vendor ?? inferVendor(r.target)} size={13} className="shrink-0 text-fg-muted" />
-              {r.target}
+              <VendorIcon vendor={hit?.vendor ?? inferVendor(shiftRow.target)} size={13} className="shrink-0 text-fg-muted" />
+              {shiftRow.target}
               {hit ? <TierBadge tier={hit.category} /> : null}
             </span>
           );
@@ -115,18 +115,18 @@ export function RightSizing({ rows, shift }: { rows: ModelRow[]; shift: ShiftRow
         key: 'usage',
         header: t('Usage per month'),
         align: 'end',
-        value: (r) => r.gross * perMonth,
-        render: (r) => fmtUSD(r.gross * perMonth),
+        value: (shiftRow) => shiftRow.gross * perMonth,
+        render: (shiftRow) => fmtUSD(shiftRow.gross * perMonth),
         hint: t('Average monthly usage of this model, as charged in the report.'),
         calc: ['usage', 'per-month'],
-        total: (rs) => fmtUSD(rs.reduce((a, r) => a + r.gross, 0) * perMonth),
+        total: (shiftRows) => fmtUSD(shiftRows.reduce((total, shiftRow) => total + shiftRow.gross, 0) * perMonth),
       },
       {
         key: 'ratio',
         header: t('Cost on cheaper option'),
         align: 'end',
-        value: (r) => r.ratio,
-        render: (r) => fmtPct(r.ratio, 0),
+        value: (shiftRow) => shiftRow.ratio,
+        render: (shiftRow) => fmtPct(shiftRow.ratio, 0),
         hint: t("Cost of the same tokens on the cheaper option, as a share of today's cost. 40% means 60% less."),
         calc: 'model-cheaper-cost',
       },
@@ -134,21 +134,21 @@ export function RightSizing({ rows, shift }: { rows: ModelRow[]; shift: ShiftRow
         key: 'full',
         header: t('Less usage if all moved'),
         align: 'end',
-        value: (r) => r.savingsAtFull * perMonth,
-        render: (r) => fmtUSD(r.savingsAtFull * perMonth),
+        value: (shiftRow) => shiftRow.savingsAtFull * perMonth,
+        render: (shiftRow) => fmtUSD(shiftRow.savingsAtFull * perMonth),
         hint: t('Per month, if every request on this model moved to the cheaper option. An upper bound.'),
         calc: 'model-less-usage-all',
-        total: (rs) => fmtUSD(rs.reduce((a, r) => a + r.savingsAtFull, 0) * perMonth),
+        total: (shiftRows) => fmtUSD(shiftRows.reduce((total, shiftRow) => total + shiftRow.savingsAtFull, 0) * perMonth),
       },
       {
         key: 'part',
         header: t('Less usage at {pct} moved', { pct: fmtPct(SHIFT, 0) }),
         align: 'end',
-        value: (r) => r.savingsAtFull * SHIFT * perMonth,
-        render: (r) => fmtUSD(r.savingsAtFull * SHIFT * perMonth),
+        value: (shiftRow) => shiftRow.savingsAtFull * SHIFT * perMonth,
+        render: (shiftRow) => fmtUSD(shiftRow.savingsAtFull * SHIFT * perMonth),
         hint: t('Per month, if {pct} of the requests moved. This is the default planning share in the simulator.', { pct: fmtPct(SHIFT, 0) }),
         calc: 'model-less-usage-part',
-        total: (rs) => fmtUSD(rs.reduce((a, r) => a + r.savingsAtFull, 0) * SHIFT * perMonth),
+        total: (shiftRows) => fmtUSD(shiftRows.reduce((total, shiftRow) => total + shiftRow.savingsAtFull, 0) * SHIFT * perMonth),
       },
     ],
     [perMonth, vendorById],
@@ -213,13 +213,13 @@ export function RightSizing({ rows, shift }: { rows: ModelRow[]; shift: ShiftRow
             <DataTable
               rows={stats.list}
               columns={columns}
-              rowKey={(r) => r.modelId}
+              rowKey={(shiftRow) => shiftRow.modelId}
               defaultSort={{ key: 'full', dir: 'desc' }}
               pageSize={10}
               dense
               fixedColumns
               exportName="github-copilot-right-sizing"
-              onRowClick={(r) => drill({ models: [r.model] }, { merge: true })}
+              onRowClick={(shiftRow) => drill({ models: [shiftRow.model] }, { merge: true })}
             />
           </>
         ) : (
@@ -232,7 +232,7 @@ export function RightSizing({ rows, shift }: { rows: ModelRow[]; shift: ShiftRow
               '{models} with no cheaper option: {names}. The mid-tier default is not cheaper for them, or their price or token data is missing.',
               {
                 models: pluralize(stats.uncovered.length, 'Powerful model', 'Powerful models'),
-                names: stats.uncovered.map((r) => r.label).join(', '),
+                names: stats.uncovered.map((model) => model.label).join(', '),
               },
             )}
           </p>

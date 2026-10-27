@@ -94,6 +94,6 @@ export const BLANK_LABELS: Record<DimKey, string> = {
   file: msg('(file)'),
 };
 
-export function labelOf(dim: DimKey, value: string): string {
-  return value === BLANK ? t(BLANK_LABELS[dim]) : value;
+export function labelOf(dimension: DimKey, value: string): string {
+  return value === BLANK ? t(BLANK_LABELS[dimension]) : value;
 }

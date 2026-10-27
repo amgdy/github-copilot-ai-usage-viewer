@@ -42,41 +42,41 @@ const CATEGORY_NAMES: Record<string, Tier> = { powerful: 'Powerful', versatile: 
 type Column = 'model' | 'status' | 'category' | 'tier' | 'threshold' | 'input' | 'cachedInput' | 'cacheWrite' | 'output';
 
 function columnOf(header: string): Column | undefined {
-  const h = header.toLowerCase().replace(/\s+/g, ' ').trim();
-  if (h === 'model' || h === 'model name') return 'model';
-  if (h.startsWith('release')) return 'status';
-  if (h === 'category') return 'category';
-  if (h === 'tier') return 'tier';
-  if (h.startsWith('threshold')) return 'threshold';
-  if (h === 'input' || h === 'input price') return 'input';
-  if (h.startsWith('cached input') || h === 'cache read') return 'cachedInput';
-  if (h.startsWith('cache write')) return 'cacheWrite';
-  if (h === 'output' || h === 'output price') return 'output';
+  const label = header.toLowerCase().replace(/\s+/g, ' ').trim();
+  if (label === 'model' || label === 'model name') return 'model';
+  if (label.startsWith('release')) return 'status';
+  if (label === 'category') return 'category';
+  if (label === 'tier') return 'tier';
+  if (label.startsWith('threshold')) return 'threshold';
+  if (label === 'input' || label === 'input price') return 'input';
+  if (label.startsWith('cached input') || label === 'cache read') return 'cachedInput';
+  if (label.startsWith('cache write')) return 'cacheWrite';
+  if (label === 'output' || label === 'output price') return 'output';
   return undefined;
 }
 
 function cellsOf(line: string): string[] {
-  let s = line.trim();
-  if (s.startsWith('|')) s = s.slice(1);
-  if (s.endsWith('|')) s = s.slice(0, -1);
-  return s.split('|').map((c) => c.trim());
+  let text = line.trim();
+  if (text.startsWith('|')) text = text.slice(1);
+  if (text.endsWith('|')) text = text.slice(0, -1);
+  return text.split('|').map((cell) => cell.trim());
 }
 
-const isSeparator = (cells: string[]) => cells.length > 0 && cells.every((c) => /^:?-{1,}:?$/.test(c));
+const isSeparator = (cells: string[]) => cells.length > 0 && cells.every((cell) => /^:?-{1,}:?$/.test(cell));
 
 /** "$1.75" → 1.75. "Not applicable", "-" or an empty cell → null. */
 export function parsePrice(cell: string): number | null {
-  const s = cell.replace(/[$,\s*`]/g, '');
-  if (!/^\d+(\.\d+)?$/.test(s)) return null;
-  return Number(s);
+  const cleaned = cell.replace(/[$,\s*`]/g, '');
+  if (!/^\d+(\.\d+)?$/.test(cleaned)) return null;
+  return Number(cleaned);
 }
 
 /** "≤ 272K" or "> 272K" → 272000. "Not applicable" → undefined. */
 export function parseThreshold(cell: string): number | undefined {
-  const m = /([\d.,]+)\s*([km])?/i.exec(cell.replace(/,/g, ''));
-  if (!m) return undefined;
-  const n = Number(m[1]) * (m[2]?.toLowerCase() === 'm' ? 1_000_000 : m[2] ? 1_000 : 1);
-  return Number.isFinite(n) && n > 0 ? Math.round(n) : undefined;
+  const match = /([\d.,]+)\s*([km])?/i.exec(cell.replace(/,/g, ''));
+  if (!match) return undefined;
+  const threshold = Number(match[1]) * (match[2]?.toLowerCase() === 'm' ? 1_000_000 : match[2] ? 1_000 : 1);
+  return Number.isFinite(threshold) && threshold > 0 ? Math.round(threshold) : undefined;
 }
 
 /** Removes Markdown decoration from a model cell and returns the footnote ids it points to. */
@@ -106,13 +106,13 @@ interface Row {
 }
 
 /** Parses the price tables. Tables without Model, Input and Output columns (for example multipliers) are ignored. */
-export function parsePricingMarkdown(md: string): LivePriceCard {
-  const lines = md.split(/\r?\n/);
+export function parsePricingMarkdown(markdown: string): LivePriceCard {
+  const lines = markdown.split(/\r?\n/);
   const warnings: string[] = [];
   const footnoteText = new Map<string, string>();
   for (const line of lines) {
-    const f = /^\[\^([^\]]+)\]:\s*(.+)$/.exec(line.trim());
-    if (f) footnoteText.set(f[1], f[2].trim());
+    const footnoteMatch = /^\[\^([^\]]+)\]:\s*(.+)$/.exec(line.trim());
+    if (footnoteMatch) footnoteText.set(footnoteMatch[1], footnoteMatch[2].trim());
   }
 
   const rows: Row[] = [];
@@ -123,7 +123,7 @@ export function parsePricingMarkdown(md: string): LivePriceCard {
     const line = lines[i].trim();
     const heading = /^#{2,4}\s+(.+)$/.exec(line);
     if (heading) {
-      vendor = VENDOR_HEADINGS.find(([re]) => re.test(heading[1]))?.[1] ?? 'Other';
+      vendor = VENDOR_HEADINGS.find(([pattern]) => pattern.test(heading[1]))?.[1] ?? 'Other';
       cols = null;
       continue;
     }
@@ -140,9 +140,9 @@ export function parsePricingMarkdown(md: string): LivePriceCard {
       i++;
       continue;
     }
-    if (cells.every((c) => c === '')) continue;
-    const get = (c: Column) => {
-      const at = cols!.indexOf(c);
+    if (cells.every((cell) => cell === '')) continue;
+    const get = (column: Column) => {
+      const at = cols!.indexOf(column);
       return at < 0 ? '' : cells[at] ?? '';
     };
     const { name, footnotes } = cleanName(get('model'));
@@ -173,34 +173,34 @@ export function parsePricingMarkdown(md: string): LivePriceCard {
   const byName = new Map<string, LiveModel>();
   const order: string[] = [];
   for (const row of rows) {
-    let m = byName.get(row.name);
-    if (!m) {
-      m = { name: row.name, vendor: row.vendor, category: row.category, base: row.rates, status: row.status };
-      byName.set(row.name, m);
+    let model = byName.get(row.name);
+    if (!model) {
+      model = { name: row.name, vendor: row.vendor, category: row.category, base: row.rates, status: row.status };
+      byName.set(row.name, model);
       order.push(row.name);
       if (row.long) warnings.push(`${row.name}: the long context row comes before the default row.`);
     }
     if (row.long) {
-      m.long = row.rates;
-      m.longThreshold = row.threshold ?? m.longThreshold;
+      model.long = row.rates;
+      model.longThreshold = row.threshold ?? model.longThreshold;
     } else {
-      m.base = row.rates;
-      if (row.threshold !== undefined) m.longThreshold = row.threshold;
+      model.base = row.rates;
+      if (row.threshold !== undefined) model.longThreshold = row.threshold;
     }
-    m.category ??= row.category;
-    const notes = row.footnotes.map((id) => footnoteText.get(id)).filter((t): t is string => !!t);
-    if (notes.length) m.note = notes.join(' ');
+    model.category ??= row.category;
+    const notes = row.footnotes.map((id) => footnoteText.get(id)).filter((note): note is string => !!note);
+    if (notes.length) model.note = notes.join(' ');
   }
-  const models = order.map((n) => byName.get(n)!);
-  for (const m of models) if (!m.long) delete m.longThreshold;
+  const models = order.map((name) => byName.get(name)!);
+  for (const model of models) if (!model.long) delete model.longThreshold;
   return { models, warnings };
 }
 
 /** Downloads the live page as Markdown and parses it. Only public GitHub Docs content is requested; nothing is sent. */
 export async function fetchLivePriceCard(signal?: AbortSignal): Promise<LivePriceCard> {
-  const res = await fetch(CARD_SOURCE_MARKDOWN, { signal, credentials: 'omit', headers: { accept: 'text/markdown, text/plain' } });
-  if (!res.ok) throw new Error(`GitHub Docs answered ${res.status} ${res.statusText}`.trim());
-  const parsed = parsePricingMarkdown(await res.text());
+  const response = await fetch(CARD_SOURCE_MARKDOWN, { signal, credentials: 'omit', headers: { accept: 'text/markdown, text/plain' } });
+  if (!response.ok) throw new Error(`GitHub Docs answered ${response.status} ${response.statusText}`.trim());
+  const parsed = parsePricingMarkdown(await response.text());
   if (parsed.models.length === 0) throw new Error('No price tables were found on the GitHub Docs page.');
   return parsed;
 }
@@ -240,21 +240,21 @@ export function compareWithCard(live: readonly LiveModel[], card: readonly CardE
   const findCard = makeCardLookup(card);
   const out: PriceDifference[] = [];
   const seen = new Set<CardEntry>();
-  for (const m of live) {
-    const c = findCard(m.name);
-    if (!c) {
-      out.push({ name: m.name, kind: 'new', fields: [], live: m });
+  for (const liveModel of live) {
+    const cardEntry = findCard(liveModel.name);
+    if (!cardEntry) {
+      out.push({ name: liveModel.name, kind: 'new', fields: [], live: liveModel });
       continue;
     }
-    seen.add(c);
+    seen.add(cardEntry);
     const fields: PriceField[] = [];
-    if (m.category && m.category !== c.category) fields.push('category');
-    for (const [k, baseField] of RATE_FIELDS) if (!same(m.base[k], c.base[k])) fields.push(baseField);
-    for (const [k, , longField] of RATE_FIELDS) if (!same(m.long?.[k], c.long?.[k])) fields.push(longField);
-    if (!same(m.longThreshold, c.longThreshold)) fields.push('longThreshold');
-    if (fields.length) out.push({ name: m.name, kind: 'changed', fields, live: m, card: c });
+    if (liveModel.category && liveModel.category !== cardEntry.category) fields.push('category');
+    for (const [rateKey, baseField] of RATE_FIELDS) if (!same(liveModel.base[rateKey], cardEntry.base[rateKey])) fields.push(baseField);
+    for (const [rateKey, , longField] of RATE_FIELDS) if (!same(liveModel.long?.[rateKey], cardEntry.long?.[rateKey])) fields.push(longField);
+    if (!same(liveModel.longThreshold, cardEntry.longThreshold)) fields.push('longThreshold');
+    if (fields.length) out.push({ name: liveModel.name, kind: 'changed', fields, live: liveModel, card: cardEntry });
   }
-  for (const c of card) if (!seen.has(c)) out.push({ name: c.name, kind: 'missing', fields: [], card: c });
+  for (const cardEntry of card) if (!seen.has(cardEntry)) out.push({ name: cardEntry.name, kind: 'missing', fields: [], card: cardEntry });
   const rank = { changed: 0, new: 1, missing: 2 } as const;
   return out.sort((a, b) => rank[a.kind] - rank[b.kind] || a.name.localeCompare(b.name));
 }
@@ -268,15 +268,15 @@ export function liveOverrides(reportModels: readonly string[], live: readonly Li
   const findCard = makeCardLookup(PRICE_CARD);
   const next: ModelOverrides = { ...existing };
   for (const name of reportModels) {
-    const m = findLive(name);
-    if (!m) continue;
-    const c = findCard(name);
-    const diff = !c || compareWithCard([m], [c]).some((d) => d.kind === 'changed');
+    const liveModel = findLive(name);
+    if (!liveModel) continue;
+    const cardEntry = findCard(name);
+    const diff = !cardEntry || compareWithCard([liveModel], [cardEntry]).some((difference) => difference.kind === 'changed');
     if (!diff) continue;
-    const ov: ModelOverride = { vendor: m.vendor, base: m.base, long: m.long ?? null };
-    if (m.category) ov.category = m.category;
-    if (m.long && m.longThreshold) ov.longThreshold = m.longThreshold;
-    next[name] = ov;
+    const modelOverride: ModelOverride = { vendor: liveModel.vendor, base: liveModel.base, long: liveModel.long ?? null };
+    if (liveModel.category) modelOverride.category = liveModel.category;
+    if (liveModel.long && liveModel.longThreshold) modelOverride.longThreshold = liveModel.longThreshold;
+    next[name] = modelOverride;
   }
   return next;
 }

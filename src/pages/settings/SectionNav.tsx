@@ -3,10 +3,10 @@ import { cx } from '../../components/ui';
 import { t } from '../../i18n';
 import { SECTIONS, SECTION_IDS, domId, type SectionId } from './sections';
 
-function scrollParent(el: HTMLElement): HTMLElement {
-  for (let p = el.parentElement; p; p = p.parentElement) {
-    const overflow = getComputedStyle(p).overflowY;
-    if (overflow === 'auto' || overflow === 'scroll' || overflow === 'overlay') return p;
+function scrollParent(element: HTMLElement): HTMLElement {
+  for (let parent = element.parentElement; parent; parent = parent.parentElement) {
+    const overflow = getComputedStyle(parent).overflowY;
+    if (overflow === 'auto' || overflow === 'scroll' || overflow === 'overlay') return parent;
   }
   return (document.scrollingElement as HTMLElement | null) ?? document.documentElement;
 }
@@ -32,8 +32,8 @@ export function useScrollSpy(): { active: SectionId; jump: (id: SectionId) => vo
       const top = isRoot ? 0 : scroller.getBoundingClientRect().top;
       let current: SectionId = SECTION_IDS[0];
       for (const id of SECTION_IDS) {
-        const el = document.getElementById(domId(id));
-        if (el && el.getBoundingClientRect().top - top <= 120) current = id;
+        const section = document.getElementById(domId(id));
+        if (section && section.getBoundingClientRect().top - top <= 120) current = id;
       }
       const room = scroller.scrollHeight - scroller.clientHeight;
       if (room > 8 && scroller.scrollTop >= room - 4) current = SECTION_IDS[SECTION_IDS.length - 1];
@@ -57,12 +57,12 @@ export function useScrollSpy(): { active: SectionId; jump: (id: SectionId) => vo
   }, []);
 
   const jump = useCallback((id: SectionId) => {
-    const el = document.getElementById(domId(id));
-    if (!el) return;
+    const section = document.getElementById(domId(id));
+    if (!section) return;
     const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
     lockUntil.current = performance.now() + 900;
     setActive(id);
-    el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+    section.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
     window.clearTimeout(settle.current);
     settle.current = window.setTimeout(() => refresh.current(), 950);
   }, []);

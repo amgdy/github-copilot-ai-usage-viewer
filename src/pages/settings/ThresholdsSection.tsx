@@ -7,29 +7,29 @@ import { ActiveDayCard, EngagementCard, ParetoCard, TiersCard } from './Threshol
 
 /** What the section reset puts back. It must name every setting that this section edits. */
 export function defaultThresholds(): Partial<Settings> {
-  const d = DEFAULT_SETTINGS;
+  const defaults = DEFAULT_SETTINGS;
   return {
-    activeThreshold: d.activeThreshold,
-    tiers: { ...d.tiers },
-    engagement: { ...d.engagement },
-    pareto: { ...d.pareto },
-    frontierHeavy: d.frontierHeavy,
-    efficientShare: d.efficientShare,
-    lapsedDays: d.lapsedDays,
-    newUserDays: d.newUserDays,
-    spikeShare: d.spikeShare,
-    lowAuto: d.lowAuto,
-    autoFirst: d.autoFirst,
-    lowCacheHit: d.lowCacheHit,
-    longContextShare: d.longContextShare,
-    minSpendForTraits: d.minSpendForTraits,
-    autoDiscount: d.autoDiscount,
-    topN: d.topN,
+    activeThreshold: defaults.activeThreshold,
+    tiers: { ...defaults.tiers },
+    engagement: { ...defaults.engagement },
+    pareto: { ...defaults.pareto },
+    frontierHeavy: defaults.frontierHeavy,
+    efficientShare: defaults.efficientShare,
+    lapsedDays: defaults.lapsedDays,
+    newUserDays: defaults.newUserDays,
+    spikeShare: defaults.spikeShare,
+    lowAuto: defaults.lowAuto,
+    autoFirst: defaults.autoFirst,
+    lowCacheHit: defaults.lowCacheHit,
+    longContextShare: defaults.longContextShare,
+    minSpendForTraits: defaults.minSpendForTraits,
+    autoDiscount: defaults.autoDiscount,
+    topN: defaults.topN,
   };
 }
 
 export function ThresholdsSection() {
-  const updateSettings = useApp((s) => s.updateSettings);
+  const updateSettings = useApp((state) => state.updateSettings);
   return (
     <SettingsSection
       id="thresholds"

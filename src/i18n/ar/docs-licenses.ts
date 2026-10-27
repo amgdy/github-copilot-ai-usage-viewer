@@ -1,7 +1,7 @@
 import type { Dict } from '../core';
 
 /** Arabic for the explanations in `lib/metrics/docs/licenses.ts` (titles, meanings, formulas, steps, notes and examples). */
-const ar: Dict = {
+const arabic: Dict = {
   // seat-idle
   'Idle seats to reclaim': 'تراخيص خاملة يمكن استردادها',
   'Seats whose users hardly use GitHub Copilot and whose available license data shows no activity in the last 30 days. Reclaiming them lowers the included credits and the seat bill.':
@@ -309,4 +309,4 @@ const ar: Dict = {
     'تاريخ التصدير هو 30 يونيو. ترخيص كان آخر نشاط له في 20 يونيو مرّت 10 أيام على آخر نشاط له، فهو نشط مؤخرًا. وترخيص كان آخر نشاط له في 31 مارس مرّ 91 يومًا، فهو ترخيص يمكن تحريره.',
 };
 
-export default ar;
+export default arabic;

@@ -21,12 +21,12 @@ const VIEWS: { value: View; label: string }[] = [
 
 const thresholdLabel = (tokens: number): string => `${Math.round(tokens / 1000)}K`;
 
-const rateColumn = (key: string, header: string, pick: (e: CardEntry) => number, hint: string): Column<CardRow> => ({
+const rateColumn = (key: string, header: string, pick: (entry: CardEntry) => number, hint: string): Column<CardRow> => ({
   key,
   header,
   align: 'end',
-  value: (r) => (pick(r.entry) > 0 ? pick(r.entry) : null),
-  render: (r) => fmtRate(pick(r.entry) > 0 ? pick(r.entry) : Number.NaN),
+  value: (row) => (pick(row.entry) > 0 ? pick(row.entry) : null),
+  render: (row) => fmtRate(pick(row.entry) > 0 ? pick(row.entry) : Number.NaN),
   hint,
   calc: 'model-list-price',
 });
@@ -38,20 +38,20 @@ const buildColumns = (): Column<CardRow>[] => [
   {
     key: 'model',
     header: t('Model'),
-    value: (r) => r.entry.name,
-    render: (r) => (
+    value: (row) => row.entry.name,
+    render: (row) => (
       <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-        <VendorName vendor={r.entry.vendor} className="font-medium">
-          {r.entry.name}
+        <VendorName vendor={row.entry.vendor} className="font-medium">
+          {row.entry.name}
         </VendorName>
-        {r.usage > 0 ? (
+        {row.usage > 0 ? (
           <Badge tone="accent" title={t('This model has usage in the current view.')}>
             {t('In use')}
           </Badge>
         ) : null}
-        {r.entry.note ? (
-          <Badge tone="info" title={t(r.entry.note)}>
-            {noteBadge(r.entry.note)}
+        {row.entry.note ? (
+          <Badge tone="info" title={t(row.entry.note)}>
+            {noteBadge(row.entry.note)}
           </Badge>
         ) : null}
       </span>
@@ -60,44 +60,44 @@ const buildColumns = (): Column<CardRow>[] => [
   {
     key: 'vendor',
     header: t('Vendor'),
-    value: (r) => vendorLabel(r.entry.vendor),
-    render: (r) => <VendorName vendor={r.entry.vendor} className="whitespace-nowrap" />,
+    value: (row) => vendorLabel(row.entry.vendor),
+    render: (row) => <VendorName vendor={row.entry.vendor} className="whitespace-nowrap" />,
     calc: 'model-vendor',
   },
   {
     key: 'tier',
     header: t('Tier'),
-    value: (r) => tierLabel(r.entry.category),
-    render: (r) => <TierBadge tier={r.entry.category} />,
+    value: (row) => tierLabel(row.entry.category),
+    render: (row) => <TierBadge tier={row.entry.category} />,
     calc: 'model-tier',
   },
-  rateColumn('input', t('Input / 1M'), (e) => e.base.input, t('Price per 1 million input tokens on the price card.')),
+  rateColumn('input', t('Input / 1M'), (entry) => entry.base.input, t('Price per 1 million input tokens on the price card.')),
   rateColumn(
     'cached',
     t('Cache read / 1M'),
-    (e) => e.base.cachedInput,
+    (entry) => entry.base.cachedInput,
     t('Price per 1 million cache read tokens on the price card. Cache read tokens are text the model has seen before and reads again at a lower price.'),
   ),
   rateColumn(
     'write',
     t('Cache write / 1M'),
-    (e) => e.base.cacheWrite,
+    (entry) => entry.base.cacheWrite,
     t('Price per 1 million cache write tokens on the price card. Cache write tokens are text saved to the cache for later requests. A dash means no separate charge.'),
   ),
-  rateColumn('output', t('Output / 1M'), (e) => e.base.output, t('Price per 1 million output tokens on the price card.')),
+  rateColumn('output', t('Output / 1M'), (entry) => entry.base.output, t('Price per 1 million output tokens on the price card.')),
   {
     key: 'long',
     header: t('Long prompts'),
-    value: (r) => r.entry.longThreshold ?? null,
-    render: (r) =>
-      r.entry.long && r.entry.longThreshold ? (
+    value: (row) => row.entry.longThreshold ?? null,
+    render: (row) =>
+      row.entry.long && row.entry.longThreshold ? (
         <span className="whitespace-nowrap">
           <T
             text="Above {threshold}: {input} in, {output} out"
             values={{
-              threshold: thresholdLabel(r.entry.longThreshold),
-              input: <span className="num">{fmtRate(r.entry.long.input)}</span>,
-              output: <span className="num">{fmtRate(r.entry.long.output)}</span>,
+              threshold: thresholdLabel(row.entry.longThreshold),
+              input: <span className="num">{fmtRate(row.entry.long.input)}</span>,
+              output: <span className="num">{fmtRate(row.entry.long.output)}</span>,
             }}
           />
         </span>
@@ -111,11 +111,11 @@ const buildColumns = (): Column<CardRow>[] => [
     key: 'usage',
     header: t('In your data'),
     align: 'end',
-    value: (r) => r.usage,
-    render: (r) => (r.usage > 0 ? fmtUSD(r.usage) : <span className="text-fg-subtle">{fmtUSD(0)}</span>),
+    value: (row) => row.usage,
+    render: (row) => (row.usage > 0 ? fmtUSD(row.usage) : <span className="text-fg-subtle">{fmtUSD(0)}</span>),
     hint: t('Usage on this model in the current view, as charged in the report.'),
     calc: 'usage',
-    total: (rs) => fmtUSD(rs.reduce((a, r) => a + r.usage, 0)),
+    total: (rows) => fmtUSD(rows.reduce((total, row) => total + row.usage, 0)),
   },
 ];
 
@@ -125,19 +125,19 @@ export function PriceCardTable({ rows }: { rows: ModelRow[] }) {
 
   const all = useMemo(() => {
     const usage = new Map<string, number>();
-    for (const r of rows) {
-      const hit = lookupCard(r.value);
-      if (hit) usage.set(hit.name, (usage.get(hit.name) ?? 0) + r.gross);
+    for (const model of rows) {
+      const hit = lookupCard(model.value);
+      if (hit) usage.set(hit.name, (usage.get(hit.name) ?? 0) + model.gross);
     }
     return PRICE_CARD.map((entry): CardRow => ({ entry, usage: usage.get(entry.name) ?? 0 }));
   }, [rows]);
 
-  const shown = useMemo(() => (view === 'used' ? all.filter((r) => r.usage > 0) : all), [all, view]);
+  const shown = useMemo(() => (view === 'used' ? all.filter((row) => row.usage > 0) : all), [all, view]);
   const columns = useMemo(() => {
     const cols = buildColumns();
-    return hasUsage ? cols : cols.filter((c) => c.key !== 'usage');
+    return hasUsage ? cols : cols.filter((column) => column.key !== 'usage');
   }, [hasUsage]);
-  const views = VIEWS.map((v) => ({ value: v.value, label: t(v.label) }));
+  const views = VIEWS.map((option) => ({ value: option.value, label: t(option.label) }));
 
   return (
     <Card
@@ -159,14 +159,14 @@ export function PriceCardTable({ rows }: { rows: ModelRow[] }) {
       <DataTable
         rows={shown}
         columns={columns}
-        rowKey={(r) => r.entry.name}
+        rowKey={(row) => row.entry.name}
         defaultSort={hasUsage ? { key: 'usage', dir: 'desc' } : undefined}
         pageSize={10}
         searchable
         searchPlaceholder={t('Search the price card…')}
         exportName="github-copilot-price-card"
         fixedColumns
-        rowClassName={(r) => (r.usage > 0 ? 'bg-accent-soft/40' : undefined)}
+        rowClassName={(row) => (row.usage > 0 ? 'bg-accent-soft/40' : undefined)}
         emptyText={view === 'used' ? t('None of the models in your data are on the price card.') : t('No models match your search.')}
         toolbar={hasUsage ? <Segmented size="sm" label={t('Models to show')} value={view} onChange={setView} options={views} /> : undefined}
       />

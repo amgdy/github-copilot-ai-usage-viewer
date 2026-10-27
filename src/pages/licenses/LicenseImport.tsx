@@ -51,7 +51,7 @@ function CommandLine({ command }: { command: string }) {
 
 /** The no-code activity report is the usual choice; the seats API is an advanced option. */
 function HowToGet({ open }: { open: boolean }) {
-  const code = (s: string) => <code className="kbd">{s}</code>;
+  const code = (text: string) => <code className="kbd">{text}</code>;
   return (
     <details className="group rounded-md border border-border-muted p-3" open={open}>
       <summary className="cursor-pointer text-sm font-medium text-fg hover:text-accent">{t('How to get the license list')}</summary>
@@ -130,8 +130,8 @@ function Preview({ picked }: { picked: Picked }) {
       {parse.problems.length > 0 ? (
         <Callout tone={found === 0 ? 'bad' : 'warn'} title={found === 0 ? t('Nothing can be imported from this file') : t('Check these notes')}>
           <ul className="list-disc space-y-0.5 ps-4">
-            {parse.problems.map((p, i) => (
-              <li key={i}>{p}</li>
+            {parse.problems.map((problem, index) => (
+              <li key={index}>{problem}</li>
             ))}
           </ul>
         </Callout>
@@ -144,19 +144,19 @@ function Preview({ picked }: { picked: Picked }) {
 
 /** The outcome of an import, and a warning when the browser could not keep the full list. */
 function Outcome({ done }: { done: Done }) {
-  const r = done.result;
-  const total = r.roster.length;
+  const result = done.result;
+  const total = result.roster.length;
   return (
     <div className="space-y-2" aria-live="polite">
       <Callout tone="good" title={t('Imported {name}', { name: done.name })}>
         <p>{tp(total, 'The license list now has {n} seat.', 'The license list now has {n} seats.', { n: fmtInt(total) })}</p>
         <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1.5 sm:grid-cols-4">
-          <Fact label={t('Added')}>{fmtInt(r.added)}</Fact>
-          <Fact label={t('Updated')}>{fmtInt(r.updated)}</Fact>
-          <Fact label={t('Unchanged')}>{fmtInt(r.unchanged)}</Fact>
-          {done.mode === 'replace' ? <Fact label={t('Removed')}>{fmtInt(r.removed)}</Fact> : null}
+          <Fact label={t('Added')}>{fmtInt(result.added)}</Fact>
+          <Fact label={t('Updated')}>{fmtInt(result.updated)}</Fact>
+          <Fact label={t('Unchanged')}>{fmtInt(result.unchanged)}</Fact>
+          {done.mode === 'replace' ? <Fact label={t('Removed')}>{fmtInt(result.removed)}</Fact> : null}
         </dl>
-        {r.rosterAsOf ? <p className="mt-2 text-xs">{t('Days without activity are counted from {date}.', { date: fmtIsoDay(r.rosterAsOf) })}</p> : null}
+        {result.rosterAsOf ? <p className="mt-2 text-xs">{t('Days without activity are counted from {date}.', { date: fmtIsoDay(result.rosterAsOf) })}</p> : null}
       </Callout>
       {done.saved === 'slim' ? (
         <Callout tone="warn" title={t('Only part of the list is kept in this browser')}>
@@ -177,8 +177,8 @@ function Outcome({ done }: { done: Done }) {
  * `onDone` runs after an import.
  */
 export function LicenseImport({ compact, onDone }: { compact?: boolean; onDone?: () => void }) {
-  const roster = useApp((s) => s.settings.roster);
-  const updateSettings = useApp((s) => s.updateSettings);
+  const roster = useApp((state) => state.settings.roster);
+  const updateSettings = useApp((state) => state.updateSettings);
   const [over, setOver] = useState(false);
   const [reading, setReading] = useState<string | null>(null);
   const [picked, setPicked] = useState<Picked | null>(null);
@@ -214,10 +214,10 @@ export function LicenseImport({ compact, onDone }: { compact?: boolean; onDone?:
     }
   };
 
-  const onDrop = (e: DragEvent) => {
-    e.preventDefault();
+  const onDrop = (event: DragEvent) => {
+    event.preventDefault();
     setOver(false);
-    if (reading === null) void take(e.dataTransfer.files);
+    if (reading === null) void take(event.dataTransfer.files);
   };
 
   const apply = () => {
@@ -245,8 +245,8 @@ export function LicenseImport({ compact, onDone }: { compact?: boolean; onDone?:
           over ? 'border-accent bg-accent-soft' : 'border-border bg-surface',
           reading !== null && 'pointer-events-none opacity-70',
         )}
-        onDragOver={(e) => {
-          e.preventDefault();
+        onDragOver={(event) => {
+          event.preventDefault();
           if (reading === null) setOver(true);
         }}
         onDragLeave={() => setOver(false)}
@@ -276,9 +276,9 @@ export function LicenseImport({ compact, onDone }: { compact?: boolean; onDone?:
           type="file"
           hidden
           accept={LICENSE_FILE_ACCEPT}
-          onChange={(e) => {
-            void take(e.target.files);
-            e.target.value = '';
+          onChange={(event) => {
+            void take(event.target.files);
+            event.target.value = '';
           }}
         />
       </div>

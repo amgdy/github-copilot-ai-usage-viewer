@@ -13,11 +13,11 @@ import { fromPct, numText, toPct } from './numbers';
 import { FixedRow, OrderedFields, type OrderedField } from './OrderedFields';
 import { ThresholdRow } from './ThresholdRow';
 
-const pctText = (n: number) => `${numText(n, 2)}%`;
+const pctText = (percent: number) => `${numText(percent, 2)}%`;
 
 export function ActiveDayCard() {
-  const value = useApp((s) => s.settings.activeThreshold);
-  const update = useApp((s) => s.updateSettings);
+  const value = useApp((state) => state.settings.activeThreshold);
+  const update = useApp((state) => state.updateSettings);
   const credits = value / CREDIT_USD;
   const hint = [
     value === 0
@@ -43,8 +43,8 @@ export function ActiveDayCard() {
           prefix="$"
           digits={4}
           widthClass="w-36"
-          onCommit={(v) => {
-            if (v !== null) update({ activeThreshold: v });
+          onCommit={(entered) => {
+            if (entered !== null) update({ activeThreshold: entered });
           }}
         />
       </ThresholdRow>
@@ -62,8 +62,8 @@ const TIER_FIELDS: OrderedField<TierKey>[] = [
 ];
 
 export function TiersCard() {
-  const tiers = useApp((s) => s.settings.tiers);
-  const update = useApp((s) => s.updateSettings);
+  const tiers = useApp((state) => state.settings.tiers);
+  const update = useApp((state) => state.updateSettings);
   const values = useMemo<Record<TierKey, number>>(
     () => ({ minimal: toPct(tiers.minimal), light: toPct(tiers.light), core: toPct(tiers.core), power: toPct(tiers.power) }),
     [tiers],
@@ -106,8 +106,8 @@ const ENGAGEMENT_FIELDS: OrderedField<EngagementKey>[] = [
 ];
 
 export function EngagementCard() {
-  const engagement = useApp((s) => s.settings.engagement);
-  const update = useApp((s) => s.updateSettings);
+  const engagement = useApp((state) => state.settings.engagement);
+  const update = useApp((state) => state.updateSettings);
   const values = useMemo<Record<EngagementKey, number>>(
     () => ({ occasional: toPct(engagement.occasional), regular: toPct(engagement.regular), daily: toPct(engagement.daily) }),
     [engagement],
@@ -142,8 +142,8 @@ const PARETO_FIELDS: OrderedField<ParetoKey>[] = [
 ];
 
 export function ParetoCard() {
-  const pareto = useApp((s) => s.settings.pareto);
-  const update = useApp((s) => s.updateSettings);
+  const pareto = useApp((state) => state.settings.pareto);
+  const update = useApp((state) => state.updateSettings);
   const values = useMemo<Record<ParetoKey, number>>(() => ({ a: toPct(pareto.a), b: toPct(pareto.b) }), [pareto]);
   const bands = useMemo(() => paretoBands(pareto), [pareto]);
 

@@ -16,53 +16,53 @@ interface Preset {
 export function datePresets(store: DataStore): Preset[] {
   const { minDay: min, maxDay: max } = store;
   const out: Preset[] = [{ label: t('All time'), from: null, to: null }];
-  for (const n of [7, 14, 30]) if (max - min + 1 > n) out.push({ label: t('Last {n} days', { n }), from: max - n + 1, to: max });
+  for (const dayCount of [7, 14, 30]) if (max - min + 1 > dayCount) out.push({ label: t('Last {n} days', { n: dayCount }), from: max - dayCount + 1, to: max });
   const first = monthIndexOf(min);
   const last = monthIndexOf(max);
-  for (let m = last; m >= Math.max(first, last - 11); m--) {
-    out.push({ label: monthLabel(m), from: Math.max(min, monthStartDay(m)), to: Math.min(max, monthEndDay(m)) });
+  for (let month = last; month >= Math.max(first, last - 11); month--) {
+    out.push({ label: monthLabel(month), from: Math.max(min, monthStartDay(month)), to: Math.min(max, monthEndDay(month)) });
   }
   return out;
 }
 
 export function describeRange(store: DataStore, from: number | null, to: number | null): string {
   if (from === null && to === null) return t('All time');
-  const a = from ?? store.minDay;
-  const b = to ?? store.maxDay;
-  return t('{from} to {to}', { from: fmtDay(a, true), to: fmtDay(b, true) });
+  const startDay = from ?? store.minDay;
+  const endDay = to ?? store.maxDay;
+  return t('{from} to {to}', { from: fmtDay(startDay, true), to: fmtDay(endDay, true) });
 }
 
 /** Preset buttons and two date inputs bound to the global date filter. */
 export function DateRangeFields({ store, onPreset }: { store: DataStore; onPreset?: () => void }) {
-  const from = useApp((s) => s.filters.dateFrom);
-  const to = useApp((s) => s.filters.dateTo);
-  const setFilters = useApp((s) => s.setFilters);
+  const from = useApp((state) => state.filters.dateFrom);
+  const to = useApp((state) => state.filters.dateTo);
+  const setFilters = useApp((state) => state.setFilters);
   const presets = useMemo(() => datePresets(store), [store]);
   const min = isoDate(store.minDay);
   const max = isoDate(store.maxDay);
   const onDate = (which: 'from' | 'to', raw: string) => {
     if (!raw) return setFilters(which === 'from' ? { dateFrom: null } : { dateTo: null });
-    const d = parseIsoDay(raw);
-    if (!Number.isFinite(d)) return;
-    if (which === 'from') setFilters({ dateFrom: d, dateTo: to !== null && to < d ? d : to });
-    else setFilters({ dateTo: d, dateFrom: from !== null && from > d ? d : from });
+    const day = parseIsoDay(raw);
+    if (!Number.isFinite(day)) return;
+    if (which === 'from') setFilters({ dateFrom: day, dateTo: to !== null && to < day ? day : to });
+    else setFilters({ dateTo: day, dateFrom: from !== null && from > day ? day : from });
   };
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap gap-1.5">
-        {presets.map((p) => {
-          const on = p.from === from && p.to === to;
+        {presets.map((preset) => {
+          const on = preset.from === from && preset.to === to;
           return (
             <button
-              key={p.label}
+              key={preset.label}
               type="button"
               onClick={() => {
-                setFilters({ dateFrom: p.from, dateTo: p.to });
+                setFilters({ dateFrom: preset.from, dateTo: preset.to });
                 onPreset?.();
               }}
               className={cx('rounded-sm border px-2 py-0.5 text-xs transition-colors', on ? 'border-accent/60 bg-accent-soft font-semibold text-accent' : 'border-border bg-surface hover:border-fg-subtle hover:bg-surface-2')}
             >
-              {p.label}
+              {preset.label}
             </button>
           );
         })}
@@ -70,11 +70,11 @@ export function DateRangeFields({ store, onPreset }: { store: DataStore; onPrese
       <div className="grid grid-cols-2 gap-2">
         <label>
           <span className="label">{t('From')}</span>
-          <input type="date" className="input" min={min} max={max} value={from === null ? '' : isoDate(from)} onChange={(e) => onDate('from', e.target.value)} />
+          <input type="date" className="input" min={min} max={max} value={from === null ? '' : isoDate(from)} onChange={(event) => onDate('from', event.target.value)} />
         </label>
         <label>
           <span className="label">{t('To')}</span>
-          <input type="date" className="input" min={min} max={max} value={to === null ? '' : isoDate(to)} onChange={(e) => onDate('to', e.target.value)} />
+          <input type="date" className="input" min={min} max={max} value={to === null ? '' : isoDate(to)} onChange={(event) => onDate('to', event.target.value)} />
         </label>
       </div>
       <p className="text-[11px] text-fg-subtle">{t('The data covers {from} to {to}.', { from: fmtDay(store.minDay, true), to: fmtDay(store.maxDay, true) })}</p>
@@ -84,8 +84,8 @@ export function DateRangeFields({ store, onPreset }: { store: DataStore; onPrese
 
 /** Top-bar button showing the active date range; opens the date fields in a popover. */
 export function DateRangeButton({ store }: { store: DataStore }) {
-  const from = useApp((s) => s.filters.dateFrom);
-  const to = useApp((s) => s.filters.dateTo);
+  const from = useApp((state) => state.filters.dateFrom);
+  const to = useApp((state) => state.filters.dateTo);
   const active = from !== null || to !== null;
   return (
     <Popover

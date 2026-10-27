@@ -45,8 +45,8 @@ export interface Segment {
 
 /** One stacked bar for shares that add up to a whole, with a legend underneath. */
 export function SplitBar({ title, segments, note, calc }: { title: string; segments: Segment[]; note?: ReactNode; calc?: CalcRef }) {
-  const parts = segments.filter((s) => Number.isFinite(s.value) && s.value > 0);
-  const total = parts.reduce((sum, s) => sum + s.value, 0);
+  const parts = segments.filter((segment) => Number.isFinite(segment.value) && segment.value > 0);
+  const total = parts.reduce((sum, segment) => sum + segment.value, 0);
   return (
     <div className="space-y-1.5">
       <div className="flex items-baseline justify-between gap-2">
@@ -61,18 +61,18 @@ export function SplitBar({ title, segments, note, calc }: { title: string; segme
           <div
             className="flex h-2.5 overflow-hidden rounded-xs bg-surface-3"
             role="img"
-            aria-label={t('{title}: {parts}', { title, parts: parts.map((s) => t('{label} {share}', { label: s.label, share: fmtPct(s.value / total, 0) })).join(', ') })}
+            aria-label={t('{title}: {parts}', { title, parts: parts.map((segment) => t('{label} {share}', { label: segment.label, share: fmtPct(segment.value / total, 0) })).join(', ') })}
           >
-            {parts.map((s) => (
-              <span key={s.label} className="h-full" style={{ width: `${(s.value / total) * 100}%`, backgroundColor: s.color }} title={`${s.label}: ${fmtPct(s.value / total, 1)}`} />
+            {parts.map((segment) => (
+              <span key={segment.label} className="h-full" style={{ width: `${(segment.value / total) * 100}%`, backgroundColor: segment.color }} title={`${segment.label}: ${fmtPct(segment.value / total, 1)}`} />
             ))}
           </div>
           <ul className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-fg-muted">
-            {parts.map((s) => (
-              <li key={s.label} className="inline-flex items-center gap-1.5">
-                <span className="size-2 rounded-xs" style={{ backgroundColor: s.color }} aria-hidden />
-                {s.label}
-                <span className="num text-fg">{fmtPct(s.value / total, 0)}</span>
+            {parts.map((segment) => (
+              <li key={segment.label} className="inline-flex items-center gap-1.5">
+                <span className="size-2 rounded-xs" style={{ backgroundColor: segment.color }} aria-hidden />
+                {segment.label}
+                <span className="num text-fg">{fmtPct(segment.value / total, 0)}</span>
               </li>
             ))}
           </ul>

@@ -11,8 +11,8 @@ import { navigate } from '../../state/router';
 /** What kind of list the stored seats came from. The richest source wins when a list mixes them. */
 export function rosterKind(roster: readonly RosterEntry[]): 'api' | 'activity' | 'list' | null {
   if (roster.length === 0) return null;
-  if (roster.some((r) => r.source === 'api')) return 'api';
-  if (roster.some((r) => r.source === 'activity')) return 'activity';
+  if (roster.some((seat) => seat.source === 'api')) return 'api';
+  if (roster.some((seat) => seat.source === 'activity')) return 'activity';
   return 'list';
 }
 

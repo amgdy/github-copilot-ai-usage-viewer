@@ -8,9 +8,9 @@ import { kpiTiles, placeRows, planRows, statusRows, type ListId, type ShareRow, 
 export function LicenseKpis({ report, onOpen }: { report: LicenseReport; onOpen: (id: ListId) => void }) {
   return (
     <KpiGrid>
-      {kpiTiles(report).map((k) => {
-        const list = k.list;
-        return <Kpi key={k.id} label={k.label} value={k.value} sub={k.sub || undefined} calc={k.calc} tone={k.tone} onClick={list ? () => onOpen(list) : undefined} />;
+      {kpiTiles(report).map((tile) => {
+        const list = tile.list;
+        return <Kpi key={tile.id} label={tile.label} value={tile.value} sub={tile.sub || undefined} calc={tile.calc} tone={tile.tone} onClick={list ? () => onOpen(list) : undefined} />;
       })}
     </KpiGrid>
   );
@@ -19,15 +19,15 @@ export function LicenseKpis({ report, onOpen }: { report: LicenseReport; onOpen:
 function ShareList({ rows }: { rows: readonly (ShareRow | StatusRow)[] }) {
   return (
     <ul className="space-y-3">
-      {rows.map((r) => (
-        <li key={'status' in r ? r.status : r.id}>
+      {rows.map((row) => (
+        <li key={'status' in row ? row.status : row.id}>
           <div className="mb-1 flex items-baseline justify-between gap-3 text-sm">
-            <span className="min-w-0 truncate">{r.label}</span>
+            <span className="min-w-0 truncate">{row.label}</span>
             <span className="num shrink-0 text-fg-muted">
-              <span className="font-medium text-fg">{fmtInt(r.count)}</span> · {fmtPct(r.share, 0)}
+              <span className="font-medium text-fg">{fmtInt(row.count)}</span> · {fmtPct(row.share, 0)}
             </span>
           </div>
-          <ProgressBar value={r.share} tone={'tone' in r ? r.tone : 'accent'} label={r.label} />
+          <ProgressBar value={row.share} tone={'tone' in row ? row.tone : 'accent'} label={row.label} />
         </li>
       ))}
     </ul>

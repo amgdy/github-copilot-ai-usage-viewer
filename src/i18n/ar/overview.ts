@@ -1,14 +1,14 @@
 import type { Dict, PluralEntry } from '../core';
 
-const p = (one: string, two: string, few: string, many: string, other: string): PluralEntry => ({ zero: other, one, two, few, many, other });
+const plural = (one: string, two: string, few: string, many: string, other: string): PluralEntry => ({ zero: other, one, two, few, many, other });
 
 /** Arabic for the Overview page (`pages/OverviewPage.tsx`, `pages/overview/*`). */
-const ar: Dict = {
+const arabic: Dict = {
   // Page and headline
   'How much GitHub Copilot is used, what it costs, and what to do about it.': 'كم يُستخدم GitHub Copilot، وكم يكلّف، وما الذي يجب فعله.',
   'Worth watching': 'يستحق المتابعة',
   Healthy: 'جيد',
-  'Review {n} recommendations': p('راجع توصية واحدة', 'راجع توصيتين', 'راجع {n} توصيات', 'راجع {n} توصية', 'راجع {n} توصية'),
+  'Review {n} recommendations': plural('راجع توصية واحدة', 'راجع توصيتين', 'راجع {n} توصيات', 'راجع {n} توصية', 'راجع {n} توصية'),
 
   // Pool notes
   'The file has no discount_amount or net_amount column, so included credits cannot be tracked. Load the full usage report to see how much of the pool was used and when it ran out.':
@@ -21,7 +21,7 @@ const ar: Dict = {
   'cash per month, combined plan': 'نقدًا في الشهر، الخطة المجمّعة',
   'What the default levers (model right-sizing, Auto, caching, leaner context, caps) and the seat actions save together. Ideas that overlap are counted once. Open Recommendations to change the assumptions.':
     'ما توفره الإجراءات الافتراضية (اختيار النموذج المناسب، وAuto، والذاكرة المؤقتة، وسياق أخف، والحدود) مع إجراءات التراخيص معًا. الأفكار المتداخلة تُحسب مرة واحدة. افتح التوصيات لتغيير الافتراضات.',
-  'Ran out in {k} of {n} months': p('نفد في {k} من شهر واحد', 'نفد في {k} من شهرين', 'نفد في {k} من {n} أشهر', 'نفد في {k} من {n} شهرًا', 'نفد في {k} من {n} شهر'),
+  'Ran out in {k} of {n} months': plural('نفد في {k} من شهر واحد', 'نفد في {k} من شهرين', 'نفد في {k} من {n} أشهر', 'نفد في {k} من {n} شهرًا', 'نفد في {k} من {n} شهر'),
   'The pool never ran out': 'لم ينفد الرصيد المشترك أبدًا',
   'Not available for a filtered view': 'غير متاح في العرض المصفّى',
   'Pool size is unknown': 'حجم الرصيد المشترك غير معروف',
@@ -46,13 +46,13 @@ const ar: Dict = {
   'No model names in the data': 'لا توجد أسماء نماذج في البيانات',
   'Share of usage where GitHub Copilot picked the model. The Auto model selection card below shows the discount received and the original price.':
     'حصة الاستخدام التي اختار فيها GitHub Copilot النموذج. بطاقة اختيار النموذج التلقائي Auto أدناه تعرض الخصم المحقق والسعر الأصلي.',
-  '{k} of {n} users': p('{k} من مستخدم واحد', '{k} من مستخدمَين', '{k} من {n} مستخدمين', '{k} من {n} مستخدمًا', '{k} من {n} مستخدم'),
+  '{k} of {n} users': plural('{k} من مستخدم واحد', '{k} من مستخدمَين', '{k} من {n} مستخدمين', '{k} من {n} مستخدمًا', '{k} من {n} مستخدم'),
   'Share of all usage that comes from the heaviest tenth of users. When it is high, a few users decide the bill.':
     'حصة كل الاستخدام التي تأتي من العُشر الأكثر استخدامًا من المستخدمين. عندما تكون عالية، تحدد قلة من المستخدمين الفاتورة.',
   'usage per active user': 'الاستخدام لكل مستخدم نشط',
   'Average monthly usage of an active user. Compare it with the credits included in a seat ($19 Business, $39 Enterprise).':
     'متوسط الاستخدام الشهري لمستخدم نشط. قارنه بالأرصدة المشمولة في الترخيص ($19 في Business و$39 في Enterprise).',
-  '{n} roster seats never used': p(
+  '{n} roster seats never used': plural(
     'ترخيص واحد في القائمة لم يُستخدم أبدًا',
     'ترخيصان في القائمة لم يُستخدما أبدًا',
     '{n} تراخيص في القائمة لم تُستخدم أبدًا',
@@ -62,7 +62,7 @@ const ar: Dict = {
   '{n} active on a typical day': '{n} نشطون في يوم عادي',
   'Users with usage in this period. Rows without a username (repository-level products) are not counted.':
     'المستخدمون الذين لهم استخدام في هذه الفترة. الصفوف التي ليس فيها اسم مستخدم (منتجات مستوى المستودع) لا تُحسب.',
-  '{n} roster seats have no usage in the report': p(
+  '{n} roster seats have no usage in the report': plural(
     'ترخيص واحد في القائمة بلا استخدام في التقرير',
     'ترخيصان في القائمة بلا استخدام في التقرير',
     '{n} تراخيص في القائمة بلا استخدام في التقرير',
@@ -105,13 +105,13 @@ const ar: Dict = {
   // Recommendations
   'What to do next': 'ما الخطوة التالية',
   'Largest monthly value first. Open one to see the evidence, the steps and who is affected.': 'القيمة الشهرية الأكبر أولًا. افتح أيًا منها لترى الأدلة والخطوات ومن يتأثر.',
-  'All {n} recommendations': p('التوصية الوحيدة', 'التوصيتان', 'كل التوصيات الـ {n}', 'كل التوصيات الـ {n}', 'كل التوصيات الـ {n}'),
+  'All {n} recommendations': plural('التوصية الوحيدة', 'التوصيتان', 'كل التوصيات الـ {n}', 'كل التوصيات الـ {n}', 'كل التوصيات الـ {n}'),
   'All recommendations': 'كل التوصيات',
   'Nothing needs action': 'لا شيء يحتاج إلى إجراء',
   'No recommendation crossed its threshold for the selected scope.': 'لم تتجاوز أي توصية حدّها في النطاق المحدد.',
 
   // Savings card
-  'Reclaim {n} idle seats': p(
+  'Reclaim {n} idle seats': plural(
     'استرد ترخيصًا واحدًا غير مستخدم',
     'استرد ترخيصين غير مستخدمين',
     'استرد {n} تراخيص غير مستخدمة',
@@ -119,7 +119,7 @@ const ar: Dict = {
     'استرد {n} ترخيص غير مستخدم',
   ),
   'Seats with almost no use and little activity.': 'تراخيص استخدامها شبه معدوم ونشاطها قليل.',
-  'Move {n} users to Business': p(
+  'Move {n} users to Business': plural(
     'انقل مستخدمًا واحدًا إلى Business',
     'انقل مستخدمَين إلى Business',
     'انقل {n} مستخدمين إلى Business',
@@ -127,7 +127,7 @@ const ar: Dict = {
     'انقل {n} مستخدم إلى Business',
   ),
   'Enterprise users who never needed more than the Business credits.': 'مستخدمو Enterprise الذين لم يحتاجوا أبدًا إلى أكثر من أرصدة Business.',
-  'Remove {n} unused roster seats': p(
+  'Remove {n} unused roster seats': plural(
     'أزل ترخيصًا واحدًا غير مستخدم من القائمة',
     'أزل ترخيصين غير مستخدمين من القائمة',
     'أزل {n} تراخيص غير مستخدمة من القائمة',
@@ -157,7 +157,7 @@ const ar: Dict = {
   'Click a group to list its users': 'انقر على مجموعة لعرض مستخدميها',
   'Compare all segments': 'قارن كل الشرائح',
   '{persona} · {share} of usage · {used} of included credits': '{persona} · {share} من الاستخدام · {used} من الأرصدة المشمولة',
-  'Top {n} users': p('أعلى مستخدم', 'أعلى مستخدمَين', 'أعلى {n} مستخدمين', 'أعلى {n} مستخدمًا', 'أعلى {n} مستخدم'),
+  'Top {n} users': plural('أعلى مستخدم', 'أعلى مستخدمَين', 'أعلى {n} مستخدمين', 'أعلى {n} مستخدمًا', 'أعلى {n} مستخدم'),
   'By usage. Click a bar to open the user': 'حسب الاستخدام. انقر على عمود لفتح المستخدم',
   'See every user': 'اعرض كل المستخدمين',
   'Powerful models have the highest token prices on the price card. Click a tier to filter':
@@ -188,4 +188,4 @@ const ar: Dict = {
     'يظهر Auto في عمود النموذج باسم "Auto". حمّل تقرير الاستخدام الذي فيه هذا العمود لترى خصم Auto ومن يختار النماذج يدويًا.',
 };
 
-export default ar;
+export default arabic;

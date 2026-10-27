@@ -102,12 +102,12 @@ export const DIM_SPECS: DimSpec[] = [
   },
 ];
 
-export const SPEC: Record<OrgDim, DimSpec> = Object.fromEntries(DIM_SPECS.map((s) => [s.id, s])) as Record<OrgDim, DimSpec>;
+export const SPEC: Record<OrgDim, DimSpec> = Object.fromEntries(DIM_SPECS.map((spec) => [spec.id, spec])) as Record<OrgDim, DimSpec>;
 
 /** Filter that selects one group. `value` is the dictionary string ('' selects the blank group). */
-export function filterPatch(dim: StoreDim, value: string): Partial<Filters> {
+export function filterPatch(dimension: StoreDim, value: string): Partial<Filters> {
   const patch: Partial<Filters> = {};
-  patch[DIM_FILTER_KEY[dim]] = [value];
+  patch[DIM_FILTER_KEY[dimension]] = [value];
   return patch;
 }
 
@@ -118,24 +118,24 @@ export function filterPatch(dim: StoreDim, value: string): Partial<Filters> {
 export function firstListed(joined: string | null | undefined): string {
   if (!joined) return '';
   const list = joined.replace(/\s\+\d+\s*$/, '');
-  const cut = list.indexOf(', ');
-  return (cut < 0 ? list : list.slice(0, cut)).trim();
+  const commaIndex = list.indexOf(', ');
+  return (commaIndex < 0 ? list : list.slice(0, commaIndex)).trim();
 }
 
 /** The license list names a team for at least one seat, so the page can group by team. */
 export function listHasTeams(roster: readonly RosterEntry[]): boolean {
-  return roster.some((r) => firstListed(r.team) !== '');
+  return roster.some((seat) => firstListed(seat.team) !== '');
 }
 
 /** Number of distinct non-blank values with rows in the current scope. */
-export function namedCount(agg: Aggregates, dim: StoreDim): number {
-  const rows = agg[dim].rows;
-  let n = 0;
-  for (let id = 1; id < rows.length; id++) if (rows[id] > 0) n++;
-  return n;
+export function namedCount(aggregates: Aggregates, dimension: StoreDim): number {
+  const rows = aggregates[dimension].rows;
+  let groupCount = 0;
+  for (let id = 1; id < rows.length; id++) if (rows[id] > 0) groupCount++;
+  return groupCount;
 }
 
 /** Cost center when it splits usage into several groups, otherwise organization. */
-export function defaultDim(agg: Aggregates): OrgDim {
-  return namedCount(agg, 'costCenter') > 1 ? 'costCenter' : 'org';
+export function defaultDim(aggregates: Aggregates): OrgDim {
+  return namedCount(aggregates, 'costCenter') > 1 ? 'costCenter' : 'org';
 }

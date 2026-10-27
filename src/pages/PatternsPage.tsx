@@ -16,9 +16,9 @@ import { MAX_TILE_MONTHS } from './patterns/calendar';
 
 export default function PatternsPage() {
   const { analysis } = useAnalysis();
-  const { range, agg } = analysis;
+  const { range, agg: aggregates } = analysis;
 
-  if (agg.totals.rows === 0) {
+  if (aggregates.totals.rows === 0) {
     return (
       <>
         <PageHeader title={t('Patterns')} description={t('When GitHub Copilot is used, whether adoption is growing or fading, and which days stood out.')} />
@@ -38,7 +38,7 @@ export default function PatternsPage() {
           from: fmtDay(range.start, true),
           to: fmtDay(range.end, true),
           days: pluralize(range.length, 'day'),
-          users: pluralize(agg.totals.users, 'user'),
+          users: pluralize(aggregates.totals.users, 'user'),
         })}
       />
       <div className="space-y-4">

@@ -30,7 +30,7 @@ export function dataCoverage(store: DataStore): DataCoverage {
   const hit = cache.get(store);
   if (hit) return hit;
   const files = store.files;
-  const lacks = (f: (typeof files)[number], c: string): boolean => f.missingColumns.includes(c);
+  const lacks = (file: (typeof files)[number], column: string): boolean => file.missingColumns.includes(column);
   let quota = false;
   for (let i = 0; i < store.n; i++) {
     if (store.quota[i] > 0) {
@@ -38,21 +38,21 @@ export function dataCoverage(store: DataStore): DataCoverage {
       break;
     }
   }
-  const cov: DataCoverage = {
-    billing: files.length > 0 && files.every((f) => !(lacks(f, 'discount_amount') && lacks(f, 'net_amount'))),
+  const coverage: DataCoverage = {
+    billing: files.length > 0 && files.every((file) => !(lacks(file, 'discount_amount') && lacks(file, 'net_amount'))),
     quota,
-    users: files.some((f) => !lacks(f, 'username')),
-    models: store.dicts.model.values.some((v) => v !== ''),
+    users: files.some((file) => !lacks(file, 'username')),
+    models: store.dicts.model.values.some((modelName) => modelName !== ''),
     tokens: store.hasTokens,
   };
-  cache.set(store, cov);
-  return cov;
+  cache.set(store, coverage);
+  return coverage;
 }
 
 /** Human-readable consequences of the missing columns, most important first. */
-export function coverageIssues(cov: DataCoverage, fallbackQuotaCredits = 1900): CoverageIssue[] {
+export function coverageIssues(coverage: DataCoverage, fallbackQuotaCredits = 1900): CoverageIssue[] {
   const out: CoverageIssue[] = [];
-  if (!cov.billing) {
+  if (!coverage.billing) {
     out.push({
       id: 'billing',
       severity: 'warn',
@@ -62,7 +62,7 @@ export function coverageIssues(cov: DataCoverage, fallbackQuotaCredits = 1900): 
       ),
     });
   }
-  if (!cov.quota) {
+  if (!coverage.quota) {
     out.push({
       id: 'quota',
       severity: 'warn',
@@ -73,7 +73,7 @@ export function coverageIssues(cov: DataCoverage, fallbackQuotaCredits = 1900): 
       ),
     });
   }
-  if (!cov.users) {
+  if (!coverage.users) {
     out.push({
       id: 'users',
       severity: 'warn',
@@ -81,7 +81,7 @@ export function coverageIssues(cov: DataCoverage, fallbackQuotaCredits = 1900): 
       detail: t('All usage is put in one unnamed group, so rankings, segments and seat findings do not apply.'),
     });
   }
-  if (!cov.models) {
+  if (!coverage.models) {
     out.push({
       id: 'models',
       severity: 'info',
@@ -89,7 +89,7 @@ export function coverageIssues(cov: DataCoverage, fallbackQuotaCredits = 1900): 
       detail: t('Model comparison, the Auto share and model-based savings are not available.'),
     });
   }
-  if (!cov.tokens) {
+  if (!coverage.tokens) {
     out.push({
       id: 'tokens',
       severity: 'info',

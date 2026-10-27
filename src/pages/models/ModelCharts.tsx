@@ -18,20 +18,20 @@ type Metric = 'gross' | 'net' | 'requests' | 'credits';
 const TOP = 12;
 
 /** Texts are English keys; translate them with t() where they are shown. */
-const METRICS: { value: Metric; label: string; title: string; subtitle: string; format: (v: number) => string }[] = [
+const METRICS: { value: Metric; label: string; title: string; subtitle: string; format: (value: number) => string }[] = [
   {
     value: 'gross',
     label: msg('Usage'),
     title: msg('Usage: the amount charged in the report, after the Auto discount'),
     subtitle: msg('Usage per model. Bars are colored by tier. Click a bar to filter by that model.'),
-    format: (v) => usd(v),
+    format: (value) => usd(value),
   },
   {
     value: 'net',
     label: msg('Billed'),
     title: msg('Amount billed on top of seats, after included credits'),
     subtitle: msg('Amount billed on top of seats per model. Bars are colored by tier. Click a bar to filter by that model.'),
-    format: (v) => usd(v),
+    format: (value) => usd(value),
   },
   {
     value: 'requests',
@@ -45,34 +45,34 @@ const METRICS: { value: Metric; label: string; title: string; subtitle: string; 
     label: msg('Credits'),
     title: msg('AI credits used. One credit is worth $0.01.'),
     subtitle: msg('AI credits per model. Bars are colored by tier. Click a bar to filter by that model.'),
-    format: (v) => (Math.abs(v) >= 1000 ? fmtCount(v) : fmtCredits(v)),
+    format: (value) => (Math.abs(value) >= 1000 ? fmtCount(value) : fmtCredits(value)),
   },
 ];
 
 export function RankingCard({ rows }: { rows: ModelRow[] }) {
   const colors = useChartColors();
   const [metric, setMetric] = useState<Metric>('gross');
-  const m = METRICS.find((x) => x.value === metric) ?? METRICS[0];
+  const metricOption = METRICS.find((choice) => choice.value === metric) ?? METRICS[0];
 
   const { top, more, tiers } = useMemo(() => {
-    const ranked = rows.filter((r) => r[metric] > 0).sort((a, b) => b[metric] - a[metric]);
+    const ranked = rows.filter((model) => model[metric] > 0).sort((a, b) => b[metric] - a[metric]);
     const top = ranked.slice(0, TOP);
-    return { top, more: ranked.length - top.length, tiers: CATEGORIES.filter((c) => top.some((r) => r.tier === c)) };
+    return { top, more: ranked.length - top.length, tiers: CATEGORIES.filter((tier) => top.some((model) => model.tier === tier)) };
   }, [rows, metric]);
 
   const option = useMemo(
     () =>
       rankBarOption(colors, {
         labelWidth: 150,
-        format: m.format,
-        items: top.map((r) => ({
-          name: r.label,
-          value: r[metric],
-          color: CATEGORY_COLORS[r.tier],
-          note: t('{tier} tier · {vendor} · {pct} of usage', { tier: tierLabel(r.tier), vendor: vendorLabel(r.vendor), pct: fmtPct(r.share) }),
+        format: metricOption.format,
+        items: top.map((model) => ({
+          name: model.label,
+          value: model[metric],
+          color: CATEGORY_COLORS[model.tier],
+          note: t('{tier} tier · {vendor} · {pct} of usage', { tier: tierLabel(model.tier), vendor: vendorLabel(model.vendor), pct: fmtPct(model.share) }),
         })),
       }),
-    [colors, top, metric, m],
+    [colors, top, metric, metricOption],
   );
 
   return (
@@ -81,13 +81,13 @@ export function RankingCard({ rows }: { rows: ModelRow[] }) {
       title={t('Model ranking')}
       exportName="github-copilot-model-ranking"
       calc="model-ranking"
-      subtitle={t(m.subtitle)}
+      subtitle={t(metricOption.subtitle)}
       option={option}
       height={Math.max(200, top.length * 27 + 16)}
       empty={top.length === 0 ? (metric === 'net' ? t('Nothing is billed on top of seats in this scope') : t('No model usage in this scope')) : false}
-      onClick={(p) => {
-        const r = top[p.dataIndex];
-        if (r) drill({ models: [r.value] }, { merge: true });
+      onClick={(event) => {
+        const model = top[event.dataIndex];
+        if (model) drill({ models: [model.value] }, { merge: true });
       }}
       actions={
         <Segmented
@@ -113,7 +113,7 @@ export function TierDonutCard() {
   const colors = useChartColors();
   const items = useMemo(() => {
     const gross = rollupByCategory(models, analysis.agg.model).gross;
-    return CATEGORIES.map((c, i) => ({ id: c, name: tierLabel(c), value: gross[i], color: CATEGORY_COLORS[c] })).filter((x) => x.value > 0);
+    return CATEGORIES.map((tier, index) => ({ id: tier, name: tierLabel(tier), value: gross[index], color: CATEGORY_COLORS[tier] })).filter((slice) => slice.value > 0);
   }, [analysis, models]);
   const total = items.reduce((a, b) => a + b.value, 0);
   const option = useMemo(
@@ -130,8 +130,8 @@ export function TierDonutCard() {
       option={option}
       height={270}
       empty={total === 0 ? t('No model usage in this scope') : false}
-      onClick={(p) => {
-        const item = items[p.dataIndex];
+      onClick={(event) => {
+        const item = items[event.dataIndex];
         if (item) drill({ categories: [item.id] }, { merge: true });
       }}
     />
@@ -143,7 +143,7 @@ export function VendorDonutCard() {
   const colors = useChartColors();
   const items = useMemo(() => {
     const gross = rollupByVendor(models, analysis.agg.model).gross;
-    return VENDORS.map((v, i) => ({ id: v, name: vendorLabel(v), value: gross[i], color: vendorColor(colors, i) })).filter((x) => x.value > 0);
+    return VENDORS.map((vendor, index) => ({ id: vendor, name: vendorLabel(vendor), value: gross[index], color: vendorColor(colors, index) })).filter((slice) => slice.value > 0);
   }, [analysis, models, colors]);
   const total = items.reduce((a, b) => a + b.value, 0);
   const option = useMemo(
@@ -160,8 +160,8 @@ export function VendorDonutCard() {
       option={option}
       height={240}
       empty={total === 0 ? t('No model usage in this scope') : false}
-      onClick={(p) => {
-        const item = items[p.dataIndex];
+      onClick={(event) => {
+        const item = items[event.dataIndex];
         if (item) drill({ vendors: [item.id] }, { merge: true });
       }}
       footer={

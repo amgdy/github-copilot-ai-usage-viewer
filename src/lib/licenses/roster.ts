@@ -19,20 +19,20 @@ const EMAIL = /^[^\s@]+@[^\s@]+$/;
 const FIRST_DAY = '2008-01-01';
 const LAST_DAY = '2100-12-31';
 
-const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
+const isObject = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /** A day the roster accepts: a real calendar day between 2008 and 2100. */
-const isRosterDay = (v: unknown): v is string => isIsoDay(v) && v >= FIRST_DAY && v <= LAST_DAY;
+const isRosterDay = (value: unknown): value is string => isIsoDay(value) && value >= FIRST_DAY && value <= LAST_DAY;
 
 /** The rule for a login in stored data. It is looser than the import rule, so rosters saved by earlier versions still load. */
 function userProblem(user: string): boolean {
   return user === '' || user.length > MAX_USER || BAD_USER.test(user);
 }
 
-const text = (v: unknown, max: number): string | undefined => {
-  if (typeof v !== 'string') return undefined;
-  const t = v.trim();
-  return t === '' ? undefined : t.slice(0, max);
+const text = (value: unknown, max: number): string | undefined => {
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  return trimmed === '' ? undefined : trimmed.slice(0, max);
 };
 
 /** Adds the license fields that hold valid values, in a fixed order so the stored JSON is the same every time. */
@@ -232,7 +232,7 @@ export function applyLicenseImport(
     return { roster: [...current.roster], rosterAsOf: current.rosterAsOf, added: 0, updated: 0, unchanged: before.length, removed: 0 };
   }
   const roster = mergeRoster(before, rosterFromParse(parse), mode);
-  const old = new Map(before.map((e) => [loginKey(e.user), e]));
+  const old = new Map(before.map((entry) => [loginKey(entry.user), entry]));
   let added = 0;
   let updated = 0;
   let unchanged = 0;
@@ -245,7 +245,7 @@ export function applyLicenseImport(
     else if (sameEntry(had, entry)) unchanged++;
     else updated++;
   }
-  const removed = before.filter((e) => !kept.has(loginKey(e.user))).length;
+  const removed = before.filter((entry) => !kept.has(loginKey(entry.user))).length;
 
   const stored = isIsoDay(current.rosterAsOf) ? current.rosterAsOf : undefined;
   let rosterAsOf: string;

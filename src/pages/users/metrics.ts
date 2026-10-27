@@ -56,10 +56,10 @@ export interface RankMetric {
   /** Id of the doc that explains the measure. */
   calc: string;
   /** Second line of the tooltip of a bar. Defaults to the usage of the user. */
-  note?: (p: UserProfile) => string;
+  note?: (user: UserProfile) => string;
   /** Value to rank by. NaN leaves the user out. */
-  value: (p: UserProfile, ctx: MetricContext, dir: RankDir) => number;
-  format: (v: number, dir: RankDir) => string;
+  value: (user: UserProfile, context: MetricContext, dir: RankDir) => number;
+  format: (value: number, dir: RankDir) => string;
   /** The list can be turned around (smallest first). */
   directional: boolean;
   defaultDir: RankDir;
@@ -70,23 +70,23 @@ export interface RankMetric {
   /** Users with a value of zero or less are left out. */
   positiveOnly?: boolean;
   /** A whole translated sentence that says which users are left out of the ranking. */
-  skipReason: (ctx: MetricContext, dir: RankDir) => string;
+  skipReason: (context: MetricContext, dir: RankDir) => string;
   /** Explains an empty ranking, as a whole translated sentence. */
-  missing: (ctx: MetricContext, dir: RankDir) => string;
+  missing: (context: MetricContext, dir: RankDir) => string;
 }
 
-const enough = (p: UserProfile, ctx: MetricContext): boolean => p.gross >= ctx.minSpend;
+const enough = (user: UserProfile, context: MetricContext): boolean => user.gross >= context.minSpend;
 
-const ratioReason = (ctx: MetricContext): string =>
-  t('Users with less than {amount} of usage are left out.', { amount: fmtUSD(ctx.minSpend, 0) });
-const notEnough = (ctx: MetricContext): string =>
-  t('Nobody has at least {amount} of usage in this range.', { amount: fmtUSD(ctx.minSpend, 0) });
+const ratioReason = (context: MetricContext): string =>
+  t('Users with less than {amount} of usage are left out.', { amount: fmtUSD(context.minSpend, 0) });
+const notEnough = (context: MetricContext): string =>
+  t('Nobody has at least {amount} of usage in this range.', { amount: fmtUSD(context.minSpend, 0) });
 
 const noTokenColumns = (): string => t('The file has no token columns.');
 const noModelNames = (): string => t('The file has no model names.');
 const noTokenRanking = (): string => t('This file has no token columns, so users cannot be ranked by tokens.');
-const tokenSkip = (ctx: MetricContext, reason: string): string => (ctx.hasTokens ? t(reason) : noTokenColumns());
-const tokenMissing = (ctx: MetricContext, reason: string): string => (ctx.hasTokens ? t(reason) : noTokenRanking());
+const tokenSkip = (context: MetricContext, reason: string): string => (context.hasTokens ? t(reason) : noTokenColumns());
+const tokenMissing = (context: MetricContext, reason: string): string => (context.hasTokens ? t(reason) : noTokenRanking());
 
 export const RANK_METRICS: RankMetric[] = [
   {
@@ -95,9 +95,9 @@ export const RANK_METRICS: RankMetric[] = [
     group: 'usage',
     about: msg('Everything the user used, before included credits.'),
     calc: 'usage',
-    note: (p) => t('{share} of all usage', { share: fmtPct(p.share) }),
-    value: (p) => p.gross,
-    format: (v) => fmtUSD(v),
+    note: (user) => t('{share} of all usage', { share: fmtPct(user.share) }),
+    value: (user) => user.gross,
+    format: (value) => fmtUSD(value),
     directional: false,
     defaultDir: 'high',
     positiveOnly: true,
@@ -110,8 +110,8 @@ export const RANK_METRICS: RankMetric[] = [
     group: 'usage',
     about: msg('Amount billed on top of licenses, after included credits.'),
     calc: 'billed',
-    value: (p) => p.net,
-    format: (v) => fmtUSD(v),
+    value: (user) => user.net,
+    format: (value) => fmtUSD(value),
     directional: false,
     defaultDir: 'high',
     positiveOnly: true,
@@ -124,8 +124,8 @@ export const RANK_METRICS: RankMetric[] = [
     group: 'usage',
     about: msg('Usage as a share of the included credits of the license.'),
     calc: 'user-credits-used',
-    value: (p, _ctx, dir) => (!hasQuota(p) || (dir === 'low' && p.isNew) ? Number.NaN : p.utilization),
-    format: (v) => fmtPctAuto(v),
+    value: (user, _ctx, dir) => (!hasQuota(user) || (dir === 'low' && user.isNew) ? Number.NaN : user.utilization),
+    format: (value) => fmtPctAuto(value),
     directional: true,
     defaultDir: 'high',
     dirLabels: { high: msg('Most used'), low: msg('Least used') },
@@ -141,8 +141,8 @@ export const RANK_METRICS: RankMetric[] = [
     group: 'usage',
     about: msg('Days with real use in the date range.'),
     calc: 'user-active-days',
-    value: (p, _ctx, dir) => (dir === 'low' && p.isNew ? Number.NaN : p.activeDays),
-    format: (v) => pluralize(v, 'day'),
+    value: (user, _ctx, dir) => (dir === 'low' && user.isNew ? Number.NaN : user.activeDays),
+    format: (value) => pluralize(value, 'day'),
     directional: true,
     defaultDir: 'high',
     dirLabels: { high: msg('Most days'), low: msg('Fewest days') },
@@ -155,8 +155,8 @@ export const RANK_METRICS: RankMetric[] = [
     group: 'usage',
     about: msg('Usage divided by active days. High values mean heavy days.'),
     calc: 'user-cost-per-active-day',
-    value: (p) => p.costPerActiveDay,
-    format: (v) => fmtUSD(v),
+    value: (user) => user.costPerActiveDay,
+    format: (value) => fmtUSD(value),
     directional: true,
     defaultDir: 'high',
     positiveOnly: true,
@@ -169,8 +169,8 @@ export const RANK_METRICS: RankMetric[] = [
     group: 'usage',
     about: msg('Usage that could be avoided with the levers in this report.'),
     calc: 'user-potential',
-    value: (p) => p.potential,
-    format: (v) => fmtUSD(v),
+    value: (user) => user.potential,
+    format: (value) => fmtUSD(value),
     directional: false,
     defaultDir: 'high',
     positiveOnly: true,
@@ -183,9 +183,9 @@ export const RANK_METRICS: RankMetric[] = [
     group: 'usage',
     about: msg('Usage in the last 7 days compared with the 7 days before.'),
     calc: 'user-change',
-    value: (p, ctx, dir) =>
-      ctx.trendReliable ? (dir === 'high' ? p.recent - p.prior : p.prior - p.recent) : Number.NaN,
-    format: (v, dir) => `${dir === 'high' ? '+' : '−'}${fmtUSD(v)}`,
+    value: (user, context, dir) =>
+      context.trendReliable ? (dir === 'high' ? user.recent - user.prior : user.prior - user.recent) : Number.NaN,
+    format: (value, dir) => `${dir === 'high' ? '+' : '−'}${fmtUSD(value)}`,
     directional: true,
     defaultDir: 'high',
     dirLabels: { high: msg('Biggest rise'), low: msg('Biggest drop') },
@@ -193,8 +193,8 @@ export const RANK_METRICS: RankMetric[] = [
     positiveOnly: true,
     skipReason: (_ctx, dir) =>
       dir === 'high' ? t('Users whose usage did not rise are left out.') : t('Users whose usage did not drop are left out.'),
-    missing: (ctx, dir) =>
-      ctx.trendReliable
+    missing: (context, dir) =>
+      context.trendReliable
         ? dir === 'high'
           ? t('Nobody used more in the last 7 days than in the 7 days before.')
           : t('Nobody used less in the last 7 days than in the 7 days before.')
@@ -206,13 +206,13 @@ export const RANK_METRICS: RankMetric[] = [
     group: 'tokens',
     about: msg('Input, cache read, cache write and output tokens together.'),
     calc: 'tokens-total',
-    value: (p, ctx) => (ctx.hasTokens ? p.tokens : Number.NaN),
-    format: (v) => fmtCount(v),
+    value: (user, context) => (context.hasTokens ? user.tokens : Number.NaN),
+    format: (value) => fmtCount(value),
     directional: false,
     defaultDir: 'high',
     positiveOnly: true,
-    skipReason: (ctx) => tokenSkip(ctx, msg('Users with no tokens are left out.')),
-    missing: (ctx) => tokenMissing(ctx, msg('Nobody has tokens in this range.')),
+    skipReason: (context) => tokenSkip(context, msg('Users with no tokens are left out.')),
+    missing: (context) => tokenMissing(context, msg('Nobody has tokens in this range.')),
   },
   {
     id: 'tokenOutput',
@@ -220,13 +220,13 @@ export const RANK_METRICS: RankMetric[] = [
     group: 'tokens',
     about: msg('Tokens the models wrote back.'),
     calc: 'tokens-output',
-    value: (p, ctx) => (ctx.hasTokens ? p.output : Number.NaN),
-    format: (v) => fmtCount(v),
+    value: (user, context) => (context.hasTokens ? user.output : Number.NaN),
+    format: (value) => fmtCount(value),
     directional: false,
     defaultDir: 'high',
     positiveOnly: true,
-    skipReason: (ctx) => tokenSkip(ctx, msg('Users with no output tokens are left out.')),
-    missing: (ctx) => tokenMissing(ctx, msg('Nobody has output tokens in this range.')),
+    skipReason: (context) => tokenSkip(context, msg('Users with no output tokens are left out.')),
+    missing: (context) => tokenMissing(context, msg('Nobody has output tokens in this range.')),
   },
   {
     id: 'tokenInput',
@@ -234,13 +234,13 @@ export const RANK_METRICS: RankMetric[] = [
     group: 'tokens',
     about: msg('Tokens sent to the models that were not served from the cache and not written to it.'),
     calc: 'tokens-input',
-    value: (p, ctx) => (ctx.hasTokens ? p.input : Number.NaN),
-    format: (v) => fmtCount(v),
+    value: (user, context) => (context.hasTokens ? user.input : Number.NaN),
+    format: (value) => fmtCount(value),
     directional: false,
     defaultDir: 'high',
     positiveOnly: true,
-    skipReason: (ctx) => tokenSkip(ctx, msg('Users with no input tokens are left out.')),
-    missing: (ctx) => tokenMissing(ctx, msg('Nobody has input tokens in this range.')),
+    skipReason: (context) => tokenSkip(context, msg('Users with no input tokens are left out.')),
+    missing: (context) => tokenMissing(context, msg('Nobody has input tokens in this range.')),
   },
   {
     id: 'tokenCacheRead',
@@ -248,13 +248,13 @@ export const RANK_METRICS: RankMetric[] = [
     group: 'tokens',
     about: msg('Tokens served from the cache of the model, which costs less than sending them again.'),
     calc: 'tokens-cache-read',
-    value: (p, ctx) => (ctx.hasTokens ? p.cacheRead : Number.NaN),
-    format: (v) => fmtCount(v),
+    value: (user, context) => (context.hasTokens ? user.cacheRead : Number.NaN),
+    format: (value) => fmtCount(value),
     directional: false,
     defaultDir: 'high',
     positiveOnly: true,
-    skipReason: (ctx) => tokenSkip(ctx, msg('Users with no cache read tokens are left out.')),
-    missing: (ctx) => tokenMissing(ctx, msg('Nobody has cache read tokens in this range.')),
+    skipReason: (context) => tokenSkip(context, msg('Users with no cache read tokens are left out.')),
+    missing: (context) => tokenMissing(context, msg('Nobody has cache read tokens in this range.')),
   },
   {
     id: 'tokenCacheWrite',
@@ -262,13 +262,13 @@ export const RANK_METRICS: RankMetric[] = [
     group: 'tokens',
     about: msg('Tokens written to the cache of the model so that later requests can read them.'),
     calc: 'tokens-cache-write',
-    value: (p, ctx) => (ctx.hasTokens ? p.cacheWrite : Number.NaN),
-    format: (v) => fmtCount(v),
+    value: (user, context) => (context.hasTokens ? user.cacheWrite : Number.NaN),
+    format: (value) => fmtCount(value),
     directional: false,
     defaultDir: 'high',
     positiveOnly: true,
-    skipReason: (ctx) => tokenSkip(ctx, msg('Users with no cache write tokens are left out.')),
-    missing: (ctx) => tokenMissing(ctx, msg('Nobody has cache write tokens in this range.')),
+    skipReason: (context) => tokenSkip(context, msg('Users with no cache write tokens are left out.')),
+    missing: (context) => tokenMissing(context, msg('Nobody has cache write tokens in this range.')),
   },
   {
     id: 'cacheHit',
@@ -276,15 +276,15 @@ export const RANK_METRICS: RankMetric[] = [
     group: 'tokens',
     about: msg('Share of the text sent to the model that was served from the cache. A higher rate is cheaper.'),
     calc: 'cache-hit',
-    value: (p, ctx) => (ctx.hasTokens && enough(p, ctx) ? p.cacheHit : Number.NaN),
-    format: (v) => fmtPct(v, 0),
+    value: (user, context) => (context.hasTokens && enough(user, context) ? user.cacheHit : Number.NaN),
+    format: (value) => fmtPct(value, 0),
     directional: true,
     defaultDir: 'low',
-    skipReason: (ctx) =>
-      ctx.hasTokens
-        ? t('Users with less than {amount} of usage or no input tokens are left out.', { amount: fmtUSD(ctx.minSpend, 0) })
+    skipReason: (context) =>
+      context.hasTokens
+        ? t('Users with less than {amount} of usage or no input tokens are left out.', { amount: fmtUSD(context.minSpend, 0) })
         : noTokenColumns(),
-    missing: (ctx) => (ctx.hasTokens ? notEnough(ctx) : t('This file has no token columns, so the cache hit rate cannot be calculated.')),
+    missing: (context) => (context.hasTokens ? notEnough(context) : t('This file has no token columns, so the cache hit rate cannot be calculated.')),
   },
   {
     id: 'autoShare',
@@ -292,14 +292,14 @@ export const RANK_METRICS: RankMetric[] = [
     group: 'auto',
     about: msg('Share of usage that went through Auto. A low share means more models picked by hand.'),
     calc: 'auto-share',
-    note: (p) => t('{auto} of {usage} usage went through Auto', { auto: fmtUSD(p.auto.billed), usage: fmtUSD(p.gross) }),
-    value: (p, ctx) => (ctx.hasModels && enough(p, ctx) ? p.autoShare : Number.NaN),
-    format: (v) => fmtPct(v, 0),
+    note: (user) => t('{auto} of {usage} usage went through Auto', { auto: fmtUSD(user.auto.billed), usage: fmtUSD(user.gross) }),
+    value: (user, context) => (context.hasModels && enough(user, context) ? user.autoShare : Number.NaN),
+    format: (value) => fmtPct(value, 0),
     directional: true,
     defaultDir: 'low',
-    skipReason: (ctx) => (ctx.hasModels ? ratioReason(ctx) : noModelNames()),
-    missing: (ctx) =>
-      ctx.hasModels ? notEnough(ctx) : t('This file has no model names, so the Auto share of usage cannot be calculated.'),
+    skipReason: (context) => (context.hasModels ? ratioReason(context) : noModelNames()),
+    missing: (context) =>
+      context.hasModels ? notEnough(context) : t('This file has no model names, so the Auto share of usage cannot be calculated.'),
   },
   {
     id: 'autoDiscount',
@@ -307,15 +307,15 @@ export const RANK_METRICS: RankMetric[] = [
     group: 'auto',
     about: msg('What the Auto discount took off the original price of the Auto usage of the user.'),
     calc: 'auto-discount',
-    note: (p) => t('{rate} off an original price of {price}', { rate: fmtPct(p.auto.rate, 1), price: fmtUSD(p.auto.original) }),
-    value: (p, ctx) => (ctx.hasModels ? p.auto.discount : Number.NaN),
-    format: (v) => fmtUSD(v),
+    note: (user) => t('{rate} off an original price of {price}', { rate: fmtPct(user.auto.rate, 1), price: fmtUSD(user.auto.original) }),
+    value: (user, context) => (context.hasModels ? user.auto.discount : Number.NaN),
+    format: (value) => fmtUSD(value),
     directional: false,
     defaultDir: 'high',
     positiveOnly: true,
-    skipReason: (ctx) => (ctx.hasModels ? t('Users who received no Auto discount are left out.') : noModelNames()),
-    missing: (ctx) =>
-      ctx.hasModels ? t('Nobody received an Auto discount in this range.') : t('This file has no model names, so the Auto discount cannot be calculated.'),
+    skipReason: (context) => (context.hasModels ? t('Users who received no Auto discount are left out.') : noModelNames()),
+    missing: (context) =>
+      context.hasModels ? t('Nobody received an Auto discount in this range.') : t('This file has no model names, so the Auto discount cannot be calculated.'),
   },
   {
     id: 'autoOriginal',
@@ -323,15 +323,15 @@ export const RANK_METRICS: RankMetric[] = [
     group: 'auto',
     about: msg('What the Auto usage of the user would have cost at price-card rates, without the Auto discount.'),
     calc: 'auto-original-price',
-    note: (p) => t('{billed} charged after a discount of {discount}', { billed: fmtUSD(p.auto.billed), discount: fmtUSD(p.auto.discount) }),
-    value: (p, ctx) => (ctx.hasModels ? p.auto.original : Number.NaN),
-    format: (v) => fmtUSD(v),
+    note: (user) => t('{billed} charged after a discount of {discount}', { billed: fmtUSD(user.auto.billed), discount: fmtUSD(user.auto.discount) }),
+    value: (user, context) => (context.hasModels ? user.auto.original : Number.NaN),
+    format: (value) => fmtUSD(value),
     directional: false,
     defaultDir: 'high',
     positiveOnly: true,
-    skipReason: (ctx) => (ctx.hasModels ? t('Users with no Auto usage are left out.') : noModelNames()),
-    missing: (ctx) =>
-      ctx.hasModels
+    skipReason: (context) => (context.hasModels ? t('Users with no Auto usage are left out.') : noModelNames()),
+    missing: (context) =>
+      context.hasModels
         ? t('Nobody has Auto usage in this range.')
         : t('This file has no model names, so the original price of Auto usage cannot be calculated.'),
   },
@@ -341,15 +341,15 @@ export const RANK_METRICS: RankMetric[] = [
     group: 'auto',
     about: msg('An estimate of the discount the user would have received on usage sent to models picked by hand, had it gone through Auto.'),
     calc: 'auto-missed',
-    note: (p) => t('{amount} of hand-picked usage', { amount: fmtUSD(p.directBilled) }),
-    value: (p, ctx) => (ctx.hasModels ? p.autoMissed : Number.NaN),
-    format: (v) => fmtUSD(v),
+    note: (user) => t('{amount} of hand-picked usage', { amount: fmtUSD(user.directBilled) }),
+    value: (user, context) => (context.hasModels ? user.autoMissed : Number.NaN),
+    format: (value) => fmtUSD(value),
     directional: false,
     defaultDir: 'high',
     positiveOnly: true,
-    skipReason: (ctx) => (ctx.hasModels ? t('Users with no hand-picked usage are left out.') : noModelNames()),
-    missing: (ctx) =>
-      ctx.hasModels
+    skipReason: (context) => (context.hasModels ? t('Users with no hand-picked usage are left out.') : noModelNames()),
+    missing: (context) =>
+      context.hasModels
         ? t('Nobody has hand-picked usage in this range.')
         : t('This file has no model names, so the discount missed on hand-picked usage cannot be calculated.'),
   },
@@ -366,7 +366,7 @@ const GROUP_ORDER: MetricGroup[] = ['usage', 'tokens', 'auto'];
 export function rankMetricGroups(): MetricGroupOptions[] {
   return GROUP_ORDER.map((group) => ({
     label: t(METRIC_GROUP_LABELS[group]),
-    options: RANK_METRICS.filter((m) => m.group === group).map((m) => ({ value: m.id, label: t(m.label) })),
+    options: RANK_METRICS.filter((metric) => metric.group === group).map((metric) => ({ value: metric.id, label: t(metric.label) })),
   }));
 }
 
@@ -389,15 +389,15 @@ export function rankUsers(
   profiles: readonly UserProfile[],
   metric: RankMetric,
   dir: RankDir,
-  ctx: MetricContext,
+  context: MetricContext,
   topN: number,
 ): Ranking {
   const rows: RankedUser[] = [];
-  for (const p of profiles) {
-    const value = metric.value(p, ctx, dir);
+  for (const user of profiles) {
+    const value = metric.value(user, context, dir);
     if (!Number.isFinite(value)) continue;
     if (metric.positiveOnly && value <= 0) continue;
-    rows.push({ p, value });
+    rows.push({ p: user, value });
   }
   const ascending = metric.directional && dir === 'low' && !metric.flips;
   rows.sort((a, b) => (ascending ? a.value - b.value : b.value - a.value) || b.p.gross - a.p.gross);
@@ -416,7 +416,7 @@ export const COLOR_BY_OPTIONS: { value: ColorBy; label: string }[] = [
 
 export interface Categorizer {
   items: TaxonomyItem[];
-  of: (p: UserProfile) => TaxonomyItem | undefined;
+  of: (user: UserProfile) => TaxonomyItem | undefined;
 }
 
 export function categorizer(taxonomy: Taxonomy, by: ColorBy): Categorizer {
@@ -428,8 +428,8 @@ export function categorizer(taxonomy: Taxonomy, by: ColorBy): Categorizer {
         : by === 'engagement'
           ? taxonomy.engagement
           : taxonomy.profiles;
-  const byId = new Map(items.map((i) => [i.id, i]));
-  const key = (p: UserProfile): string =>
-    by === 'persona' ? p.persona : by === 'tier' ? p.tier : by === 'engagement' ? p.engagement : p.profile;
-  return { items, of: (p) => byId.get(key(p)) };
+  const byId = new Map(items.map((item) => [item.id, item]));
+  const key = (user: UserProfile): string =>
+    by === 'persona' ? user.persona : by === 'tier' ? user.tier : by === 'engagement' ? user.engagement : user.profile;
+  return { items, of: (user) => byId.get(key(user)) };
 }

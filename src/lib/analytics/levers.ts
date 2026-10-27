@@ -45,7 +45,7 @@ export const DEFAULT_TARGETS: Record<Vendor, string> = {
   Other: 'Claude Sonnet 5.5',
 };
 
-export const VERSATILE_TARGETS: string[] = PRICE_CARD.filter((e) => e.category === 'Versatile').map((e) => e.name);
+export const VERSATILE_TARGETS: string[] = PRICE_CARD.filter((cardEntry) => cardEntry.category === 'Versatile').map((cardEntry) => cardEntry.name);
 
 export interface ShiftRow {
   modelId: number;
@@ -65,10 +65,10 @@ export interface LeverContext {
   autoRates?: AutoRates;
 }
 
-function tokenCost(m: ModelMeta, input: number, cacheRead: number, cacheWrite: number, output: number): number {
-  if (!m.base) return 0;
-  const r = m.base;
-  return (input * r.input + cacheRead * r.cachedInput + cacheWrite * r.cacheWrite + output * r.output) / 1e6;
+function tokenCost(meta: ModelMeta, input: number, cacheRead: number, cacheWrite: number, output: number): number {
+  if (!meta.base) return 0;
+  const rates = meta.base;
+  return (input * rates.input + cacheRead * rates.cachedInput + cacheWrite * rates.cacheWrite + output * rates.output) / 1e6;
 }
 
 export function targetMeta(targetName: string, vendor: Vendor, settings: Settings): ModelMeta {
@@ -77,24 +77,24 @@ export function targetMeta(targetName: string, vendor: Vendor, settings: Setting
 }
 
 /** Per-model right-sizing ratios for Powerful models (NaN when not applicable). */
-export function modelShiftRatios(ctx: LeverContext, target: string): { ratio: Float64Array; rows: ShiftRow[] } {
-  const { agg, models, settings } = ctx;
-  const n = models.meta.length;
-  const ratio = new Float64Array(n).fill(Number.NaN);
+export function modelShiftRatios(context: LeverContext, target: string): { ratio: Float64Array; rows: ShiftRow[] } {
+  const { agg: aggregates, models, settings } = context;
+  const modelCount = models.meta.length;
+  const ratio = new Float64Array(modelCount).fill(Number.NaN);
   const rows: ShiftRow[] = [];
-  for (let m = 0; m < n; m++) {
-    const meta = models.meta[m];
+  for (let modelId = 0; modelId < modelCount; modelId++) {
+    const meta = models.meta[modelId];
     if (meta.category !== 'Powerful' || !meta.priced) continue;
-    const g = agg.model.gross[m];
-    if (g <= 0) continue;
-    const t = targetMeta(target, meta.vendor, settings);
-    if (!t.base || t.name === meta.name) continue;
-    const src = tokenCost(meta, agg.model.input[m], agg.model.cacheRead[m], agg.model.cacheWrite[m], agg.model.output[m]);
-    const dst = tokenCost(t, agg.model.input[m], agg.model.cacheRead[m], agg.model.cacheWrite[m], agg.model.output[m]);
-    if (src <= 0 || dst <= 0) continue;
-    const r = dst / src;
-    ratio[m] = r;
-    rows.push({ modelId: m, model: meta.name, target: t.name, gross: g, ratio: r, savingsAtFull: r < 1 ? g * (1 - r) : 0 });
+    const gross = aggregates.model.gross[modelId];
+    if (gross <= 0) continue;
+    const targetModel = targetMeta(target, meta.vendor, settings);
+    if (!targetModel.base || targetModel.name === meta.name) continue;
+    const sourceCost = tokenCost(meta, aggregates.model.input[modelId], aggregates.model.cacheRead[modelId], aggregates.model.cacheWrite[modelId], aggregates.model.output[modelId]);
+    const targetCost = tokenCost(targetModel, aggregates.model.input[modelId], aggregates.model.cacheRead[modelId], aggregates.model.cacheWrite[modelId], aggregates.model.output[modelId]);
+    if (sourceCost <= 0 || targetCost <= 0) continue;
+    const costRatio = targetCost / sourceCost;
+    ratio[modelId] = costRatio;
+    rows.push({ modelId: modelId, model: meta.name, target: targetModel.name, gross: gross, ratio: costRatio, savingsAtFull: costRatio < 1 ? gross * (1 - costRatio) : 0 });
   }
   rows.sort((a, b) => b.savingsAtFull - a.savingsAtFull);
   return { ratio, rows };
@@ -145,10 +145,10 @@ export function applyLevers(
   let total = 0;
   for (const id of order) {
     const scale = baseline > 0 ? remaining / baseline : 0;
-    const s = Math.max(0, standalone[id] * scale);
-    remaining -= s;
-    total += s;
-    steps.push({ id, label: t(meta[id].label), description: t(meta[id].description), savings: s, standalone: standalone[id] });
+    const savings = Math.max(0, standalone[id] * scale);
+    remaining -= savings;
+    total += savings;
+    steps.push({ id, label: t(meta[id].label), description: t(meta[id].description), savings: savings, standalone: standalone[id] });
   }
   return { steps, total };
 }
@@ -191,48 +191,48 @@ export const LEVER_ORDER: LeverStep['id'][] = [
 ];
 
 /** Estimated spend saved by turning cache writes into cache reads, using per-model billed/list ratios. */
-export function cacheSavingsStandalone(ctx: LeverContext, share: number): number {
-  const { agg, models } = ctx;
-  let s = 0;
-  for (let m = 0; m < models.meta.length; m++) {
-    if (!models.priced[m]) continue;
-    const list = agg.modelExtra.listCost[m];
+export function cacheSavingsStandalone(context: LeverContext, share: number): number {
+  const { agg: aggregates, models } = context;
+  let savings = 0;
+  for (let modelId = 0; modelId < models.meta.length; modelId++) {
+    if (!models.priced[modelId]) continue;
+    const list = aggregates.modelExtra.listCost[modelId];
     if (list <= 0) continue;
-    const billedRatio = agg.modelExtra.pricedGross[m] / list;
-    const perToken = models.rCw[m] - models.rCr[m];
-    if (perToken > 0) s += agg.model.cacheWrite[m] * perToken * billedRatio;
+    const billedRatio = aggregates.modelExtra.pricedGross[modelId] / list;
+    const perToken = models.rCw[modelId] - models.rCr[modelId];
+    if (perToken > 0) savings += aggregates.model.cacheWrite[modelId] * perToken * billedRatio;
   }
-  return s * share;
+  return savings * share;
 }
 
 export function computeLevers(
-  ctx: LeverContext,
+  context: LeverContext,
   params: LeverParams,
   allotment: Float64Array,
 ): LeverResult {
-  const { agg, settings } = ctx;
-  const baseline = agg.totals.gross;
-  const { rows: shiftRows } = modelShiftRatios(ctx, params.target);
-  const modelShiftFull = shiftRows.reduce((a, r) => a + r.savingsAtFull, 0);
+  const { agg: aggregates, settings } = context;
+  const baseline = aggregates.totals.gross;
+  const { rows: shiftRows } = modelShiftRatios(context, params.target);
+  const modelShiftFull = shiftRows.reduce((sum, shiftRow) => sum + shiftRow.savingsAtFull, 0);
   // Without model names nothing is known to be hand-picked, so there is no manual usage to move to Auto.
-  const modelsKnown = ctx.models.meta.some((m) => m.name !== '');
+  const modelsKnown = context.models.meta.some((meta) => meta.name !== '');
   // What the hand-picked usage would earn through Auto: each user's hand-picked usage times the Auto discount of their plan.
-  const autoPotential = modelsKnown ? summarizeAuto(agg, settings, true, ctx.autoRates).missed : 0;
-  const inputSide = agg.totals.est.input + agg.totals.est.cacheRead + agg.totals.est.cacheWrite;
+  const autoPotential = modelsKnown ? summarizeAuto(aggregates, settings, true, context.autoRates).missed : 0;
+  const inputSide = aggregates.totals.est.input + aggregates.totals.est.cacheRead + aggregates.totals.est.cacheWrite;
 
   let capped = 0;
-  const g = agg.userAcc.gross;
-  for (let u = 1; u < g.length; u++) {
-    const allot = allotment[u];
-    if (allot > 0 && g[u] > params.capUtil * allot) capped += g[u] - params.capUtil * allot;
+  const grossByUser = aggregates.userAcc.gross;
+  for (let user = 1; user < grossByUser.length; user++) {
+    const allot = allotment[user];
+    if (allot > 0 && grossByUser[user] > params.capUtil * allot) capped += grossByUser[user] - params.capUtil * allot;
   }
 
   const standalone: Record<LeverStep['id'], number> = {
     modelShift: modelShiftFull * params.modelShift,
     autoAdoption: autoPotential * params.autoAdoption,
-    cacheDiscipline: cacheSavingsStandalone(ctx, params.cacheDiscipline),
+    cacheDiscipline: cacheSavingsStandalone(context, params.cacheDiscipline),
     contextHygiene: inputSide * params.contextHygiene,
-    longContext: agg.totals.longPremium * params.longContext,
+    longContext: aggregates.totals.longPremium * params.longContext,
     capRunaway: capped * params.capRunaway,
   };
   const { steps, total } = applyLevers(baseline, standalone, LEVER_META, LEVER_ORDER);

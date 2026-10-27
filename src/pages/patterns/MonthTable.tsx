@@ -7,51 +7,51 @@ import { fmtInt, fmtNum, fmtUSD, pluralize } from '../../lib/utils/format';
 import { newUserCut } from './adoption';
 import { dayStats, monthRows, type MonthRow } from './model';
 
-const sum = (rows: MonthRow[], pick: (r: MonthRow) => number): number => rows.reduce((s, r) => s + pick(r), 0);
+const sum = (rows: MonthRow[], pick: (row: MonthRow) => number): number => rows.reduce((total, row) => total + pick(row), 0);
 
 export default function MonthTable() {
-  const { analysis, store, prep, settings } = useAnalysis();
-  const { agg, range, users } = analysis;
-  const cut = newUserCut(range.start, store.minDay, settings.newUserDays);
+  const { analysis, store, prep: prepared, settings } = useAnalysis();
+  const { agg: aggregates, range, users } = analysis;
+  const newUserCutoff = newUserCut(range.start, store.minDay, settings.newUserDays);
 
   const input = useMemo(
     () => ({
       range,
-      days: agg.days,
-      userMonthGross: agg.userMonthGross,
-      nMonths: agg.nMonths,
-      firstMonth: prep.firstMonth,
-      newFirstDays: users.profiles.map((p) => p.globalFirstDay).filter((d) => d >= cut),
+      days: aggregates.days,
+      userMonthGross: aggregates.userMonthGross,
+      nMonths: aggregates.nMonths,
+      firstMonth: prepared.firstMonth,
+      newFirstDays: users.profiles.map((profile) => profile.globalFirstDay).filter((firstDay) => firstDay >= newUserCutoff),
     }),
-    [range, agg, prep, users, cut],
+    [range, aggregates, prepared, users, newUserCutoff],
   );
   const rows = useMemo(() => monthRows(input), [input]);
   const totals = useMemo(() => {
-    const usage = sum(rows, (r) => r.usage);
-    const usageDays = sum(rows, (r) => r.usageDays);
+    const usage = sum(rows, (row) => row.usage);
+    const usageDays = sum(rows, (row) => row.usageDays);
     return {
       usage,
       perUsageDay: usageDays > 0 ? usage / usageDays : Number.NaN,
-      avgActive: dayStats(agg.days).avgActive,
-      newUsers: sum(rows, (r) => r.newUsers),
+      avgActive: dayStats(aggregates.days).avgActive,
+      newUsers: sum(rows, (row) => row.newUsers),
       // Same count as the page header and the Spend page: every named user with a row in scope, $0 rows included.
-      activeUsers: agg.totals.users,
-      maxUsage: rows.reduce((m, r) => Math.max(m, r.usage), 0),
+      activeUsers: aggregates.totals.users,
+      maxUsage: rows.reduce((largest, row) => Math.max(largest, row.usage), 0),
     };
-  }, [rows, agg]);
+  }, [rows, aggregates]);
 
   const columns = useMemo<Column<MonthRow>[]>(
     () => [
       {
         key: 'month',
         header: t('Month'),
-        value: (r) => monthKey(r.monthIdx),
+        value: (row) => monthKey(row.monthIdx),
         total: t('Whole range'),
-        render: (r) => (
+        render: (row) => (
           <span className="inline-flex items-center gap-2 whitespace-nowrap">
-            <span className="font-medium">{r.label}</span>
-            {r.partial ? (
-              <Badge tone="warn" title={t('The date range covers {covered} of the {total} days of this month', { covered: fmtInt(r.coveredDays), total: fmtInt(r.monthDays) })}>
+            <span className="font-medium">{row.label}</span>
+            {row.partial ? (
+              <Badge tone="warn" title={t('The date range covers {covered} of the {total} days of this month', { covered: fmtInt(row.coveredDays), total: fmtInt(row.monthDays) })}>
                 {t('Partial')}
               </Badge>
             ) : null}
@@ -64,14 +64,14 @@ export default function MonthTable() {
         align: 'end',
         hint: t('Usage in the month, within the date range'),
         calc: 'usage',
-        value: (r) => r.usage,
+        value: (row) => row.usage,
         total: fmtUSD(totals.usage),
-        render: (r) => (
+        render: (row) => (
           <span className="inline-flex items-center justify-end gap-2">
             <span className="h-1.5 w-16 overflow-hidden rounded-xs bg-surface-3" aria-hidden>
-              <span className="block h-full rounded-xs bg-accent" style={{ width: `${totals.maxUsage > 0 ? (r.usage / totals.maxUsage) * 100 : 0}%` }} />
+              <span className="block h-full rounded-xs bg-accent" style={{ width: `${totals.maxUsage > 0 ? (row.usage / totals.maxUsage) * 100 : 0}%` }} />
             </span>
-            {fmtUSD(r.usage)}
+            {fmtUSD(row.usage)}
           </span>
         ),
       },
@@ -81,9 +81,9 @@ export default function MonthTable() {
         align: 'end',
         hint: t('Usage divided by the days of the month that have any usage, so months of different length can be compared'),
         calc: 'usage-per-active-day',
-        value: (r) => r.perUsageDay,
+        value: (row) => row.perUsageDay,
         total: fmtUSD(totals.perUsageDay),
-        render: (r) => fmtUSD(r.perUsageDay),
+        render: (row) => fmtUSD(row.perUsageDay),
       },
       {
         key: 'avgActive',
@@ -91,9 +91,9 @@ export default function MonthTable() {
         align: 'end',
         hint: t('Users with at least {amount} of usage on a day, averaged over the days with usage', { amount: fmtUSD(settings.activeThreshold) }),
         calc: 'average-active-users-per-day',
-        value: (r) => r.avgActive,
+        value: (row) => row.avgActive,
         total: fmtNum(totals.avgActive, 1),
-        render: (r) => fmtNum(r.avgActive, 1),
+        render: (row) => fmtNum(row.avgActive, 1),
       },
       {
         key: 'newUsers',
@@ -103,9 +103,9 @@ export default function MonthTable() {
           days: pluralize(settings.newUserDays, 'day'),
         }),
         calc: 'new-users',
-        value: (r) => r.newUsers,
+        value: (row) => row.newUsers,
         total: fmtInt(totals.newUsers),
-        render: (r) => fmtInt(r.newUsers),
+        render: (row) => fmtInt(row.newUsers),
       },
       {
         key: 'activeUsers',
@@ -115,9 +115,9 @@ export default function MonthTable() {
           'Users whose usage in the month adds up to more than $0. The Whole range row counts every user with any usage row in the range once, even if their rows add up to $0.',
         ),
         calc: 'active-users-per-month',
-        value: (r) => r.activeUsers,
+        value: (row) => row.activeUsers,
         total: fmtInt(totals.activeUsers),
-        render: (r) => fmtInt(r.activeUsers),
+        render: (row) => fmtInt(row.activeUsers),
       },
     ],
     [totals, settings.activeThreshold, settings.newUserDays],
@@ -135,7 +135,7 @@ export default function MonthTable() {
       <DataTable
         rows={rows}
         columns={columns}
-        rowKey={(r) => r.monthIdx}
+        rowKey={(row) => row.monthIdx}
         defaultSort={{ key: 'month', dir: 'asc' }}
         exportName="github-copilot-month-by-month"
         fixedColumns

@@ -36,13 +36,13 @@ export function csvField(text: string): string {
 
 const autoModel = (name: string): string => (name === '' || /^auto$/i.test(name) ? 'Auto' : `Auto: ${name}`);
 
-const quoteAll = (values: string[], map: (v: string) => string = (v) => v): string[] => values.map((v) => csvField(map(v)));
+const quoteAll = (values: string[], map: (value: string) => string = (value) => value): string[] => values.map((value) => csvField(map(value)));
 
-const num = (v: number): string => (Number.isFinite(v) ? `"${v}"` : '""');
+const numberField = (value: number): string => (Number.isFinite(value) ? `"${value}"` : '""');
 
-const quota = (v: number): string => {
-  if (!Number.isFinite(v)) return '""';
-  return `"${Number.isInteger(v) ? v : +v.toPrecision(7)}"`;
+const quota = (value: number): string => {
+  if (!Number.isFinite(value)) return '""';
+  return `"${Number.isInteger(value) ? value : +value.toPrecision(7)}"`;
 };
 
 export interface ExportRequest {
@@ -66,7 +66,7 @@ export async function buildCsv({ store, rows, reverse = false, signal, onProgres
 
   const span = total ? store.maxDay - store.minDay + 1 : 0;
   const days: string[] = new Array(span);
-  for (let d = 0; d < span; d++) days[d] = `"${isoDate(store.minDay + d)}"`;
+  for (let dayIndex = 0; dayIndex < span; dayIndex++) days[dayIndex] = `"${isoDate(store.minDay + dayIndex)}"`;
   const user = quoteAll(store.dicts.user.values);
   const product = quoteAll(store.dicts.product.values);
   const sku = quoteAll(store.dicts.sku.values);
@@ -79,7 +79,7 @@ export async function buildCsv({ store, rows, reverse = false, signal, onProgres
   const unitType = csvField('ai-credits');
   const unitPrice = '"0.01"';
 
-  const { day, qty, gross, discount, net, input, output, cacheRead, cacheWrite, minDay } = store;
+  const { day, qty: quantity, gross, discount, net, input, output, cacheRead, cacheWrite, minDay } = store;
   const parts: BlobPart[] = ['\uFEFF', `${header}\n`];
 
   for (let start = 0; start < total; start += CHUNK_ROWS) {
@@ -87,45 +87,45 @@ export async function buildCsv({ store, rows, reverse = false, signal, onProgres
     const end = Math.min(total, start + CHUNK_ROWS);
     const lines: string[] = new Array(end - start);
     for (let k = start; k < end; k++) {
-      const i = rows[reverse ? total - 1 - k : k];
+      const row = rows[reverse ? total - 1 - k : k];
       let line =
-        days[day[i] - minDay] +
+        days[day[row] - minDay] +
         ',' +
-        user[store.user[i]] +
+        user[store.user[row]] +
         ',' +
-        product[store.product[i]] +
+        product[store.product[row]] +
         ',' +
-        sku[store.sku[i]] +
+        sku[store.sku[row]] +
         ',' +
-        (store.auto[i] ? modelAuto[store.model[i]] : model[store.model[i]]) +
+        (store.auto[row] ? modelAuto[store.model[row]] : model[store.model[row]]) +
         ',' +
-        num(qty[i]) +
+        numberField(quantity[row]) +
         ',' +
         unitType +
         ',' +
         unitPrice +
         ',' +
-        num(gross[i]) +
+        numberField(gross[row]) +
         ',' +
-        num(discount[i]) +
+        numberField(discount[row]) +
         ',' +
-        num(net[i]) +
+        numberField(net[row]) +
         ',' +
-        quota(store.quota[i]) +
+        quota(store.quota[row]) +
         ',' +
-        org[store.org[i]] +
+        org[store.org[row]] +
         ',' +
-        app[store.app[i]] +
+        app[store.app[row]] +
         ',' +
-        repo[store.repo[i]] +
+        repo[store.repo[row]] +
         ',' +
-        costCenter[store.costCenter[i]];
-      if (tokens) line += ',' + num(input[i]) + ',' + num(output[i]) + ',' + num(cacheRead[i]) + ',' + num(cacheWrite[i]);
+        costCenter[store.costCenter[row]];
+      if (tokens) line += ',' + numberField(input[row]) + ',' + numberField(output[row]) + ',' + numberField(cacheRead[row]) + ',' + numberField(cacheWrite[row]);
       lines[k - start] = line;
     }
     parts.push(new Blob([`${lines.join('\n')}\n`]));
     onProgress?.(end, total);
-    await new Promise<void>((r) => setTimeout(r));
+    await new Promise<void>((resolve) => setTimeout(resolve));
   }
 
   if (signal?.aborted) return null;
@@ -133,7 +133,7 @@ export async function buildCsv({ store, rows, reverse = false, signal, onProgres
 }
 
 export function exportFileName(from: number, to: number, suffix = ''): string {
-  const a = isoDate(from);
-  const b = isoDate(to);
-  return `github-copilot-ai-usage-rows${suffix}_${a === b ? a : `${a}_${b}`}.csv`;
+  const fromDate = isoDate(from);
+  const toDate = isoDate(to);
+  return `github-copilot-ai-usage-rows${suffix}_${fromDate === toDate ? fromDate : `${fromDate}_${toDate}`}.csv`;
 }

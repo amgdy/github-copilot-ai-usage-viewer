@@ -22,11 +22,11 @@ export interface SeatRow extends SeatCandidate {
 }
 
 export function seatRows(list: SeatCandidate[], users: UserSet): SeatRow[] {
-  return list.map((c) => ({ ...c, profile: c.id >= 0 ? (users.byId.get(c.id) ?? null) : null }));
+  return list.map((candidate) => ({ ...candidate, profile: candidate.id >= 0 ? (users.byId.get(candidate.id) ?? null) : null }));
 }
 
-const mean = (xs: number[]): number => (xs.length ? xs.reduce((a, x) => a + x, 0) / xs.length : 0);
-const finite = (v: number): number => (Number.isFinite(v) ? v : 0);
+const mean = (values: number[]): number => (values.length ? values.reduce((total, value) => total + value, 0) / values.length : 0);
+const finite = (value: number): number => (Number.isFinite(value) ? value : 0);
 
 export interface SeatEconomics {
   /** Seats whose user appears in the report. */
@@ -49,28 +49,28 @@ export interface SeatEconomics {
 }
 
 /** Seat and pool figures for the economics card, built from the same monthly inputs as the simulator. */
-export function seatEconomics(a: Analysis): SeatEconomics {
-  const { pool, users, seats } = a;
+export function seatEconomics(analysis: Analysis): SeatEconomics {
+  const { pool, users, seats } = analysis;
   const base = {
     inReport: users.profiles.length,
     rosterOnly: seats.unused.length,
     months: pool.months.length,
-    monthlyValue: finite(mean(pool.months.map((m) => m.capacity))),
+    monthlyValue: finite(mean(pool.months.map((month) => month.capacity))),
     lowerBound: pool.capacityIsLowerBound,
-    projected: pool.months.some((m) => m.projection !== null),
+    projected: pool.months.some((month) => month.projection !== null),
   };
-  if (!isPoolKnown(a)) return { ...base, used: null, unused: null, overage: null };
+  if (!isPoolKnown(analysis)) return { ...base, used: null, unused: null, overage: null };
   const inputs = monthInputs(pool);
-  const capacity = mean(inputs.map((m) => m.capacity));
-  const unused = mean(inputs.map((m) => Math.max(0, m.capacity - m.gross)));
-  const overage = mean(inputs.map((m) => Math.max(0, m.gross - m.capacity)));
+  const capacity = mean(inputs.map((month) => month.capacity));
+  const unused = mean(inputs.map((month) => Math.max(0, month.capacity - month.gross)));
+  const overage = mean(inputs.map((month) => Math.max(0, month.gross - month.capacity)));
   return { ...base, used: capacity > 0 ? finite(1 - unused / capacity) : null, unused: finite(unused), overage: finite(overage) };
 }
 
 /** Cash saving per month of removing seats worth `value` a month, with no other change. Null when the pool size is unknown. */
-export function seatCashEffect(a: Analysis, value: number): number | null {
-  if (!isPoolKnown(a)) return null;
-  const inputs = monthInputs(a.pool);
+export function seatCashEffect(analysis: Analysis, value: number): number | null {
+  if (!isPoolKnown(analysis)) return null;
+  const inputs = monthInputs(analysis.pool);
   return inputs.length ? finite(cashSaving(inputs, 0, value) / inputs.length) : 0;
 }
 
@@ -80,25 +80,25 @@ export const SEAT_RULE = msg(
 );
 
 /** What the rule means for this report, or null when the pool size is unknown. */
-export function seatAdvice(e: SeatEconomics): string | null {
-  if (e.unused === null || e.overage === null) return null;
-  const spare = e.unused >= MIN_EFFECT;
-  const over = e.overage >= MIN_EFFECT;
+export function seatAdvice(economics: SeatEconomics): string | null {
+  if (economics.unused === null || economics.overage === null) return null;
+  const spare = economics.unused >= MIN_EFFECT;
+  const over = economics.overage >= MIN_EFFECT;
   if (spare && over) {
     return t('On average {unused} of included credits go unused and {overage} is billed on top of seats each month. Months differ, so check the month table in the simulator before you change seats.', {
-      unused: fmtMoney(e.unused),
-      overage: fmtMoney(e.overage),
+      unused: fmtMoney(economics.unused),
+      overage: fmtMoney(economics.overage),
     });
   }
   if (spare) {
     return t('About {unused} of included credits go unused each month. That is the most that removing seats can save. Using less would not lower the bill while usage stays below the pool.', {
-      unused: fmtMoney(e.unused),
+      unused: fmtMoney(economics.unused),
     });
   }
   if (over) {
     return t(
       'Usage is above the pool and about {overage} a month is billed on top of seats. Using less lowers the bill directly. Removing seats would not, because the included credits they carry would turn into billed usage.',
-      { overage: fmtMoney(e.overage) },
+      { overage: fmtMoney(economics.overage) },
     );
   }
   return t('Usage is almost exactly the size of the pool, so fewer seats or less usage saves cash only when it is combined with the other.');

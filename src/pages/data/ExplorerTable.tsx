@@ -17,26 +17,26 @@ interface Props {
   /** Row indices of the page. */
   rows: number[];
   sort: SortState | null;
-  onSort: (col: ColumnId) => void;
+  onSort: (columnId: ColumnId) => void;
   pending: boolean;
 }
 
-function Cell({ store, col, i }: { store: DataStore; col: ExplorerColumn; i: number }) {
-  const c = cell(store, col, i);
+function Cell({ store, col: column, i: rowIndex }: { store: DataStore; col: ExplorerColumn; i: number }) {
+  const content = cell(store, column, rowIndex);
   const base = 'border-b border-border-muted px-3 py-1.5';
-  const userId = col.id === 'user' ? (c.id ?? 0) : 0;
+  const userId = column.id === 'user' ? (content.id ?? 0) : 0;
 
-  if (col.numeric) {
+  if (column.numeric) {
     return (
-      <td className={cx(base, 'num text-end')} title={c.title}>
-        {c.text}
+      <td className={cx(base, 'num text-end')} title={content.title}>
+        {content.text}
       </td>
     );
   }
-  if (col.dim) {
-    if (c.text === '') {
+  if (column.dim) {
+    if (content.text === '') {
       return (
-        <td className={cx(base, 'text-fg-subtle')} title={labelOf(col.dim, '')}>
+        <td className={cx(base, 'text-fg-subtle')} title={labelOf(column.dim, '')}>
           –
         </td>
       );
@@ -47,20 +47,20 @@ function Cell({ store, col, i }: { store: DataStore; col: ExplorerColumn; i: num
           <button
             type="button"
             className="block max-w-64 truncate text-start text-accent hover:underline"
-            title={t('{name}: show details', { name: c.text })}
+            title={t('{name}: show details', { name: content.text })}
             onClick={() => useApp.getState().selectUser(userId)}
           >
-            {c.text}
+            {content.text}
           </button>
         ) : (
-          <span className="block max-w-64 truncate" title={c.text}>
-            {c.text}
+          <span className="block max-w-64 truncate" title={content.text}>
+            {content.text}
           </span>
         )}
       </td>
     );
   }
-  return <td className={cx(base, 'num whitespace-nowrap', col.id === 'auto' && !store.auto[i] && 'text-fg-muted')}>{c.text}</td>;
+  return <td className={cx(base, 'num whitespace-nowrap', column.id === 'auto' && !store.auto[rowIndex] && 'text-fg-muted')}>{content.text}</td>;
 }
 
 /** One page of rows. Only the rows of the page are rendered, so the data set can be any size. */
@@ -70,26 +70,26 @@ export const ExplorerTable = memo(function ExplorerTable({ store, columns, rows,
       <table className="w-full min-w-max text-start text-sm">
         <thead>
           <tr>
-            {columns.map((c) => {
-              const active = sort?.col === c.id;
+            {columns.map((column) => {
+              const active = sort?.col === column.id;
               const head = (
-                <button type="button" onClick={() => onSort(c.id)} className={cx('inline-flex items-center gap-1 hover:text-fg', c.numeric && 'flex-row-reverse', active && 'text-fg')}>
-                  {t(c.header)}
+                <button type="button" onClick={() => onSort(column.id)} className={cx('inline-flex items-center gap-1 hover:text-fg', column.numeric && 'flex-row-reverse', active && 'text-fg')}>
+                  {t(column.header)}
                   {active ? sort.dir === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} /> : <ChevronsUpDown size={12} className="opacity-40" />}
                 </button>
               );
               return (
                 <th
-                  key={c.id}
+                  key={column.id}
                   scope="col"
-                  title={c.hint ? t(c.hint) : undefined}
+                  title={column.hint ? t(column.hint) : undefined}
                   aria-sort={active ? (sort.dir === 'asc' ? 'ascending' : 'descending') : undefined}
-                  className={cx('sticky top-0 z-10 whitespace-nowrap border-b border-border bg-surface-2 px-3 py-2 text-xs font-medium text-fg-muted', c.numeric && 'text-end')}
+                  className={cx('sticky top-0 z-10 whitespace-nowrap border-b border-border bg-surface-2 px-3 py-2 text-xs font-medium text-fg-muted', column.numeric && 'text-end')}
                 >
-                  {c.calc ? (
-                    <span className={cx('inline-flex items-center gap-1', c.numeric && 'flex-row-reverse')}>
+                  {column.calc ? (
+                    <span className={cx('inline-flex items-center gap-1', column.numeric && 'flex-row-reverse')}>
                       {head}
-                      <CalcInfo id={c.calc} />
+                      <CalcInfo id={column.calc} />
                     </span>
                   ) : (
                     head
@@ -100,10 +100,10 @@ export const ExplorerTable = memo(function ExplorerTable({ store, columns, rows,
           </tr>
         </thead>
         <tbody>
-          {rows.map((i) => (
-            <tr key={i} className="hover:bg-surface-2">
-              {columns.map((c) => (
-                <Cell key={c.id} store={store} col={c} i={i} />
+          {rows.map((rowIndex) => (
+            <tr key={rowIndex} className="hover:bg-surface-2">
+              {columns.map((column) => (
+                <Cell key={column.id} store={store} col={column} i={rowIndex} />
               ))}
             </tr>
           ))}

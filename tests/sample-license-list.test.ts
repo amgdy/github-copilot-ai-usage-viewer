@@ -27,8 +27,8 @@ const textOf = (html: string): string =>
     .replace(/\s+/g, ' ');
 
 /** zustand hands the initial state to server renders, so the dataset and the settings are set there for the time of one render. */
-function screens(p: Pipeline, sample: boolean): { settingsHtml: string; settings: string; licenses: string } {
-  const dataset: Dataset = { store: p.store, prep: p.prep, label: 'synthetic.csv', loadedAt: 0, ...(sample ? { sample: true } : {}) };
+function screens(pipeline: Pipeline, sample: boolean): { settingsHtml: string; settings: string; licenses: string } {
+  const dataset: Dataset = { store: pipeline.store, prep: pipeline.prep, label: 'synthetic.csv', loadedAt: 0, ...(sample ? { sample: true } : {}) };
   const initial = useApp.getInitialState();
   const before = { dataset: initial.dataset, settings: initial.settings };
   initial.dataset = dataset;

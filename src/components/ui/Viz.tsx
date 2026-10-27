@@ -14,12 +14,12 @@ export function InfoTip({ children, className }: { children: ReactNode; classNam
   // The tip is centered on the icon; near a viewport edge it is nudged back inside. The measures are
   // screen positions, so the tip is placed with physical left in both reading directions.
   const place = () => {
-    const r = root.current?.getBoundingClientRect();
-    if (!r) return;
-    const vw = document.documentElement.clientWidth;
-    const w = Math.min(TIP_WIDTH, vw - 16);
-    const centered = r.left + r.width / 2 - w / 2;
-    setShift(Math.min(Math.max(centered, 8), vw - w - 8) - centered);
+    const bounds = root.current?.getBoundingClientRect();
+    if (!bounds) return;
+    const viewportWidth = document.documentElement.clientWidth;
+    const tipWidth = Math.min(TIP_WIDTH, viewportWidth - 16);
+    const centered = bounds.left + bounds.width / 2 - tipWidth / 2;
+    setShift(Math.min(Math.max(centered, 8), viewportWidth - tipWidth - 8) - centered);
   };
   return (
     <span ref={root} onMouseEnter={place} onFocus={place} className={cx('group/tip relative inline-flex align-middle', className)}>
@@ -60,28 +60,28 @@ export interface SparklineProps {
 
 /** Tiny inline trend line. */
 export function Sparkline({ values, width = 96, height = 28, tone = 'accent', color, fill = true, className }: SparklineProps) {
-  const n = values.length;
-  if (n < 2) return <span className={cx('inline-block', className)} style={{ width, height }} />;
+  const pointCount = values.length;
+  if (pointCount < 2) return <span className={cx('inline-block', className)} style={{ width, height }} />;
   let min = Infinity;
   let max = -Infinity;
-  for (let i = 0; i < n; i++) {
-    const v = values[i];
-    if (v < min) min = v;
-    if (v > max) max = v;
+  for (let i = 0; i < pointCount; i++) {
+    const value = values[i];
+    if (value < min) min = value;
+    if (value > max) max = value;
   }
-  const pad = 2;
+  const padding = 2;
   const span = max - min || 1;
-  const pts: string[] = [];
-  for (let i = 0; i < n; i++) {
-    const x = pad + (i / (n - 1)) * (width - 2 * pad);
-    const y = height - pad - ((values[i] - min) / span) * (height - 2 * pad);
-    pts.push(`${x.toFixed(1)},${y.toFixed(1)}`);
+  const points: string[] = [];
+  for (let i = 0; i < pointCount; i++) {
+    const x = padding + (i / (pointCount - 1)) * (width - 2 * padding);
+    const y = height - padding - ((values[i] - min) / span) * (height - 2 * padding);
+    points.push(`${x.toFixed(1)},${y.toFixed(1)}`);
   }
-  const c = color ?? SPARK_COLOR[tone];
+  const lineColor = color ?? SPARK_COLOR[tone];
   return (
     <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className={cx('shrink-0', className)} aria-hidden>
-      {fill ? <polygon points={`${pad},${height - pad} ${pts.join(' ')} ${width - pad},${height - pad}`} fill={c} opacity={0.14} /> : null}
-      <polyline points={pts.join(' ')} fill="none" stroke={c} strokeWidth={1.5} strokeLinejoin="round" strokeLinecap="round" />
+      {fill ? <polygon points={`${padding},${height - padding} ${points.join(' ')} ${width - padding},${height - padding}`} fill={lineColor} opacity={0.14} /> : null}
+      <polyline points={points.join(' ')} fill="none" stroke={lineColor} strokeWidth={1.5} strokeLinejoin="round" strokeLinecap="round" />
     </svg>
   );
 }
@@ -107,20 +107,20 @@ export interface ProgressBarProps {
 }
 
 export function ProgressBar({ value, tone = 'accent', ghost, height = 8, className, label }: ProgressBarProps) {
-  const v = Number.isFinite(value) ? Math.max(0, value) : 0;
-  const g = ghost !== undefined && Number.isFinite(ghost) ? Math.max(0, ghost) : 0;
+  const fraction = Number.isFinite(value) ? Math.max(0, value) : 0;
+  const ghostFraction = ghost !== undefined && Number.isFinite(ghost) ? Math.max(0, ghost) : 0;
   return (
     <div
       className={cx('relative w-full overflow-hidden rounded-xs bg-surface-3', className)}
       style={{ height }}
       role="progressbar"
-      aria-valuenow={Math.round(Math.min(v, 1) * 100)}
+      aria-valuenow={Math.round(Math.min(fraction, 1) * 100)}
       aria-valuemin={0}
       aria-valuemax={100}
       aria-label={label}
     >
-      {g > v ? <div className={cx('absolute inset-y-0 start-0 opacity-30', BAR_COLOR[tone])} style={{ width: `${Math.min(g, 1) * 100}%` }} /> : null}
-      <div className={cx('absolute inset-y-0 start-0 rounded-xs', BAR_COLOR[v > 1 ? 'bad' : tone])} style={{ width: `${Math.min(v, 1) * 100}%` }} />
+      {ghostFraction > fraction ? <div className={cx('absolute inset-y-0 start-0 opacity-30', BAR_COLOR[tone])} style={{ width: `${Math.min(ghostFraction, 1) * 100}%` }} /> : null}
+      <div className={cx('absolute inset-y-0 start-0 rounded-xs', BAR_COLOR[fraction > 1 ? 'bad' : tone])} style={{ width: `${Math.min(fraction, 1) * 100}%` }} />
     </div>
   );
 }

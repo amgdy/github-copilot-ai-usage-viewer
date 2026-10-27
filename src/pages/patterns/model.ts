@@ -1,7 +1,7 @@
 import { getLocale, t } from '../../i18n';
 import type { DaySeries, Measures } from '../../lib/analytics/aggregate';
 import { makeBucketer } from '../../lib/analytics/series';
-import { daysInMonth, dowOf, fmtDay, monthIndexOf, monthLabel, ymd } from '../../lib/utils/date';
+import { daysInMonth, dowOf, fmtDay, monthIndexOf, monthLabel, dateParts } from '../../lib/utils/date';
 import { fmtInt, fmtPct } from '../../lib/utils/format';
 
 export interface DayRange {
@@ -11,16 +11,16 @@ export interface DayRange {
 }
 
 /** A weekday name in the current language, from the browser (Monday = 0). 2024-01-01 was a Monday. */
-function weekdayText(dow: number, width: 'long' | 'short' | 'narrow'): string {
+function weekdayText(dayOfWeek: number, width: 'long' | 'short' | 'narrow'): string {
   const locale = getLocale() === 'ar' ? 'ar' : 'en-US';
-  return new Intl.DateTimeFormat(locale, { weekday: width, timeZone: 'UTC' }).format(new Date(Date.UTC(2024, 0, 1 + dow)));
+  return new Intl.DateTimeFormat(locale, { weekday: width, timeZone: 'UTC' }).format(new Date(Date.UTC(2024, 0, 1 + dayOfWeek)));
 }
 
 /** "Monday" (Monday = 0). */
-export const weekdayName = (dow: number): string => weekdayText(dow, 'long');
+export const weekdayName = (dayOfWeek: number): string => weekdayText(dayOfWeek, 'long');
 
 /** "Mon" in English and one letter in Arabic, for tight spots such as calendar day labels. */
-export const weekdayShort = (dow: number): string => weekdayText(dow, getLocale() === 'ar' ? 'narrow' : 'short');
+export const weekdayShort = (dayOfWeek: number): string => weekdayText(dayOfWeek, getLocale() === 'ar' ? 'narrow' : 'short');
 
 export const isWeekend = (day: number): boolean => dowOf(day) >= 5;
 
@@ -42,15 +42,15 @@ export function dayStats(days: DaySeries): DayStats {
   let peakIdx = -1;
   let peakGross = 0;
   for (let i = 0; i < days.gross.length; i++) {
-    const g = days.gross[i];
-    if (!(g > 0)) continue;
+    const gross = days.gross[i];
+    if (!(gross > 0)) continue;
     usageDays++;
-    total += g;
-    const a = days.activeUsers[i];
-    activeSum += a;
-    if (a > maxActive) maxActive = a;
-    if (g > peakGross) {
-      peakGross = g;
+    total += gross;
+    const activeUsers = days.activeUsers[i];
+    activeSum += activeUsers;
+    if (activeUsers > maxActive) maxActive = activeUsers;
+    if (gross > peakGross) {
+      peakGross = gross;
       peakIdx = i;
     }
   }
@@ -67,36 +67,36 @@ export interface WeekdayStat {
   activeUsers: number;
 }
 
-export function weekdayStats(range: DayRange, days: DaySeries, dow: Measures): WeekdayStat[] {
+export function weekdayStats(range: DayRange, days: DaySeries, weekdayMeasures: Measures): WeekdayStat[] {
   const occurrences = new Array<number>(7).fill(0);
   const usageDays = new Array<number>(7).fill(0);
   const active = new Array<number>(7).fill(0);
-  const len = Math.min(range.length, days.gross.length);
-  for (let i = 0; i < len; i++) {
-    const d = dowOf(range.start + i);
-    occurrences[d]++;
-    if (days.gross[i] > 0) usageDays[d]++;
-    active[d] += days.activeUsers[i];
+  const dayCount = Math.min(range.length, days.gross.length);
+  for (let i = 0; i < dayCount; i++) {
+    const dayOfWeek = dowOf(range.start + i);
+    occurrences[dayOfWeek]++;
+    if (days.gross[i] > 0) usageDays[dayOfWeek]++;
+    active[dayOfWeek] += days.activeUsers[i];
   }
   let total = 0;
-  for (let d = 0; d < 7; d++) total += dow.gross[d];
-  return occurrences.map((n, d) => ({
-    dow: d,
-    occurrences: n,
-    usageDays: usageDays[d],
-    gross: dow.gross[d],
-    perOccurrence: n > 0 ? dow.gross[d] / n : Number.NaN,
-    share: total > 0 ? dow.gross[d] / total : 0,
-    activeUsers: n > 0 ? active[d] / n : Number.NaN,
+  for (let dayOfWeek = 0; dayOfWeek < 7; dayOfWeek++) total += weekdayMeasures.gross[dayOfWeek];
+  return occurrences.map((occurrenceCount, dayOfWeek) => ({
+    dow: dayOfWeek,
+    occurrences: occurrenceCount,
+    usageDays: usageDays[dayOfWeek],
+    gross: weekdayMeasures.gross[dayOfWeek],
+    perOccurrence: occurrenceCount > 0 ? weekdayMeasures.gross[dayOfWeek] / occurrenceCount : Number.NaN,
+    share: total > 0 ? weekdayMeasures.gross[dayOfWeek] / total : 0,
+    activeUsers: occurrenceCount > 0 ? active[dayOfWeek] / occurrenceCount : Number.NaN,
   }));
 }
 
 /** The weekday with the highest usage per occurrence, among weekdays that occur and have usage. */
 export function busiestWeekday(stats: WeekdayStat[]): WeekdayStat | null {
   let best: WeekdayStat | null = null;
-  for (const s of stats) {
-    if (s.occurrences === 0 || !(s.gross > 0)) continue;
-    if (best === null || s.perOccurrence > best.perOccurrence) best = s;
+  for (const stat of stats) {
+    if (stat.occurrences === 0 || !(stat.gross > 0)) continue;
+    if (best === null || stat.perOccurrence > best.perOccurrence) best = stat;
   }
   return best;
 }
@@ -112,23 +112,23 @@ export function weekdayInsight(stats: WeekdayStat[], rangeLength: number, weekda
       days: fmtInt(rangeLength),
     });
   }
-  const work = stats.slice(0, 5).filter((s) => s.occurrences > 0);
+  const work = stats.slice(0, 5).filter((stat) => stat.occurrences > 0);
   let gross = 0;
   let occurrences = 0;
-  for (const s of work) {
-    gross += s.gross;
-    occurrences += s.occurrences;
+  for (const stat of work) {
+    gross += stat.gross;
+    occurrences += stat.occurrences;
   }
   if (work.length === 0 || !(gross > 0)) return t('There is no usage from Monday to Friday in this range.');
-  const avg = gross / occurrences;
+  const average = gross / occurrences;
   let low = work[0];
   let high = work[0];
-  for (const s of work) {
-    if (s.perOccurrence < low.perOccurrence) low = s;
-    if (s.perOccurrence > high.perOccurrence) high = s;
+  for (const stat of work) {
+    if (stat.perOccurrence < low.perOccurrence) low = stat;
+    if (stat.perOccurrence > high.perOccurrence) high = stat;
   }
-  const lowDiff = low.perOccurrence / avg - 1;
-  const highDiff = high.perOccurrence / avg - 1;
+  const lowDiff = low.perOccurrence / average - 1;
+  const highDiff = high.perOccurrence / average - 1;
   const pct = (diff: number) => fmtPct(Math.abs(diff), 0);
   const hasLow = lowDiff <= -FLAT_BAND;
   const hasHigh = highDiff >= FLAT_BAND;
@@ -170,36 +170,36 @@ export const LATEST_DAYS = 120;
  * each week covers, so a partial first or last week does not pull it down).
  */
 export function dailyBuckets(range: DayRange, days: DaySeries, granularity: Granularity): DailyBuckets {
-  const b = makeBucketer(range.start, range.end, granularity);
-  const n = b.count;
-  const gross = new Array<number>(n).fill(0);
-  const span = new Array<number>(n).fill(0);
-  const usageDays = new Array<number>(n).fill(0);
-  const activeSum = new Array<number>(n).fill(0);
-  const len = Math.min(range.length, days.gross.length);
-  for (let i = 0; i < len; i++) {
-    const k = b.indexOf(range.start + i);
-    span[k]++;
-    const g = days.gross[i];
-    gross[k] += g;
-    if (g > 0) {
-      usageDays[k]++;
-      activeSum[k] += days.activeUsers[i];
+  const bucketer = makeBucketer(range.start, range.end, granularity);
+  const bucketCount = bucketer.count;
+  const gross = new Array<number>(bucketCount).fill(0);
+  const span = new Array<number>(bucketCount).fill(0);
+  const usageDays = new Array<number>(bucketCount).fill(0);
+  const activeSum = new Array<number>(bucketCount).fill(0);
+  const dayCount = Math.min(range.length, days.gross.length);
+  for (let i = 0; i < dayCount; i++) {
+    const bucketIndex = bucketer.indexOf(range.start + i);
+    span[bucketIndex]++;
+    const dayGross = days.gross[i];
+    gross[bucketIndex] += dayGross;
+    if (dayGross > 0) {
+      usageDays[bucketIndex]++;
+      activeSum[bucketIndex] += days.activeUsers[i];
     }
   }
   const startDay: number[] = [];
   const endDay: number[] = [];
-  for (let k = 0; k < n; k++) {
-    startDay.push(b.start(k));
-    endDay.push(k + 1 < n ? b.start(k + 1) - 1 : range.end);
+  for (let k = 0; k < bucketCount; k++) {
+    startDay.push(bucketer.start(k));
+    endDay.push(k + 1 < bucketCount ? bucketer.start(k + 1) - 1 : range.end);
   }
-  const withYear = ymd(range.start).y !== ymd(range.end).y;
+  const withYear = dateParts(range.start).y !== dateParts(range.end).y;
   const window = granularity === 'day' ? 7 : 4;
   const unit = granularity === 'day' ? 1 : 7;
   const average: (number | null)[] = [];
   let sumGross = 0;
   let sumSpan = 0;
-  for (let k = 0; k < n; k++) {
+  for (let k = 0; k < bucketCount; k++) {
     sumGross += gross[k];
     sumSpan += span[k];
     if (k >= window) {
@@ -210,16 +210,16 @@ export function dailyBuckets(range: DayRange, days: DaySeries, granularity: Gran
   }
   return {
     granularity,
-    count: n,
+    count: bucketCount,
     startDay,
     endDay,
     span,
-    labels: startDay.map((d) => fmtDay(d, withYear)),
+    labels: startDay.map((day) => fmtDay(day, withYear)),
     gross,
-    avgActive: activeSum.map((s, k) => (usageDays[k] > 0 ? s / usageDays[k] : 0)),
+    avgActive: activeSum.map((activeTotal, bucketIndex) => (usageDays[bucketIndex] > 0 ? activeTotal / usageDays[bucketIndex] : 0)),
     average,
-    partial: span.map((s) => granularity === 'week' && s < 7),
-    indexOfDay: (day) => b.indexOf(day),
+    partial: span.map((coveredDays) => granularity === 'week' && coveredDays < 7),
+    indexOfDay: (day) => bucketer.indexOf(day),
   };
 }
 
@@ -264,15 +264,15 @@ export interface MonthInput {
 }
 
 export function monthRows({ range, days, userMonthGross, nMonths, firstMonth, newFirstDays }: MonthInput): MonthRow[] {
-  const m0 = monthIndexOf(range.start);
-  const m1 = monthIndexOf(range.end);
+  const startMonth = monthIndexOf(range.start);
+  const endMonth = monthIndexOf(range.end);
   const rows: MonthRow[] = [];
-  for (let m = m0; m <= m1; m++) {
+  for (let month = startMonth; month <= endMonth; month++) {
     rows.push({
-      monthIdx: m,
-      label: monthLabel(m),
+      monthIdx: month,
+      label: monthLabel(month),
       coveredDays: 0,
-      monthDays: daysInMonth(m),
+      monthDays: daysInMonth(month),
       partial: false,
       usage: 0,
       usageDays: 0,
@@ -283,34 +283,34 @@ export function monthRows({ range, days, userMonthGross, nMonths, firstMonth, ne
     });
   }
   const activeSum = new Array<number>(rows.length).fill(0);
-  const len = Math.min(range.length, days.gross.length);
-  for (let i = 0; i < len; i++) {
-    const k = monthIndexOf(range.start + i) - m0;
-    const r = rows[k];
-    r.coveredDays++;
-    const g = days.gross[i];
-    if (g > 0) {
-      r.usage += g;
-      r.usageDays++;
-      activeSum[k] += days.activeUsers[i];
+  const dayCount = Math.min(range.length, days.gross.length);
+  for (let i = 0; i < dayCount; i++) {
+    const rowIndex = monthIndexOf(range.start + i) - startMonth;
+    const row = rows[rowIndex];
+    row.coveredDays++;
+    const gross = days.gross[i];
+    if (gross > 0) {
+      row.usage += gross;
+      row.usageDays++;
+      activeSum[rowIndex] += days.activeUsers[i];
     }
   }
   for (let i = 0; i < newFirstDays.length; i++) {
-    const k = monthIndexOf(newFirstDays[i]) - m0;
-    if (k >= 0 && k < rows.length) rows[k].newUsers++;
+    const rowIndex = monthIndexOf(newFirstDays[i]) - startMonth;
+    if (rowIndex >= 0 && rowIndex < rows.length) rows[rowIndex].newUsers++;
   }
-  const nU = nMonths > 0 ? Math.floor(userMonthGross.length / nMonths) : 0;
-  for (let u = 1; u < nU; u++) {
-    const base = u * nMonths;
-    for (const r of rows) {
-      const slot = r.monthIdx - firstMonth;
-      if (slot >= 0 && slot < nMonths && userMonthGross[base + slot] > 0) r.activeUsers++;
+  const userCount = nMonths > 0 ? Math.floor(userMonthGross.length / nMonths) : 0;
+  for (let userId = 1; userId < userCount; userId++) {
+    const base = userId * nMonths;
+    for (const row of rows) {
+      const slot = row.monthIdx - firstMonth;
+      if (slot >= 0 && slot < nMonths && userMonthGross[base + slot] > 0) row.activeUsers++;
     }
   }
-  rows.forEach((r, k) => {
-    r.partial = r.coveredDays < r.monthDays;
-    r.perUsageDay = r.usageDays > 0 ? r.usage / r.usageDays : Number.NaN;
-    r.avgActive = r.usageDays > 0 ? activeSum[k] / r.usageDays : Number.NaN;
+  rows.forEach((row, rowIndex) => {
+    row.partial = row.coveredDays < row.monthDays;
+    row.perUsageDay = row.usageDays > 0 ? row.usage / row.usageDays : Number.NaN;
+    row.avgActive = row.usageDays > 0 ? activeSum[rowIndex] / row.usageDays : Number.NaN;
   });
   return rows;
 }

@@ -14,23 +14,20 @@ concurrency:
 
 jobs:
   test:
-    name: Test on Node ${{ matrix.node }}
+    name: Test on Node 26
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    strategy:
-      fail-fast: false
-      matrix:
-        node: [22, 24]
     steps:
       - name: Check out the code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
+      # .nvmrc is the one place that sets the Node version for CI, Pages and local work.
       - name: Set up Node
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: ${{ matrix.node }}
+          node-version-file: .nvmrc
           cache: npm
 
       - name: Install packages
@@ -41,6 +38,10 @@ jobs:
 
       - name: Run tests
         run: npm test
+
+      # The scripts run TypeScript directly with Node, so this step proves that still works.
+      - name: Run the demo data script
+        run: npm run gen:demo -- --seed 1
 
       - name: Build the site
         run: npm run build

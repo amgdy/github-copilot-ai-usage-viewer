@@ -21,28 +21,28 @@ function Point({ title, children }: { title: string; children: ReactNode }) {
 
 /** A worked example from the latest complete month with a known pool, or the month in progress when there is none. */
 function exampleMonth(months: MonthPool[], latest: MonthPool | null): MonthPool | null {
-  const complete = [...months].reverse().find((m) => m.complete && capacityKnown(m));
+  const complete = [...months].reverse().find((month) => month.complete && capacityKnown(month));
   if (complete) return complete;
   return latest && capacityKnown(latest) ? latest : null;
 }
 
-function exampleLines(m: MonthPool, lowerBound: boolean): string[] {
-  const vars = { month: m.label, capacity: fmtUSD(m.capacity, 0), usage: fmtUSD(m.gross, 0), covered: fmtUSD(m.discount, 0), billed: fmtUSD(m.net, 0) };
+function exampleLines(month: MonthPool, lowerBound: boolean): string[] {
+  const messageValues = { month: month.label, capacity: fmtUSD(month.capacity, 0), usage: fmtUSD(month.gross, 0), covered: fmtUSD(month.discount, 0), billed: fmtUSD(month.net, 0) };
   let first: string;
-  if (m.complete) {
+  if (month.complete) {
     first = lowerBound
-      ? t('In {month}, the seats in this report held {capacity} of included credits. Usage was {usage}: {covered} was covered and {billed} was billed on top of seats.', vars)
-      : t('In {month}, the pool held {capacity} of included credits. Usage was {usage}: {covered} was covered and {billed} was billed on top of seats.', vars);
+      ? t('In {month}, the seats in this report held {capacity} of included credits. Usage was {usage}: {covered} was covered and {billed} was billed on top of seats.', messageValues)
+      : t('In {month}, the pool held {capacity} of included credits. Usage was {usage}: {covered} was covered and {billed} was billed on top of seats.', messageValues);
   } else {
     first = lowerBound
-      ? t('In {month} so far, the seats in this report held {capacity} of included credits. Usage was {usage}: {covered} was covered and {billed} was billed on top of seats.', vars)
-      : t('In {month} so far, the pool held {capacity} of included credits. Usage was {usage}: {covered} was covered and {billed} was billed on top of seats.', vars);
+      ? t('In {month} so far, the seats in this report held {capacity} of included credits. Usage was {usage}: {covered} was covered and {billed} was billed on top of seats.', messageValues)
+      : t('In {month} so far, the pool held {capacity} of included credits. Usage was {usage}: {covered} was covered and {billed} was billed on top of seats.', messageValues);
   }
   const lines = [first];
-  const headroom = fmtUSD(m.headroom, 0);
-  if (!m.complete) {
+  const headroom = fmtUSD(month.headroom, 0);
+  if (!month.complete) {
     lines.push(t('{amount} of the pool is still unused.', { amount: headroom }));
-  } else if (m.net > 0.005) {
+  } else if (month.net > 0.005) {
     lines.push(
       t(
         'Cutting usage by {dollar} would have saved {dollar} of cash, until usage was back down to the pool size. Removing a seat would not have saved money, because its credits leave the pool and the same amount is billed instead.',
@@ -63,15 +63,15 @@ function exampleLines(m: MonthPool, lowerBound: boolean): string[] {
 function Example() {
   const { analysis } = useAnalysis();
   const { pool, narrowed } = analysis;
-  const m = narrowed ? null : exampleMonth(pool.months, pool.latest);
-  if (!m) return null;
+  const month = narrowed ? null : exampleMonth(pool.months, pool.latest);
+  if (!month) return null;
   return (
     <div className="rounded-md border border-border-muted bg-surface-2 p-3 text-sm">
       <h4 className="eyebrow">
         {t('Example from your data')}
         <CalcInfo id="billing-example" className="ms-1" />
       </h4>
-      {exampleLines(m, pool.capacityIsLowerBound).map((line) => (
+      {exampleLines(month, pool.capacityIsLowerBound).map((line) => (
         <p key={line} className="mt-1 text-fg-muted">
           {line}
         </p>

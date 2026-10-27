@@ -6,8 +6,8 @@ import { Callout } from '../ui';
 /** Says on every page that the sample report is made up, with a way to open a real report. */
 export function SampleNotice() {
   const { dataset } = useAnalysis();
-  const setPickingData = useApp((s) => s.setPickingData);
-  const savedList = useApp((s) => s.settings.roster.length > 0);
+  const setPickingData = useApp((state) => state.setPickingData);
+  const savedList = useApp((state) => state.settings.roster.length > 0);
   if (!dataset.sample) return null;
   return (
     <Callout
@@ -28,7 +28,7 @@ export function SampleNotice() {
 
 /** Says, where a license list is imported or managed, that the sample never uses it. */
 export function SampleListNote() {
-  const sample = useApp((s) => s.dataset?.sample === true);
+  const sample = useApp((state) => state.dataset?.sample === true);
   if (!sample) return null;
   return (
     <Callout tone="info" title={t('License lists are not used with the sample')}>

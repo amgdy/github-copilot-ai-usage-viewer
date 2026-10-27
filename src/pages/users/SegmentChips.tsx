@@ -55,7 +55,7 @@ function ChipRow({ label, calc, items, counts, active, onToggle }: ChipRowProps)
 
 export function SegmentChips() {
   const { analysis, taxonomy } = useAnalysis();
-  const filters = useApp((s) => s.filters);
+  const filters = useApp((state) => state.filters);
   const { groups } = analysis.population;
   const creditsKnown = useMemo(() => quotaKnown(analysis.population.profiles), [analysis.population.profiles]);
   const anyActive = filters.segments.length > 0 || filters.tiers.length > 0;

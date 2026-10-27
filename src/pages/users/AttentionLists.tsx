@@ -45,19 +45,19 @@ function MiniList({
         <p className="px-4 py-4 text-sm text-fg-muted">{empty}</p>
       ) : (
         <ul className="divide-y divide-border-muted">
-          {items.map((it) => (
-            <li key={it.key}>
+          {items.map((item) => (
+            <li key={item.key}>
               <button
                 type="button"
-                disabled={it.id === null}
-                onClick={() => (it.id === null ? undefined : useApp.getState().selectUser(it.id))}
+                disabled={item.id === null}
+                onClick={() => (item.id === null ? undefined : useApp.getState().selectUser(item.id))}
                 className="flex w-full items-center justify-between gap-3 px-4 py-2 text-start transition-colors hover:bg-surface-2 focus-visible:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/40 disabled:cursor-default disabled:hover:bg-transparent"
               >
                 <span className="min-w-0">
-                  <span className="block truncate text-sm font-medium">{it.name}</span>
-                  {it.sub ? <span className="block truncate text-xs text-fg-muted">{it.sub}</span> : null}
+                  <span className="block truncate text-sm font-medium">{item.name}</span>
+                  {item.sub ? <span className="block truncate text-xs text-fg-muted">{item.sub}</span> : null}
                 </span>
-                <span className={cx('num shrink-0 text-sm font-semibold', it.valueClass)}>{it.value}</span>
+                <span className={cx('num shrink-0 text-sm font-semibold', item.valueClass)}>{item.value}</span>
               </button>
             </li>
           ))}
@@ -68,12 +68,12 @@ function MiniList({
   );
 }
 
-function topLever(p: UserProfile): string | null {
+function topLever(user: UserProfile): string | null {
   let best: (typeof LEVER_ORDER)[number] | null = null;
   let bestValue = 0;
   for (const id of LEVER_ORDER) {
-    if (p.potentialBy[id] > bestValue) {
-      bestValue = p.potentialBy[id];
+    if (user.potentialBy[id] > bestValue) {
+      bestValue = user.potentialBy[id];
       best = id;
     }
   }
@@ -90,67 +90,67 @@ export function AttentionLists() {
 
   const lists = useMemo(() => {
     const over = profiles
-      .filter((p) => hasQuota(p) && p.balance < 0)
+      .filter((user) => hasQuota(user) && user.balance < 0)
       .sort((a, b) => a.balance - b.balance)
       .slice(0, LIST_SIZE)
-      .map<MiniItem>((p) => ({
-        key: String(p.id),
-        id: p.id,
-        name: p.name,
-        value: t('{amount} over', { amount: fmtUSD(-p.balance, 0) }),
+      .map<MiniItem>((user) => ({
+        key: String(user.id),
+        id: user.id,
+        name: user.name,
+        value: t('{amount} over', { amount: fmtUSD(-user.balance, 0) }),
         valueClass: 'text-warn',
-        sub: t('{share} of their included credits', { share: fmtPctAuto(p.utilization) }),
+        sub: t('{share} of their included credits', { share: fmtPctAuto(user.utilization) }),
       }));
 
     const gain = profiles
-      .filter((p) => p.potential > 0)
+      .filter((user) => user.potential > 0)
       .sort((a, b) => b.potential - a.potential)
       .slice(0, LIST_SIZE)
-      .map<MiniItem>((p) => ({
-        key: String(p.id),
-        id: p.id,
-        name: p.name,
-        value: fmtUSD(p.potential, 0),
+      .map<MiniItem>((user) => ({
+        key: String(user.id),
+        id: user.id,
+        name: user.name,
+        value: fmtUSD(user.potential, 0),
         valueClass: 'text-good',
-        sub: [topLever(p), p.gross > 0 ? t('{share} of their usage', { share: fmtPct(p.potential / p.gross, 0) }) : ''].filter(Boolean).join(' · '),
+        sub: [topLever(user), user.gross > 0 ? t('{share} of their usage', { share: fmtPct(user.potential / user.gross, 0) }) : ''].filter(Boolean).join(' · '),
       }));
 
     const fading = profiles
-      .filter((p) => p.traits.includes('fading'))
+      .filter((user) => user.traits.includes('fading'))
       .sort((a, b) => b.prior - b.recent - (a.prior - a.recent))
       .slice(0, LIST_SIZE)
-      .map<MiniItem>((p) => ({
-        key: String(p.id),
-        id: p.id,
-        name: p.name,
-        value: Number.isFinite(p.trend) ? fmtPct(p.trend, 0) : '–',
+      .map<MiniItem>((user) => ({
+        key: String(user.id),
+        id: user.id,
+        name: user.name,
+        value: Number.isFinite(user.trend) ? fmtPct(user.trend, 0) : '–',
         valueClass: 'text-info',
-        sub: t('{recent} last 7 days, {prior} before', { recent: fmtUSD(p.recent, 0), prior: fmtUSD(p.prior, 0) }),
+        sub: t('{recent} last 7 days, {prior} before', { recent: fmtUSD(user.recent, 0), prior: fmtUSD(user.prior, 0) }),
       }));
 
     const fresh = profiles
-      .filter((p) => p.isNew)
+      .filter((user) => user.isNew)
       .sort((a, b) => b.gross - a.gross)
       .slice(0, LIST_SIZE)
-      .map<MiniItem>((p) => ({
-        key: String(p.id),
-        id: p.id,
-        name: p.name,
-        value: fmtUSD(p.gross, 0),
-        sub: t('First seen {day} · {days}', { day: fmtDay(p.globalFirstDay), days: pluralize(p.activeDays, 'active day') }),
+      .map<MiniItem>((user) => ({
+        key: String(user.id),
+        id: user.id,
+        name: user.name,
+        value: fmtUSD(user.gross, 0),
+        sub: t('First seen {day} · {days}', { day: fmtDay(user.globalFirstDay), days: pluralize(user.activeDays, 'active day') }),
       }));
 
     let noSeat: MiniItem[] = [];
     if (licenses) {
       const byName = new Map<string, number>();
-      for (const p of population) byName.set(`${p.name.toLowerCase()}\u0000${p.org}`, p.id);
-      noSeat = licenses.unmatched.slice(0, LIST_SIZE).map<MiniItem>((u) => ({
-        key: `${u.name}\u0000${u.org}`,
-        id: byName.get(`${u.name.toLowerCase()}\u0000${u.org}`) ?? null,
-        name: u.name,
-        value: fmtUSD(u.usage, 0),
+      for (const user of population) byName.set(`${user.name.toLowerCase()}\u0000${user.org}`, user.id);
+      noSeat = licenses.unmatched.slice(0, LIST_SIZE).map<MiniItem>((unmatchedUser) => ({
+        key: `${unmatchedUser.name}\u0000${unmatchedUser.org}`,
+        id: byName.get(`${unmatchedUser.name.toLowerCase()}\u0000${unmatchedUser.org}`) ?? null,
+        name: unmatchedUser.name,
+        value: fmtUSD(unmatchedUser.usage, 0),
         valueClass: 'text-warn',
-        sub: [u.org, u.plan ? seatPlanLabel(u.plan) : ''].filter(Boolean).join(' · '),
+        sub: [unmatchedUser.org, unmatchedUser.plan ? seatPlanLabel(unmatchedUser.plan) : ''].filter(Boolean).join(' · '),
       }));
     }
 

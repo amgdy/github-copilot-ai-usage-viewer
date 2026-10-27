@@ -40,8 +40,8 @@ const SEVERITY: Record<Severity, { tone: Tone; label: string }> = {
 };
 
 /** The translated name of a severity. */
-export const severityLabel = (s: Severity): string => t(SEVERITY[s].label);
-export const severityTone = (s: Severity): Tone => SEVERITY[s].tone;
+export const severityLabel = (severity: Severity): string => t(SEVERITY[severity].label);
+export const severityTone = (severity: Severity): Tone => SEVERITY[severity].tone;
 
 export function SeverityBadge({ severity }: { severity: Severity }) {
   return <Badge tone={SEVERITY[severity].tone}>{severityLabel(severity)}</Badge>;
@@ -59,5 +59,5 @@ export function TaxBadge({ item, className }: { item: TaxonomyItem | undefined; 
 
 /** Index a taxonomy list by id for quick lookups in tables. */
 export function taxLookup<T extends string>(items: TaxonomyItem<T>[]): Record<T, TaxonomyItem<T>> {
-  return Object.fromEntries(items.map((i) => [i.id, i])) as Record<T, TaxonomyItem<T>>;
+  return Object.fromEntries(items.map((item) => [item.id, item])) as Record<T, TaxonomyItem<T>>;
 }

@@ -14,11 +14,11 @@ export { SETTINGS_STORAGE_KEY };
 /** Settings files are small, but a license list of 20,000 seats with its details takes about 4.3 MB. */
 export const MAX_SETTINGS_FILE_BYTES = 25 * 1024 * 1024;
 
-const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
+const isObject = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /** JSON with sorted keys, so two equal values always compare equal. */
-function stable(v: unknown): string {
-  return JSON.stringify(v, (_key, val: unknown) => (isObject(val) ? Object.fromEntries(Object.entries(val).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) : val));
+function stable(value: unknown): string {
+  return JSON.stringify(value, (_key, nestedValue: unknown) => (isObject(nestedValue) ? Object.fromEntries(Object.entries(nestedValue).sort(([leftKey], [rightKey]) => (leftKey < rightKey ? -1 : leftKey > rightKey ? 1 : 0))) : nestedValue));
 }
 
 /** `label` is English; it is translated here. */
@@ -31,15 +31,15 @@ function readGroup<K extends string>(raw: unknown, label: string, defaults: Reco
   const merged = { ...defaults };
   for (const key of order) {
     if (!Object.hasOwn(raw, key)) continue;
-    const v = raw[key];
-    const r = rangeOf(key);
-    if (typeof v !== 'number' || !inRange(toPct(v), r.min, r.max)) {
-      ignored.push(t('{name}: "{key}" must be a fraction from {min} to {max}', { name, key, min: String(r.min / 100), max: String(r.max / 100) }));
+    const fraction = raw[key];
+    const range = rangeOf(key);
+    if (typeof fraction !== 'number' || !inRange(toPct(fraction), range.min, range.max)) {
+      ignored.push(t('{name}: "{key}" must be a fraction from {min} to {max}', { name, key, min: String(range.min / 100), max: String(range.max / 100) }));
       return undefined;
     }
-    merged[key] = v;
+    merged[key] = fraction;
   }
-  if (!isStrictlyAscending(order.map((k) => merged[k]))) {
+  if (!isStrictlyAscending(order.map((fieldKey) => merged[fieldKey]))) {
     ignored.push(t('{name}: the values must increase from "{first}" to "{last}"', { name, first: order[0], last: order[order.length - 1] }));
     return undefined;
   }
@@ -52,26 +52,26 @@ function expected(spec: ScalarSpec): string {
   return t('use a whole number from {min} to {max}', { min: String(spec.min), max: fmtInt(spec.max) });
 }
 
-function readRates(v: unknown): Rates | null {
-  if (!isObject(v)) return null;
-  const { input, cachedInput, cacheWrite, output } = v;
+function readRates(value: unknown): Rates | null {
+  if (!isObject(value)) return null;
+  const { input, cachedInput, cacheWrite, output } = value;
   if (!inRange(input, 0, MAX_RATE) || !inRange(cachedInput, 0, MAX_RATE) || !inRange(cacheWrite, 0, MAX_RATE) || !inRange(output, 0, MAX_RATE)) return null;
   return { input, cachedInput, cacheWrite, output };
 }
 
-function readOverride(v: unknown): ModelOverride | null {
-  if (!isObject(v)) return null;
+function readOverride(value: unknown): ModelOverride | null {
+  if (!isObject(value)) return null;
   const out: ModelOverride = {};
-  if (typeof v.vendor === 'string' && (VENDORS as string[]).includes(v.vendor)) out.vendor = v.vendor as Vendor;
-  if (typeof v.category === 'string' && (TIERS as string[]).includes(v.category)) out.category = v.category as Tier;
-  const base = readRates(v.base);
+  if (typeof value.vendor === 'string' && (VENDORS as string[]).includes(value.vendor)) out.vendor = value.vendor as Vendor;
+  if (typeof value.category === 'string' && (TIERS as string[]).includes(value.category)) out.category = value.category as Tier;
+  const base = readRates(value.base);
   if (base && (base.input > 0 || base.output > 0)) out.base = base;
-  if (v.long === null) out.long = null;
+  if (value.long === null) out.long = null;
   else {
-    const long = readRates(v.long);
+    const long = readRates(value.long);
     if (long) out.long = long;
   }
-  if (inRange(v.longThreshold, 1, 1e9)) out.longThreshold = v.longThreshold;
+  if (inRange(value.longThreshold, 1, 1e9)) out.longThreshold = value.longThreshold;
   return Object.keys(out).length > 0 ? out : null;
 }
 
@@ -96,28 +96,28 @@ function readOverrides(raw: unknown, ignored: string[]): ModelOverrides | undefi
 }
 
 function readRoster(raw: unknown, ignored: string[]): RosterEntry[] | undefined {
-  const r = sanitizeRosterDetailed(raw);
-  if (r.notAList) {
+  const sanitized = sanitizeRosterDetailed(raw);
+  if (sanitized.notAList) {
     ignored.push(t('License list: expected a list'));
     return undefined;
   }
-  if (r.invalid > 0) {
+  if (sanitized.invalid > 0) {
     ignored.push(
-      tp(r.invalid, 'License list: {n} entry without a usable username left out', 'License list: {n} entries without a usable username left out', { n: fmtInt(r.invalid) }),
+      tp(sanitized.invalid, 'License list: {n} entry without a usable username left out', 'License list: {n} entries without a usable username left out', { n: fmtInt(sanitized.invalid) }),
     );
   }
-  if (r.duplicates > 0) ignored.push(tp(r.duplicates, 'License list: {n} duplicate left out', 'License list: {n} duplicates left out', { n: fmtInt(r.duplicates) }));
-  if (r.unreadablePlans > 0) {
+  if (sanitized.duplicates > 0) ignored.push(tp(sanitized.duplicates, 'License list: {n} duplicate left out', 'License list: {n} duplicates left out', { n: fmtInt(sanitized.duplicates) }));
+  if (sanitized.unreadablePlans > 0) {
     ignored.push(
       tp(
-        r.unreadablePlans,
+        sanitized.unreadablePlans,
         'License list: {n} plan value could not be read and was left empty',
         'License list: {n} plan values could not be read and were left empty',
-        { n: fmtInt(r.unreadablePlans) },
+        { n: fmtInt(sanitized.unreadablePlans) },
       ),
     );
   }
-  return r.entries;
+  return sanitized.entries;
 }
 
 export interface SanitizeResult {
@@ -140,33 +140,33 @@ export function sanitizeSettings(raw: Record<string, unknown>): SanitizeResult {
   const has = (key: string) => Object.hasOwn(raw, key);
   const recognized = known.filter(has).length;
 
-  const unknown = Object.keys(raw).filter((k) => !known.includes(k));
+  const unknown = Object.keys(raw).filter((settingName) => !known.includes(settingName));
   if (unknown.length > 5) ignored.push(t('Unknown settings left out: {names} and {n} more', { names: unknown.slice(0, 5).join(', '), n: fmtInt(unknown.length - 5) }));
   else if (unknown.length > 0) ignored.push(t('Unknown settings left out: {names}', { names: unknown.join(', ') }));
 
   if (has('activeThreshold')) {
-    const v = raw.activeThreshold;
-    if (inRange(v, LIMITS.activeThreshold.min, LIMITS.activeThreshold.max)) partial.activeThreshold = v;
+    const threshold = raw.activeThreshold;
+    if (inRange(threshold, LIMITS.activeThreshold.min, LIMITS.activeThreshold.max)) partial.activeThreshold = threshold;
     else ignored.push(t('Active-day threshold: use an amount from {min} to {max}', { min: String(LIMITS.activeThreshold.min), max: fmtInt(LIMITS.activeThreshold.max) }));
   }
   if (has('tiers')) {
-    const g = readGroup(raw.tiers, msg('Spend tiers'), DEFAULT_SETTINGS.tiers, ['minimal', 'light', 'core', 'power'], () => LIMITS.tier, ignored);
-    if (g) partial.tiers = g;
+    const tiers = readGroup(raw.tiers, msg('Spend tiers'), DEFAULT_SETTINGS.tiers, ['minimal', 'light', 'core', 'power'], () => LIMITS.tier, ignored);
+    if (tiers) partial.tiers = tiers;
   }
   if (has('engagement')) {
-    const g = readGroup(raw.engagement, msg('Engagement'), DEFAULT_SETTINGS.engagement, ['occasional', 'regular', 'daily'], () => LIMITS.engagement, ignored);
-    if (g) partial.engagement = g;
+    const engagement = readGroup(raw.engagement, msg('Engagement'), DEFAULT_SETTINGS.engagement, ['occasional', 'regular', 'daily'], () => LIMITS.engagement, ignored);
+    if (engagement) partial.engagement = engagement;
   }
   if (has('pareto')) {
-    const g = readGroup(raw.pareto, msg('Pareto classes'), DEFAULT_SETTINGS.pareto, ['a', 'b'], (k) => (k === 'a' ? LIMITS.paretoA : LIMITS.paretoB), ignored);
-    if (g) partial.pareto = g;
+    const pareto = readGroup(raw.pareto, msg('Pareto classes'), DEFAULT_SETTINGS.pareto, ['a', 'b'], (paretoKey) => (paretoKey === 'a' ? LIMITS.paretoA : LIMITS.paretoB), ignored);
+    if (pareto) partial.pareto = pareto;
   }
 
   for (const spec of Object.values(SCALARS)) {
     if (!has(spec.key)) continue;
-    const v = raw[spec.key];
-    const shown = typeof v === 'number' ? (spec.unit === 'percent' ? toPct(v) : v) : Number.NaN;
-    if (typeof v === 'number' && inRange(shown, spec.min, spec.max) && (!spec.integer || Number.isInteger(v))) partial[spec.key] = v;
+    const storedValue = raw[spec.key];
+    const shown = typeof storedValue === 'number' ? (spec.unit === 'percent' ? toPct(storedValue) : storedValue) : Number.NaN;
+    if (typeof storedValue === 'number' && inRange(shown, spec.min, spec.max) && (!spec.integer || Number.isInteger(storedValue))) partial[spec.key] = storedValue;
     else ignored.push(t('{name}: {expected}', { name: t(spec.label), expected: expected(spec) }));
   }
 
@@ -179,21 +179,21 @@ export function sanitizeSettings(raw: Record<string, unknown>): SanitizeResult {
   }
 
   if (has('budgetMonthlyBilled')) {
-    const v = raw.budgetMonthlyBilled;
-    if (v === null) partial.budgetMonthlyBilled = null;
-    else if (typeof v === 'number' && Number.isFinite(v) && v > 0 && v <= LIMITS.budget.max) partial.budgetMonthlyBilled = v;
+    const budget = raw.budgetMonthlyBilled;
+    if (budget === null) partial.budgetMonthlyBilled = null;
+    else if (typeof budget === 'number' && Number.isFinite(budget) && budget > 0 && budget <= LIMITS.budget.max) partial.budgetMonthlyBilled = budget;
     else ignored.push(t('Monthly budget: use an amount above 0, or null for no budget'));
   }
 
   if (has('extraSeats')) {
-    const v = raw.extraSeats;
-    if (!isObject(v)) ignored.push(t('Extra seats: expected an object'));
+    const extraSeats = raw.extraSeats;
+    if (!isObject(extraSeats)) ignored.push(t('Extra seats: expected an object'));
     else {
       const seats = { ...DEFAULT_SETTINGS.extraSeats };
       for (const plan of ['business', 'enterprise'] as const) {
-        if (!Object.hasOwn(v, plan)) continue;
-        const n = v[plan];
-        if (typeof n === 'number' && Number.isInteger(n) && inRange(n, LIMITS.extraSeats.min, LIMITS.extraSeats.max)) seats[plan] = n;
+        if (!Object.hasOwn(extraSeats, plan)) continue;
+        const seatCount = extraSeats[plan];
+        if (typeof seatCount === 'number' && Number.isInteger(seatCount) && inRange(seatCount, LIMITS.extraSeats.min, LIMITS.extraSeats.max)) seats[plan] = seatCount;
         else if (plan === 'business') ignored.push(t('Extra Business seats: use a whole number from 0 to {max}', { max: fmtInt(LIMITS.extraSeats.max) }));
         else ignored.push(t('Extra Enterprise seats: use a whole number from 0 to {max}', { max: fmtInt(LIMITS.extraSeats.max) }));
       }
@@ -265,49 +265,49 @@ interface Fact {
 
 const pct = (fraction: number) => `${numText(toPct(fraction), 2)}%`;
 
-function facts(s: Settings): Fact[] {
-  const overrides = Object.keys(s.modelOverrides).length;
+function facts(settings: Settings): Fact[] {
+  const overrides = Object.keys(settings.modelOverrides).length;
   return [
-    { label: msg('Active-day threshold'), text: `$${numText(s.activeThreshold, 4)}` },
-    { label: msg('Minimal tier limit'), text: pct(s.tiers.minimal) },
-    { label: msg('Light tier limit'), text: pct(s.tiers.light) },
-    { label: msg('Core tier limit'), text: pct(s.tiers.core) },
-    { label: msg('Power tier limit'), text: pct(s.tiers.power) },
-    { label: msg('Occasional engagement cutoff'), text: pct(s.engagement.occasional) },
-    { label: msg('Regular engagement cutoff'), text: pct(s.engagement.regular) },
-    { label: msg('Daily engagement cutoff'), text: pct(s.engagement.daily) },
-    { label: msg('Pareto class A cutoff'), text: pct(s.pareto.a) },
-    { label: msg('Pareto class B cutoff'), text: pct(s.pareto.b) },
-    ...Object.values(SCALARS).map((spec) => ({ label: spec.label, text: unitText(spec, scalarDisplay(spec, s)) })),
-    { label: msg('Monthly budget'), text: s.budgetMonthlyBilled === null ? t('none') : fmtUSD(s.budgetMonthlyBilled, 2) },
-    { label: msg('License list'), text: s.roster.length === 0 ? t('empty') : tp(s.roster.length, '{n} seat', '{n} seats', { n: fmtInt(s.roster.length) }), sig: stable(s.roster) },
-    { label: msg('License list date'), text: s.rosterAsOf ?? t('none') },
-    { label: msg('Extra Business seats'), text: fmtInt(s.extraSeats.business) },
-    { label: msg('Extra Enterprise seats'), text: fmtInt(s.extraSeats.enterprise) },
-    { label: msg('Model price overrides'), text: overrides === 0 ? t('none') : tp(overrides, '{n} model', '{n} models', { n: fmtInt(overrides) }), sig: stable(s.modelOverrides) },
+    { label: msg('Active-day threshold'), text: `$${numText(settings.activeThreshold, 4)}` },
+    { label: msg('Minimal tier limit'), text: pct(settings.tiers.minimal) },
+    { label: msg('Light tier limit'), text: pct(settings.tiers.light) },
+    { label: msg('Core tier limit'), text: pct(settings.tiers.core) },
+    { label: msg('Power tier limit'), text: pct(settings.tiers.power) },
+    { label: msg('Occasional engagement cutoff'), text: pct(settings.engagement.occasional) },
+    { label: msg('Regular engagement cutoff'), text: pct(settings.engagement.regular) },
+    { label: msg('Daily engagement cutoff'), text: pct(settings.engagement.daily) },
+    { label: msg('Pareto class A cutoff'), text: pct(settings.pareto.a) },
+    { label: msg('Pareto class B cutoff'), text: pct(settings.pareto.b) },
+    ...Object.values(SCALARS).map((spec) => ({ label: spec.label, text: unitText(spec, scalarDisplay(spec, settings)) })),
+    { label: msg('Monthly budget'), text: settings.budgetMonthlyBilled === null ? t('none') : fmtUSD(settings.budgetMonthlyBilled, 2) },
+    { label: msg('License list'), text: settings.roster.length === 0 ? t('empty') : tp(settings.roster.length, '{n} seat', '{n} seats', { n: fmtInt(settings.roster.length) }), sig: stable(settings.roster) },
+    { label: msg('License list date'), text: settings.rosterAsOf ?? t('none') },
+    { label: msg('Extra Business seats'), text: fmtInt(settings.extraSeats.business) },
+    { label: msg('Extra Enterprise seats'), text: fmtInt(settings.extraSeats.enterprise) },
+    { label: msg('Model price overrides'), text: overrides === 0 ? t('none') : tp(overrides, '{n} model', '{n} models', { n: fmtInt(overrides) }), sig: stable(settings.modelOverrides) },
   ];
 }
 
 /** One line per setting whose value differs, for example "Light tier limit: 40% to 50%". */
 export function diffSettings(before: Settings, after: Settings): string[] {
-  const b = facts(before);
-  const a = facts(after);
+  const beforeFacts = facts(before);
+  const afterFacts = facts(after);
   const out: string[] = [];
-  b.forEach((f, i) => {
-    const g = a[i];
-    if ((f.sig ?? f.text) === (g.sig ?? g.text)) return;
-    const label = t(f.label);
-    out.push(f.text === g.text ? t('{label}: contents changed', { label }) : t('{label}: {from} to {to}', { label, from: f.text, to: g.text }));
+  beforeFacts.forEach((beforeFact, index) => {
+    const afterFact = afterFacts[index];
+    if ((beforeFact.sig ?? beforeFact.text) === (afterFact.sig ?? afterFact.text)) return;
+    const label = t(beforeFact.label);
+    out.push(beforeFact.text === afterFact.text ? t('{label}: contents changed', { label }) : t('{label}: {from} to {to}', { label, from: beforeFact.text, to: afterFact.text }));
   });
   return out;
 }
 
 export function settingsFileName(date = new Date()): string {
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `github-copilot-settings-${date.getFullYear()}-${p(date.getMonth() + 1)}-${p(date.getDate())}.json`;
+  const twoDigits = (datePart: number) => String(datePart).padStart(2, '0');
+  return `github-copilot-settings-${date.getFullYear()}-${twoDigits(date.getMonth() + 1)}-${twoDigits(date.getDate())}.json`;
 }
 
-export const settingsJson = (s: Settings): string => JSON.stringify(s, null, 2);
+export const settingsJson = (settings: Settings): string => JSON.stringify(settings, null, 2);
 
 /** Whether the browser lets this page write to local storage. */
 export function storageWorks(): boolean {
@@ -321,9 +321,9 @@ export function storageWorks(): boolean {
 }
 
 /** Whether what is stored in this browser matches the settings in memory. */
-export function isStored(s: Settings): boolean {
+export function isStored(settings: Settings): boolean {
   try {
-    return localStorage.getItem(SETTINGS_STORAGE_KEY) === JSON.stringify(s);
+    return localStorage.getItem(SETTINGS_STORAGE_KEY) === JSON.stringify(settings);
   } catch {
     return false;
   }

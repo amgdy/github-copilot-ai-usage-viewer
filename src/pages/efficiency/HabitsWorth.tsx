@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { useChartColors, type EChartsOption } from '../../components/charts/EChart';
-import { esc } from '../../components/charts/helpers';
+import { escapeHtml } from '../../components/charts/helpers';
 import type { ChartColors } from '../../components/charts/theme';
 import { CalcInfo, CalcLegend, Card, ChartCard, DocLinks, Kpi, KpiGrid, Section } from '../../components/ui';
 import { T, t } from '../../i18n';
@@ -11,23 +11,23 @@ import { navigate } from '../../state/router';
 import { NarrowedNotice, usePerMonth } from '../shared';
 import { LEVER_DOC, habitCash, leverColor, money, waterfall, type WaterfallRow } from './metrics';
 
-function waterfallOption(c: ChartColors, rows: WaterfallRow[], total: number): EChartsOption {
+function waterfallOption(colors: ChartColors, rows: WaterfallRow[], total: number): EChartsOption {
   const combined = t('Combined effect');
-  const names = [...rows.map((r) => r.label), combined];
-  const base = [...rows.map((r) => r.base), 0];
+  const names = [...rows.map((row) => row.label), combined];
+  const base = [...rows.map((row) => row.base), 0];
   const bars = [
-    ...rows.map((r) => ({ value: r.savings, itemStyle: { color: leverColor(c, r.id) } })),
-    { value: total, itemStyle: { color: c.good }, label: { fontWeight: 600, color: c.text } },
+    ...rows.map((row) => ({ value: row.savings, itemStyle: { color: leverColor(colors, row.id) } })),
+    { value: total, itemStyle: { color: colors.good }, label: { fontWeight: 600, color: colors.text } },
   ];
   return {
     grid: { left: 8, right: 72, top: 4, bottom: 4, containLabel: true },
     tooltip: {
       trigger: 'item',
-      formatter: (p: unknown) => {
-        const r = rows[(p as { dataIndex: number }).dataIndex];
-        if (!r)
-          return `<b>${esc(combined)}</b><br/>${esc(t('{amount} less usage per month', { amount: money(total) }))}<br/><span style="opacity:.75">${esc(t('All habit changes together, applied in the order shown.'))}</span>`;
-        return `<b>${esc(r.label)}</b><br/>${esc(t('{amount} per month, after the steps above', { amount: money(r.savings) }))}<br/>${esc(t('On its own: {amount} per month', { amount: money(r.standalone) }))}<br/><span style="opacity:.75">${esc(r.description)}</span>`;
+      formatter: (params: unknown) => {
+        const row = rows[(params as { dataIndex: number }).dataIndex];
+        if (!row)
+          return `<b>${escapeHtml(combined)}</b><br/>${escapeHtml(t('{amount} less usage per month', { amount: money(total) }))}<br/><span style="opacity:.75">${escapeHtml(t('All habit changes together, applied in the order shown.'))}</span>`;
+        return `<b>${escapeHtml(row.label)}</b><br/>${escapeHtml(t('{amount} per month, after the steps above', { amount: money(row.savings) }))}<br/>${escapeHtml(t('On its own: {amount} per month', { amount: money(row.standalone) }))}<br/><span style="opacity:.75">${escapeHtml(row.description)}</span>`;
       },
     },
     xAxis: { type: 'value', show: false },
@@ -35,7 +35,7 @@ function waterfallOption(c: ChartColors, rows: WaterfallRow[], total: number): E
       type: 'category',
       inverse: true,
       data: names,
-      axisLabel: { width: 150, overflow: 'truncate', color: c.text, fontSize: 12 },
+      axisLabel: { width: 150, overflow: 'truncate', color: colors.text, fontSize: 12 },
       axisLine: { show: false },
       axisTick: { show: false },
     },
@@ -46,7 +46,7 @@ function waterfallOption(c: ChartColors, rows: WaterfallRow[], total: number): E
         stack: 'waterfall',
         barMaxWidth: 18,
         data: bars,
-        label: { show: true, position: 'right', color: c.textMuted, fontSize: 12, formatter: (p: { value?: unknown }) => money(Number(p.value)) },
+        label: { show: true, position: 'right', color: colors.textMuted, fontSize: 12, formatter: (params: { value?: unknown }) => money(Number(params.value)) },
       },
     ],
   };
@@ -58,9 +58,9 @@ export function HabitsWorth() {
   const perMonth = usePerMonth();
   const { plan, pool, narrowed } = analysis;
 
-  const wf = useMemo(() => waterfall(plan.levers.steps, perMonth), [plan, perMonth]);
+  const habitSavings = useMemo(() => waterfall(plan.levers.steps, perMonth), [plan, perMonth]);
   const cash = useMemo(() => (narrowed ? null : habitCash(pool, plan.fraction)), [narrowed, pool, plan.fraction]);
-  const option = useMemo(() => waterfallOption(colors, wf.rows, wf.total), [colors, wf]);
+  const option = useMemo(() => waterfallOption(colors, habitSavings.rows, habitSavings.total), [colors, habitSavings]);
 
   const star = cash && pool.capacityIsLowerBound ? '*' : '';
   const missing = narrowed ? t('Needs the whole pool') : t('No billing month in this data');
@@ -97,7 +97,7 @@ export function HabitsWorth() {
             label={t('Usage reduction')}
             value={fmtPct(plan.fraction, 1)}
             tone="accent"
-            sub={t('≈ {amount} less usage per month', { amount: money(wf.total) })}
+            sub={t('≈ {amount} less usage per month', { amount: money(habitSavings.total) })}
             hint={t('How much less usage the default habit changes would produce. Overlapping habits are applied one after another, so nothing is counted twice.')}
             calc="habits-usage-reduction"
           />
@@ -127,7 +127,7 @@ export function HabitsWorth() {
             )}
             calc="habits-waterfall"
             option={option}
-            height={(wf.rows.length + 1) * 36 + 16}
+            height={(habitSavings.rows.length + 1) * 36 + 16}
             exportName="github-copilot-habit-savings"
             label={t('Usage saved per month by each habit change, in order, and the combined effect')}
             empty={plan.levers.total <= 0 ? t('No habit change has a measurable effect on this data') : false}
@@ -135,15 +135,15 @@ export function HabitsWorth() {
               plan.levers.total > 0 ? (
                 <div className="space-y-2">
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                    {wf.rows.map((r) => (
-                      <span key={r.id} className="inline-flex items-center gap-1.5">
-                        <span className="size-2 shrink-0 rounded-sm" style={{ background: leverColor(colors, r.id) }} aria-hidden />
-                        {r.label}
-                        <CalcInfo id={LEVER_DOC[r.id]} />
+                    {habitSavings.rows.map((row) => (
+                      <span key={row.id} className="inline-flex items-center gap-1.5">
+                        <span className="size-2 shrink-0 rounded-sm" style={{ background: leverColor(colors, row.id) }} aria-hidden />
+                        {row.label}
+                        <CalcInfo id={LEVER_DOC[row.id]} />
                       </span>
                     ))}
                   </div>
-                  <CalcLegend items={wf.rows.map((r) => ({ label: r.label, calc: LEVER_DOC[r.id] }))} />
+                  <CalcLegend items={habitSavings.rows.map((row) => ({ label: row.label, calc: LEVER_DOC[row.id] }))} />
                   <DocLinks topic="habits" title={t('Learn more')} limit={3} compact />
                 </div>
               ) : undefined
@@ -178,7 +178,7 @@ export function HabitsWorth() {
                 <p className="text-fg">
                   <T
                     text="In this data, {usage} less usage per month turns into about {cash} less cash per month."
-                    values={{ usage: <span className="num font-medium">{money(wf.total)}</span>, cash: <span className="num font-medium">{money(cash.perMonth)}</span> }}
+                    values={{ usage: <span className="num font-medium">{money(habitSavings.total)}</span>, cash: <span className="num font-medium">{money(cash.perMonth)}</span> }}
                   />
                 </p>
               ) : null}

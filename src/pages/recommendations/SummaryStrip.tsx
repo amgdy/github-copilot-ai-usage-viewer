@@ -17,18 +17,18 @@ const STATUS = {
 
 function Headline() {
   const { analysis } = useAnalysis();
-  const h = analysis.headline;
-  const s = STATUS[h.status];
+  const headline = analysis.headline;
+  const status = STATUS[headline.status];
   return (
-    <div className={cx('card flex flex-wrap items-end gap-x-6 gap-y-3 border-s-[3px] px-5 py-4', s.border)}>
+    <div className={cx('card flex flex-wrap items-end gap-x-6 gap-y-3 border-s-[3px] px-5 py-4', status.border)}>
       <div className="min-w-0 flex-1 basis-64">
-        <div className={cx('eyebrow flex items-center gap-1.5', TONE_TEXT[s.tone])}>
-          <s.Icon size={13} aria-hidden />
-          {t(s.label)}
+        <div className={cx('eyebrow flex items-center gap-1.5', TONE_TEXT[status.tone])}>
+          <status.Icon size={13} aria-hidden />
+          {t(status.label)}
           <CalcInfo id="headline-status" />
         </div>
-        <h2 className="font-display mt-1.5 text-lg leading-snug text-fg sm:text-xl">{h.title}</h2>
-        <p className="mt-1 max-w-3xl text-sm text-fg-muted">{h.detail}</p>
+        <h2 className="font-display mt-1.5 text-lg leading-snug text-fg sm:text-xl">{headline.title}</h2>
+        <p className="mt-1 max-w-3xl text-sm text-fg-muted">{headline.detail}</p>
       </div>
     </div>
   );
@@ -78,13 +78,13 @@ function PlanValue() {
 }
 
 /** Headline, recommendation counts and the combined value of the plan. */
-export function SummaryStrip({ recs }: { recs: Recommendation[] }) {
-  const bySeverity = countBy(recs, SEVERITIES, (r) => r.severity);
-  const byTheme = countBy(recs, THEMES, (r) => r.theme);
-  const actionable = recs.filter(isActionable).length;
+export function SummaryStrip({ recs: recommendations }: { recs: Recommendation[] }) {
+  const bySeverity = countBy(recommendations, SEVERITIES, (recommendation) => recommendation.severity);
+  const byTheme = countBy(recommendations, THEMES, (recommendation) => recommendation.theme);
+  const actionable = recommendations.filter(isActionable).length;
   // With nothing to act on, a plan value would contradict the headline.
   const showPlan = actionable > 0;
-  const needAction = recs.length > 0 ? `${t(', ')}${tp(actionable, '{n} that needs action', '{n} that need action')}` : '';
+  const needAction = recommendations.length > 0 ? `${t(', ')}${tp(actionable, '{n} that needs action', '{n} that need action')}` : '';
 
   return (
     <div className="space-y-3">
@@ -95,16 +95,16 @@ export function SummaryStrip({ recs }: { recs: Recommendation[] }) {
           <div className={cx('space-y-3', showPlan && 'lg:col-span-3')}>
             <div>
               <div className="label flex flex-wrap items-center gap-1.5">
-                {pluralize(recs.length, 'recommendation')}
+                {pluralize(recommendations.length, 'recommendation')}
                 {needAction}
                 <CalcInfo id="rec-severity" />
               </div>
-              {recs.length > 0 ? (
+              {recommendations.length > 0 ? (
                 <ul className="flex flex-wrap gap-x-4 gap-y-1.5" aria-label={t('Recommendations by severity')}>
-                  {SEVERITIES.filter((s) => bySeverity[s] > 0).map((s) => (
-                    <li key={s} className="inline-flex items-center gap-1.5">
-                      <SeverityBadge severity={s} />
-                      <span className="num text-sm font-semibold">{bySeverity[s]}</span>
+                  {SEVERITIES.filter((severity) => bySeverity[severity] > 0).map((severity) => (
+                    <li key={severity} className="inline-flex items-center gap-1.5">
+                      <SeverityBadge severity={severity} />
+                      <span className="num text-sm font-semibold">{bySeverity[severity]}</span>
                     </li>
                   ))}
                 </ul>
@@ -112,7 +112,7 @@ export function SummaryStrip({ recs }: { recs: Recommendation[] }) {
                 <p className="text-sm text-fg-muted">{t('Nothing to act on for this period.')}</p>
               )}
             </div>
-            {recs.length > 0 ? (
+            {recommendations.length > 0 ? (
               <div>
                 <div className="label flex items-center gap-1.5">
                   {t('By theme')}

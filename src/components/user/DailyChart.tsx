@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { T, t } from '../../i18n';
 import { userDailySeries } from '../../lib/analytics/series';
 import type { UserProfile } from '../../lib/analytics/users';
-import { DOW_NAMES, dowOf, fmtDay } from '../../lib/utils/date';
+import { WEEKDAY_NAMES, dowOf, fmtDay } from '../../lib/utils/date';
 import { fmtPct, fmtUSD } from '../../lib/utils/format';
 import { useAnalysis } from '../../state/analysis';
 import { EChart, useChartColors, type EChartsOption } from '../charts/EChart';
@@ -14,17 +14,17 @@ interface AxisParam {
   value?: unknown;
 }
 
-const dayLabel = (day: number): string => t('{weekday}, {date}', { weekday: DOW_NAMES[dowOf(day)], date: fmtDay(day, true) });
+const dayLabel = (day: number): string => t('{weekday}, {date}', { weekday: WEEKDAY_NAMES[dowOf(day)], date: fmtDay(day, true) });
 
-export function DailyChart({ p }: { p: UserProfile }) {
+export function DailyChart({ p: user }: { p: UserProfile }) {
   const { analysis, store } = useAnalysis();
   const colors = useChartColors();
   const { baseMask, range } = analysis;
 
   // The base mask keeps users that a segment filter hides on the page, so they still show here.
   const daily = useMemo(
-    () => userDailySeries(store, baseMask, { start: range.start, end: range.end }, [p.id]).get(p.id) ?? new Float32Array(0),
-    [store, baseMask, range.start, range.end, p.id],
+    () => userDailySeries(store, baseMask, { start: range.start, end: range.end }, [user.id]).get(user.id) ?? new Float32Array(0),
+    [store, baseMask, range.start, range.end, user.id],
   );
 
   const peak = useMemo(() => {
@@ -43,26 +43,26 @@ export function DailyChart({ p }: { p: UserProfile }) {
 
   const option = useMemo<EChartsOption | null>(() => {
     if (peak.index < 0) return null;
-    const labels = Array.from(daily, (_, i) => fmtDay(range.start + i));
+    const labels = Array.from(daily, (_, dayIndex) => fmtDay(range.start + dayIndex));
     return {
       grid: { ...GRID, top: 12 },
       tooltip: {
         trigger: 'axis',
         axisPointer: { type: 'shadow' },
         formatter: (params: unknown) => {
-          const q = (Array.isArray(params) ? params[0] : params) as AxisParam | undefined;
-          if (!q) return '';
-          return `<b>${dayLabel(range.start + q.dataIndex)}</b><br/>${usd(q.value)}`;
+          const param = (Array.isArray(params) ? params[0] : params) as AxisParam | undefined;
+          if (!param) return '';
+          return `<b>${dayLabel(range.start + param.dataIndex)}</b><br/>${usd(param.value)}`;
         },
       },
       xAxis: { type: 'category', data: labels, axisLabel: { hideOverlap: true, interval: labels.length > 30 ? 'auto' : 0 } },
-      yAxis: { type: 'value', axisLabel: { formatter: (v: number) => usdCompact(v) } },
+      yAxis: { type: 'value', axisLabel: { formatter: (value: number) => usdCompact(value) } },
       series: [
         {
           type: 'bar',
           name: t('Usage'),
           barMaxWidth: 18,
-          data: Array.from(daily, (v, i) => ({ value: v, itemStyle: { color: i === peak.index ? colors.warn : colors.accent } })),
+          data: Array.from(daily, (usage, dayIndex) => ({ value: usage, itemStyle: { color: dayIndex === peak.index ? colors.warn : colors.accent } })),
         },
       ],
     };
@@ -89,7 +89,7 @@ export function DailyChart({ p }: { p: UserProfile }) {
     >
       {option ? (
         <div className="rounded-lg border border-border bg-surface px-1 py-2">
-          <EChart option={option} height={190} label={t('Daily usage of {name}', { name: p.name })} exportName="github-copilot-user-daily-usage" />
+          <EChart option={option} height={190} label={t('Daily usage of {name}', { name: user.name })} exportName="github-copilot-user-daily-usage" />
         </div>
       ) : (
         <div className="rounded-lg border border-dashed border-border px-3 py-6 text-center text-xs text-fg-muted">

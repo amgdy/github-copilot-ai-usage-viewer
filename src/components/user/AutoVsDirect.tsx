@@ -12,7 +12,7 @@ import { autoBasisNote } from './shared';
 const EMPTY = 'rounded-lg border border-dashed border-border px-3 py-5 text-center text-xs text-fg-muted';
 
 /** How much of one user's usage went through Auto, the discount that earned against the original price, and the discount hand-picked usage missed. */
-export function AutoVsDirect({ p }: { p: UserProfile }) {
+export function AutoVsDirect({ p: user }: { p: UserProfile }) {
   const { analysis, taxonomy } = useAnalysis();
   const { coverage, autoRates } = analysis;
   const title = t('Auto vs direct');
@@ -24,7 +24,7 @@ export function AutoVsDirect({ p }: { p: UserProfile }) {
       </DrawerSection>
     );
   }
-  if (!(p.gross > 0)) {
+  if (!(user.gross > 0)) {
     return (
       <DrawerSection title={title} calc={['user-auto-vs-direct', 'auto-use-class']}>
         <div className={EMPTY}>{t('No usage for this user in this date range.')}</div>
@@ -32,19 +32,19 @@ export function AutoVsDirect({ p }: { p: UserProfile }) {
     );
   }
 
-  const item = taxonomy.autoUse.find((i) => i.id === p.autoUse);
-  const rate = rateForPlan(autoRates, p.quotaCredits);
-  const basis = autoRates.plans.find((x) => x.credits === p.quotaCredits)?.source ?? 'assumed';
-  const hasAuto = p.auto.billed > 0;
-  const got = p.auto.discount > 0.005;
-  const missed = p.autoMissed > 0.005;
-  const plan = seatPlanLabel(p.plan);
+  const item = taxonomy.autoUse.find((autoUseClass) => autoUseClass.id === user.autoUse);
+  const rate = rateForPlan(autoRates, user.quotaCredits);
+  const basis = autoRates.plans.find((planRate) => planRate.credits === user.quotaCredits)?.source ?? 'assumed';
+  const hasAuto = user.auto.billed > 0;
+  const got = user.auto.discount > 0.005;
+  const missed = user.autoMissed > 0.005;
+  const plan = seatPlanLabel(user.plan);
 
   return (
     <DrawerSection
       title={title}
       calc={['user-auto-vs-direct', 'auto-use-class']}
-      aside={t('{share} of usage on Auto', { share: fmtPct(p.autoShare, 0) })}
+      aside={t('{share} of usage on Auto', { share: fmtPct(user.autoShare, 0) })}
     >
       <div className="space-y-3 rounded-lg border border-accent/40 bg-accent-soft p-3">
         <div className="space-y-1">
@@ -62,38 +62,38 @@ export function AutoVsDirect({ p }: { p: UserProfile }) {
         <KpiGrid cols="grid-cols-2 sm:grid-cols-3">
           <Kpi
             label={t('Auto share of usage')}
-            value={fmtPct(p.autoShare, 0)}
-            sub={t('{part} of {total}', { part: fmtUSD(p.auto.billed), total: fmtUSD(p.gross) })}
+            value={fmtPct(user.autoShare, 0)}
+            sub={t('{part} of {total}', { part: fmtUSD(user.auto.billed), total: fmtUSD(user.gross) })}
             hint={t("The share of the user's usage that went through Auto model selection.")}
             calc="auto-share"
           />
           <Kpi
             label={t('Auto discount received')}
-            value={fmtUSD(got ? p.auto.discount : 0)}
+            value={fmtUSD(got ? user.auto.discount : 0)}
             tone={got ? 'good' : 'neutral'}
-            sub={hasAuto ? t('{rate} off the original price', { rate: fmtPct(p.auto.rate, 1) }) : t('No usage went through Auto')}
+            sub={hasAuto ? t('{rate} off the original price', { rate: fmtPct(user.auto.rate, 1) }) : t('No usage went through Auto')}
             hint={t("What the Auto discount took off this user's Auto usage: the original price minus the amount in the report.")}
             calc={['auto-discount', 'auto-plan-rate']}
           />
           <Kpi
             label={t('Original price of Auto usage')}
-            value={hasAuto ? fmtUSD(p.auto.original) : '–'}
-            sub={hasAuto ? t('{amount} in the report, after the discount', { amount: fmtUSD(p.auto.billed) }) : undefined}
+            value={hasAuto ? fmtUSD(user.auto.original) : '–'}
+            sub={hasAuto ? t('{amount} in the report, after the discount', { amount: fmtUSD(user.auto.billed) }) : undefined}
             hint={t('What the Auto usage would have cost with the models Auto picked, before the Auto discount.')}
             calc="auto-original-price"
           />
           <Kpi
             label={t('Hand-picked usage')}
-            value={fmtUSD(p.directBilled)}
-            sub={t('{share} of usage', { share: fmtPct(1 - p.autoShare, 0) })}
+            value={fmtUSD(user.directBilled)}
+            sub={t('{share} of usage', { share: fmtPct(1 - user.autoShare, 0) })}
             hint={t('Usage on models the user chose by hand. It earns no Auto discount.')}
             calc="user-hand-picked-usage"
           />
           <Kpi
             label={t('Discount missed on hand-picked usage')}
-            value={fmtUSD(p.autoMissed)}
+            value={fmtUSD(user.autoMissed)}
             tone={missed ? 'warn' : 'neutral'}
-            sub={t('An estimate: {amount} × {rate}', { amount: fmtUSD(p.directBilled), rate: fmtPct(rate, 1) })}
+            sub={t('An estimate: {amount} × {rate}', { amount: fmtUSD(user.directBilled), rate: fmtPct(rate, 1) })}
             hint={t('What the hand-picked usage would have earned if the same requests had gone through Auto.')}
             calc={['auto-missed', 'auto-plan-rate']}
           />
@@ -112,7 +112,7 @@ export function AutoVsDirect({ p }: { p: UserProfile }) {
           />
         </KpiGrid>
 
-        {hasAuto ? <p className="text-[11px] leading-snug text-fg-subtle">{autoBasisNote(p.auto.measuredShare, 'user')}</p> : null}
+        {hasAuto ? <p className="text-[11px] leading-snug text-fg-subtle">{autoBasisNote(user.auto.measuredShare, 'user')}</p> : null}
       </div>
     </DrawerSection>
   );

@@ -42,13 +42,13 @@ interface PageState {
 
 function OrganizationBody() {
   const { analysis, store, settings } = useAnalysis();
-  const { agg, mask, range, narrowed, licenses } = analysis;
+  const { agg: aggregates, mask, range, narrowed, licenses } = analysis;
 
   // The default view is chosen once per dataset, so a click that filters the report does not switch the view.
-  const [state, setState] = useState<PageState>(() => ({ store, dim: defaultDim(agg), selected: null }));
+  const [state, setState] = useState<PageState>(() => ({ store, dim: defaultDim(aggregates), selected: null }));
   let current = state;
   if (state.store !== store) {
-    current = { store, dim: defaultDim(agg), selected: null };
+    current = { store, dim: defaultDim(aggregates), selected: null };
     setState(current);
   }
 
@@ -57,30 +57,30 @@ function OrganizationBody() {
     () => (licenses !== null && listHasTeams(settings.roster) ? teamColumn(store, settings.roster, settings.rosterAsOf) : null),
     [licenses, store, settings.roster, settings.rosterAsOf],
   );
-  const dim: OrgDim = current.dim === 'team' && teams === null ? defaultDim(agg) : current.dim;
+  const dimension: OrgDim = current.dim === 'team' && teams === null ? defaultDim(aggregates) : current.dim;
   const { selected } = current;
-  const spec = SPEC[dim];
+  const spec = SPEC[dimension];
 
-  const column = useMemo<GroupColumn>(() => (dim === 'team' && teams !== null ? teams : storeColumn(store, dim === 'team' ? 'org' : dim)), [store, dim, teams]);
+  const column = useMemo<GroupColumn>(() => (dimension === 'team' && teams !== null ? teams : storeColumn(store, dimension === 'team' ? 'org' : dimension)), [store, dimension, teams]);
 
   const dimOptions = useMemo<SegmentedOption<OrgDim>[]>(
     () =>
-      DIM_SPECS.filter((s) => s.id !== 'team' || teams !== null).map((s) => ({
-        value: s.id,
-        label: t(s.label),
-        title: s.id !== 'team' && namedCount(agg, s.id) === 0 ? t(s.none) : undefined,
+      DIM_SPECS.filter((dimensionSpec) => dimensionSpec.id !== 'team' || teams !== null).map((dimensionSpec) => ({
+        value: dimensionSpec.id,
+        label: t(dimensionSpec.label),
+        title: dimensionSpec.id !== 'team' && namedCount(aggregates, dimensionSpec.id) === 0 ? t(dimensionSpec.none) : undefined,
       })),
-    [agg, teams],
+    [aggregates, teams],
   );
   const trends = useMemo(() => computeTrends(store, mask, range, column), [store, mask, range, column]);
   const groups = useMemo(
-    () => (dim === 'team' && teams !== null ? buildTeamGroups(store, mask, range, teams, trends, agg.totals.gross) : buildGroups(store, agg, dim === 'team' ? 'org' : dim, trends)),
-    [store, agg, mask, range, dim, teams, trends],
+    () => (dimension === 'team' && teams !== null ? buildTeamGroups(store, mask, range, teams, trends, aggregates.totals.gross) : buildGroups(store, aggregates, dimension === 'team' ? 'org' : dimension, trends)),
+    [store, aggregates, mask, range, dimension, teams, trends],
   );
   const summary = useMemo(() => summarize(groups), [groups]);
-  const selectedGroup = selected === null ? undefined : groups.find((g) => g.id === selected);
+  const selectedGroup = selected === null ? undefined : groups.find((group) => group.id === selected);
   const height = chartHeight(groups.length);
-  const choose = (id: number | null) => setState({ ...current, dim, selected: id });
+  const choose = (id: number | null) => setState({ ...current, dim: dimension, selected: id });
 
   return (
     <>
@@ -98,7 +98,7 @@ function OrganizationBody() {
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           <span className="text-sm text-fg-muted">{t('View by')}</span>
           <div className="max-w-full overflow-x-auto">
-            <Segmented label={t('Dimension')} value={dim} onChange={(next) => setState({ ...current, dim: next, selected: null })} options={dimOptions} />
+            <Segmented label={t('Dimension')} value={dimension} onChange={(next) => setState({ ...current, dim: next, selected: null })} options={dimOptions} />
           </div>
         </div>
 
@@ -116,13 +116,13 @@ function OrganizationBody() {
               <RankChart spec={spec} groups={groups} height={height} />
               <TreemapCard spec={spec} groups={groups} height={height} />
             </div>
-            <GroupTable key={dim} spec={spec} groups={groups} reliable={trends.reliable} selected={selectedGroup?.id ?? null} onSelect={choose} />
+            <GroupTable key={dimension} spec={spec} groups={groups} reliable={trends.reliable} selected={selectedGroup?.id ?? null} onSelect={choose} />
             {selectedGroup ? <GroupDetail spec={spec} column={column} group={selectedGroup} onClear={() => choose(null)} /> : null}
           </>
         )}
 
-        {dim === 'org' || dim === 'costCenter' || dim === 'team' ? (
-          <WhoIsInGroup key={dim} spec={spec} column={column} groups={groups} onSelect={choose} />
+        {dimension === 'org' || dimension === 'costCenter' || dimension === 'team' ? (
+          <WhoIsInGroup key={dimension} spec={spec} column={column} groups={groups} onSelect={choose} />
         ) : null}
         <SeatsByOrg />
         <Showback />

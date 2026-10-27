@@ -91,26 +91,26 @@ export const DEFAULT_SETTINGS: Settings = {
 export const SETTINGS_STORAGE_KEY = 'ghcu.settings.v1';
 
 /** The settings used with the made-up sample report. The saved license list holds real people, so it is left out. */
-export function withoutRoster(s: Settings): Settings {
-  if (s.roster.length === 0 && s.rosterAsOf === undefined) return s;
-  const { rosterAsOf: _asOf, ...rest } = s;
+export function withoutRoster(settings: Settings): Settings {
+  if (settings.roster.length === 0 && settings.rosterAsOf === undefined) return settings;
+  const { rosterAsOf: _asOf, ...rest } = settings;
   return { ...rest, roster: [] };
 }
 
 /** 'saved': written in full. 'slim': the browser refused the full roster, so it was kept without license details. 'failed': nothing was written. */
 export type SaveResult = 'saved' | 'slim' | 'failed';
 
-const writeSettings = (s: Settings): boolean => {
+const writeSettings = (settings: Settings): boolean => {
   try {
-    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(s));
+    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
     return true;
   } catch {
     return false;
   }
 };
 
-const isSlimEntry = (e: RosterEntry): boolean => Object.keys(e).every((k) => k === 'user' || k === 'plan');
-const slimEntry = (e: RosterEntry): RosterEntry => (e.plan === undefined ? { user: e.user } : { user: e.user, plan: e.plan });
+const isSlimEntry = (entry: RosterEntry): boolean => Object.keys(entry).every((key) => key === 'user' || key === 'plan');
+const slimEntry = (entry: RosterEntry): RosterEntry => (entry.plan === undefined ? { user: entry.user } : { user: entry.user, plan: entry.plan });
 
 /**
  * Stores the settings in the browser. Never throws: storage may be unavailable (private mode) or full. A roster with
@@ -118,19 +118,19 @@ const slimEntry = (e: RosterEntry): RosterEntry => (e.plan === undefined ? { use
  * full write is refused the roster is stored with logins and plans only (about 0.8 MB). The settings then last for the
  * session in full and survive a reload without the license details.
  */
-export function saveSettings(s: Settings): SaveResult {
-  if (writeSettings(s)) return 'saved';
-  if (s.roster.some((e) => !isSlimEntry(e)) && writeSettings({ ...s, roster: s.roster.map(slimEntry) })) return 'slim';
+export function saveSettings(settings: Settings): SaveResult {
+  if (writeSettings(settings)) return 'saved';
+  if (settings.roster.some((entry) => !isSlimEntry(entry)) && writeSettings({ ...settings, roster: settings.roster.map(slimEntry) })) return 'slim';
   return 'failed';
 }
 
 /** Whether a value is a real calendar day written as YYYY-MM-DD. */
-export function isIsoDay(v: unknown): v is string {
-  if (typeof v !== 'string') return false;
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
-  if (!m) return false;
-  const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
-  return d.getUTCFullYear() === +m[1] && d.getUTCMonth() === +m[2] - 1 && d.getUTCDate() === +m[3];
+export function isIsoDay(value: unknown): value is string {
+  if (typeof value !== 'string') return false;
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return false;
+  const date = new Date(Date.UTC(+match[1], +match[2] - 1, +match[3]));
+  return date.getUTCFullYear() === +match[1] && date.getUTCMonth() === +match[2] - 1 && date.getUTCDate() === +match[3];
 }
 
 /**
@@ -139,14 +139,14 @@ export function isIsoDay(v: unknown): v is string {
  * The one exception is `rosterAsOf`, which is dropped unless it is a valid day.
  */
 export function mergeSettings(partial: Partial<Settings>): Settings {
-  const d = structuredClone(DEFAULT_SETTINGS);
+  const defaults = structuredClone(DEFAULT_SETTINGS);
   const merged: Settings = {
-    ...d,
+    ...defaults,
     ...partial,
-    tiers: { ...d.tiers, ...(partial.tiers ?? {}) },
-    engagement: { ...d.engagement, ...(partial.engagement ?? {}) },
-    pareto: { ...d.pareto, ...(partial.pareto ?? {}) },
-    extraSeats: { ...d.extraSeats, ...(partial.extraSeats ?? {}) },
+    tiers: { ...defaults.tiers, ...(partial.tiers ?? {}) },
+    engagement: { ...defaults.engagement, ...(partial.engagement ?? {}) },
+    pareto: { ...defaults.pareto, ...(partial.pareto ?? {}) },
+    extraSeats: { ...defaults.extraSeats, ...(partial.extraSeats ?? {}) },
     roster: partial.roster ?? [],
     modelOverrides: partial.modelOverrides ?? {},
   };
@@ -155,9 +155,9 @@ export function mergeSettings(partial: Partial<Settings>): Settings {
 }
 
 /** The monthly budget for billed overage in USD, or null when there is none. A missing, zero, negative or invalid amount means no budget. */
-export function budgetOf(s: Pick<Settings, 'budgetMonthlyBilled'>): number | null {
-  const b = s.budgetMonthlyBilled;
-  return typeof b === 'number' && b > 0 ? b : null;
+export function budgetOf(settings: Pick<Settings, 'budgetMonthlyBilled'>): number | null {
+  const budget = settings.budgetMonthlyBilled;
+  return typeof budget === 'number' && budget > 0 ? budget : null;
 }
 
 export const PLAN_CREDITS: Record<string, number> = { Business: 1900, Enterprise: 3900 };
@@ -178,8 +178,8 @@ const CUSTOM_PLAN_LABEL = /^custom\s*\(\s*((?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?)
  * The label is an English identifier that the plan filter and the plan groups also use, so translate it only where it is shown.
  */
 export function customPlanCredits(plan: string): number {
-  const m = CUSTOM_PLAN_LABEL.exec(plan.trim().toLowerCase());
-  const credits = m === null ? Number.NaN : Number(m[1].replace(/,/g, ''));
+  const match = CUSTOM_PLAN_LABEL.exec(plan.trim().toLowerCase());
+  const credits = match === null ? Number.NaN : Number(match[1].replace(/,/g, ''));
   return credits > 0 ? credits : Number.NaN;
 }
 
@@ -191,18 +191,18 @@ export function customPlanCredits(plan: string): number {
  */
 export function planCredits(plan: string | null | undefined): number {
   if (!plan) return Number.NaN;
-  const p = plan.trim().toLowerCase();
-  if (p.includes('enterprise')) return PLAN_CREDITS.Enterprise;
-  if (p.includes('business')) return PLAN_CREDITS.Business;
-  const custom = customPlanCredits(p);
+  const planText = plan.trim().toLowerCase();
+  if (planText.includes('enterprise')) return PLAN_CREDITS.Enterprise;
+  if (planText.includes('business')) return PLAN_CREDITS.Business;
+  const custom = customPlanCredits(planText);
   if (Number.isFinite(custom)) return custom;
-  const n = Number(p.replace(/[, $]/g, ''));
-  if (Number.isFinite(n) && n > 0) return n >= 1000 ? n : n * 100;
+  const amount = Number(planText.replace(/[, $]/g, ''));
+  if (Number.isFinite(amount) && amount > 0) return amount >= 1000 ? amount : amount * 100;
   return Number.NaN;
 }
 
 /** The included credits of a roster seat. A seat without a plan, or with one that cannot be read, counts as `fallback`. */
 export function seatCredits(plan: string | null | undefined, fallback: number): number {
-  const c = planCredits(plan);
-  return Number.isFinite(c) ? c : fallback;
+  const credits = planCredits(plan);
+  return Number.isFinite(credits) ? credits : fallback;
 }

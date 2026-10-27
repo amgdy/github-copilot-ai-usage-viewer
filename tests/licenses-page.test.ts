@@ -24,27 +24,27 @@ import {
 } from '../src/pages/licenses/model';
 import { BAD_TEXT, addDays, analyzeDemo, isoOf, type Pipeline } from './helpers';
 
-const must = <T>(v: T | null | undefined): T => {
-  if (v === null || v === undefined) throw new Error('missing value');
-  return v;
+const must = <T>(value: T | null | undefined): T => {
+  if (value === null || value === undefined) throw new Error('missing value');
+  return value;
 };
 
-let pl: Pipeline;
+let pipeline: Pipeline;
 let report: LicenseReport;
 let asOf: string;
 /** Report users who got no seat, so they show up as usage without a seat. */
 let left: string[];
 
 beforeAll(async () => {
-  pl = await analyzeDemo();
-  asOf = isoOf(pl.store.maxDay);
-  const names = pl.analysis.population.profiles.map((p) => p.name);
+  pipeline = await analyzeDemo();
+  asOf = isoOf(pipeline.store.maxDay);
+  const names = pipeline.analysis.population.profiles.map((profile) => profile.name);
   left = names.slice(-3);
-  const ago = (n: number) => addDays(asOf, -n);
+  const ago = (days: number) => addDays(asOf, -days);
   const seat = (user: string, over: Partial<RosterEntry> = {}): RosterEntry => ({ user, plan: 'Business', source: 'api', createdAt: ago(400), lastAuthenticatedAt: ago(5), ...over });
   const roster: RosterEntry[] = [
     // Report users with a seat: recent, fading and one Enterprise seat. Their usage keeps them off the list of seats to free.
-    ...names.slice(0, -3).map((n, i) => seat(n, { lastActivityAt: ago(i % 3 === 0 ? 40 : 3), plan: i === 0 ? 'Enterprise' : 'Business' })),
+    ...names.slice(0, -3).map((name, index) => seat(name, { lastActivityAt: ago(index % 3 === 0 ? 40 : 3), plan: index === 0 ? 'Enterprise' : 'Business' })),
     // Seats that are in no loaded file.
     seat('ghost-stale-ent', { plan: 'Enterprise', lastActivityAt: ago(200) }),
     seat('ghost-stale', { lastActivityAt: ago(120) }),
@@ -56,17 +56,17 @@ beforeAll(async () => {
     seat('ghost-new', { createdAt: ago(3) }),
     seat('ghost-custom', { plan: '5000', lastActivityAt: ago(300) }),
   ];
-  const a = pl.run(pl.filters, mergeSettings({ roster, rosterAsOf: asOf, newUserDays: 14 }));
-  report = must(a.licenses);
+  const analysis = pipeline.run(pipeline.filters, mergeSettings({ roster, rosterAsOf: asOf, newUserDays: 14 }));
+  report = must(analysis.licenses);
 });
 
 describe('licenses page: KPI tiles and breakdowns', () => {
   it('shows the KPI tiles in impact order, each with an explanation and clean text', () => {
     const tiles = kpiTiles(report);
-    expect(tiles.map((k) => k.id)).toEqual(['reclaim-value', 'reclaim-count', 'unmatched', 'coverage', 'seats', 'seat-cost']);
-    for (const k of tiles) {
-      expect(k.calc.length).toBeGreaterThan(0);
-      expect(`${k.label} ${k.value} ${k.sub}`).not.toMatch(BAD_TEXT);
+    expect(tiles.map((tile) => tile.id)).toEqual(['reclaim-value', 'reclaim-count', 'unmatched', 'coverage', 'seats', 'seat-cost']);
+    for (const tile of tiles) {
+      expect(tile.calc.length).toBeGreaterThan(0);
+      expect(`${tile.label} ${tile.value} ${tile.sub}`).not.toMatch(BAD_TEXT);
     }
     expect(tiles[0].list).toBe('reclaim');
     expect(tiles[2].list).toBe('unmatched');
@@ -81,20 +81,20 @@ describe('licenses page: KPI tiles and breakdowns', () => {
 
   it('lists the statuses from positive to negative, and they add up to all seats', () => {
     const rows = statusRows(report);
-    const order = rows.map((r) => STATUS_ORDER.indexOf(r.status));
+    const order = rows.map((row) => STATUS_ORDER.indexOf(row.status));
     expect(order).toEqual([...order].sort((a, b) => a - b));
-    expect(rows.every((r) => r.count > 0)).toBe(true);
-    expect(rows.reduce((s, r) => s + r.count, 0)).toBe(report.seats);
+    expect(rows.every((row) => row.count > 0)).toBe(true);
+    expect(rows.reduce((total, row) => total + row.count, 0)).toBe(report.seats);
     expect(rows[0].status).toBe('recent');
   });
 
   it('splits the seats by plan and by place in the report, each adding up to all seats', () => {
     const plans = planRows(report);
-    expect(plans.map((r) => r.id)).toEqual(['business', 'enterprise', 'other']);
-    expect(plans.reduce((s, r) => s + r.count, 0)).toBe(report.seats);
+    expect(plans.map((plan) => plan.id)).toEqual(['business', 'enterprise', 'other']);
+    expect(plans.reduce((total, plan) => total + plan.count, 0)).toBe(report.seats);
     const places = placeRows(report);
-    expect(places.map((r) => r.id)).toEqual(['matched', 'outside', 'never-seen']);
-    expect(places.reduce((s, r) => s + r.count, 0)).toBe(report.seats);
+    expect(places.map((place) => place.id)).toEqual(['matched', 'outside', 'never-seen']);
+    expect(places.reduce((total, place) => total + place.count, 0)).toBe(report.seats);
     expect(places[2].count).toBe(9);
     expect(places[2].calc).toBe('license-never-seen');
   });
@@ -110,12 +110,12 @@ describe('licenses page: lists', () => {
 
   it('keeps the library order and separates seats without an activity date', () => {
     const reclaim = findingsOf(report, 'reclaim');
-    expect(reclaim.map((f) => f.login)).toEqual(report.reclaim.map((f) => f.login));
+    expect(reclaim.map((finding) => finding.login)).toEqual(report.reclaim.map((finding) => finding.login));
     expect(reclaim[0].login).toBe('ghost-custom');
-    expect(reclaim.map((f) => f.login)).not.toContain('ghost-pending');
-    expect(reclaim.map((f) => f.login)).not.toContain('ghost-new');
+    expect(reclaim.map((finding) => finding.login)).not.toContain('ghost-pending');
+    expect(reclaim.map((finding) => finding.login)).not.toContain('ghost-new');
     const noDate = findingsOf(report, 'no-date');
-    expect(noDate.map((f) => f.login)).toEqual(['ghost-never-active', 'ghost-never-signed-in', 'ghost-new']);
+    expect(noDate.map((finding) => finding.login)).toEqual(['ghost-never-active', 'ghost-never-signed-in', 'ghost-new']);
     expect(listCount(report, 'pending')).toBe(1);
     expect(listCount(report, 'new')).toBeGreaterThanOrEqual(1);
     expect(listCount(report, 'unmatched')).toBe(left.length);
@@ -124,18 +124,18 @@ describe('licenses page: lists', () => {
   it('names each CSV file after its list', () => {
     const names = LIST_ORDER.map(listExportName);
     expect(new Set(names).size).toBe(LIST_ORDER.length);
-    for (const n of names) expect(n).toMatch(/^github-copilot-licenses-[a-z-]+$/);
+    for (const fileName of names) expect(fileName).toMatch(/^github-copilot-licenses-[a-z-]+$/);
     expect(listExportName('reclaim')).toBe('github-copilot-licenses-seats-to-free');
   });
 
   it('writes the visible columns of the seats to free to the CSV, in the order of the list', () => {
     const fields = findingFields('reclaim');
-    expect(fields.map((f) => f.key)).toEqual(['user', 'name', 'reason', 'plan', 'org', 'team', 'days', 'lastActivity', 'surface', 'created', 'usage', 'price']);
+    expect(fields.map((field) => field.key)).toEqual(['user', 'name', 'reason', 'plan', 'org', 'team', 'days', 'lastActivity', 'surface', 'created', 'usage', 'price']);
     const csv = csvOf(fields, report.reclaim);
     expect(csv.headers).toEqual(['User', 'Reason', 'Plan', 'Organization', 'Days since activity', 'Last activity', 'Usage in this period (USD)', 'Value per month (USD)']);
-    expect(csv.rows.map((r) => r[0])).toEqual(report.reclaim.map((f) => f.login));
+    expect(csv.rows.map((csvRow) => csvRow[0])).toEqual(report.reclaim.map((finding) => finding.login));
     const price = csv.headers.indexOf('Value per month (USD)');
-    const total = csv.rows.reduce((s, r) => s + Number(r[price]), 0);
+    const total = csv.rows.reduce((sum, csvRow) => sum + Number(csvRow[price]), 0);
     expect(total).toBeCloseTo(report.reclaimValue, 2);
     const first = csv.rows[0];
     expect(first[1]).toBe('No activity for 90 days or more');
@@ -147,21 +147,21 @@ describe('licenses page: lists', () => {
   it('gives every list a user column first and a price column last', () => {
     for (const id of LIST_ORDER) {
       if (id === 'unmatched') continue;
-      const keys = findingFields(id).map((f) => f.key);
+      const keys = findingFields(id).map((field) => field.key);
       expect(keys[0]).toBe('user');
       expect(keys[keys.length - 1]).toBe('price');
       expect(new Set(keys).size).toBe(keys.length);
     }
-    expect(findingFields('pending').map((f) => f.key)).toContain('ends');
-    expect(findingFields('new').map((f) => f.key)).toContain('created');
-    expect(findingFields('no-date').map((f) => f.key)).toContain('lastActivity');
+    expect(findingFields('pending').map((field) => field.key)).toContain('ends');
+    expect(findingFields('new').map((field) => field.key)).toContain('created');
+    expect(findingFields('no-date').map((field) => field.key)).toContain('lastActivity');
   });
 
   it('writes the users with usage but no seat, biggest usage first', () => {
     const csv = csvOf(unmatchedFields(), report.unmatched);
     expect(csv.headers).toEqual(['User', 'Organization', 'Plan in the report', 'Usage in this period (USD)']);
-    expect(new Set(csv.rows.map((r) => String(r[0])))).toEqual(new Set(left));
-    const usage = csv.rows.map((r) => Number(r[3]));
+    expect(new Set(csv.rows.map((csvRow) => String(csvRow[0])))).toEqual(new Set(left));
+    const usage = csv.rows.map((csvRow) => Number(csvRow[3]));
     expect(usage).toEqual([...usage].sort((a, b) => b - a));
   });
 });
@@ -177,9 +177,9 @@ describe('licenses page: helpers', () => {
     expect(ids.get('mona')).toBe(4);
     expect(ids.get('octo')).toBe(9);
     expect(ids.size).toBe(2);
-    const demo = profileIds(pl.analysis.population.profiles);
-    const p = pl.analysis.population.profiles[0];
-    expect(demo.get(p.name.toUpperCase().toLowerCase())).toBe(p.id);
+    const demo = profileIds(pipeline.analysis.population.profiles);
+    const firstProfile = pipeline.analysis.population.profiles[0];
+    expect(demo.get(firstProfile.name.toUpperCase().toLowerCase())).toBe(firstProfile.id);
   });
 
   it('writes plans in plain words', () => {

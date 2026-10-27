@@ -34,11 +34,11 @@ npm run dev            # http://localhost:5173
 | `npm run build:single` | Build **one self-contained `dist/index.html`**. Open it from disk, email it, or put it on any static host. Works offline and from `file://`. |
 | `npm run preview` | Serve the production build locally. |
 | `npm test` | Run the Vitest suite (`tests/`). |
-| `npm run typecheck` | `tsc --noEmit`. |
+| `npm run typecheck` | Check types twice: `tsconfig.app.json` for the app in `src/` and `tsconfig.node.json` for the tests, scripts and Vite config. |
 | `npm run gen:demo` | Write the made-up demo CSV to `demo-data/demo-usage-report.csv` (add `-- --seed 42` or `-- --random`). |
 | `npm run check:prices` | Compare the built-in model price card with the live GitHub Docs pricing page. |
 
-Requires Node 22.12 or newer (Vite 8 and Vitest 5 set that floor).
+Requires Node 26. The `.nvmrc` file holds the version for tools such as nvm and fnm. The `gen:demo` and `check:prices` scripts run their TypeScript files directly with Node, so they need no extra tool.
 
 ## Loading data
 
@@ -210,7 +210,7 @@ src/
   state/                    Zustand store, hash router, analysis provider, sample report loader, theme, print
   components/               UI kit (cards, KPIs, controls, drawers), charts (ECharts), icons, shell, landing
   pages/                    one file per page, each with its own folder of parts
-tests/                      Vitest suites, made-up fixtures, guard tests (naming, i18n, metric docs)
+tests/                      Vitest suites, made-up fixtures, guard tests (naming, i18n, metric docs, readable names)
 scripts/                    demo data and price check
 docs/FEATURES.md            features and key values for admins
 AGENTS.md                   guide for contributors and AI coding agents

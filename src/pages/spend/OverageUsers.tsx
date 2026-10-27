@@ -18,25 +18,25 @@ const SUBTITLE = msg('Users with the most usage billed on top of seats. Click a 
 export function OverageUsers() {
   const { analysis, store, taxonomy, settings } = useAnalysis();
   const colors = useChartColors();
-  const { agg, users, population, narrowed, coverage } = analysis;
+  const { agg: aggregates, users, population, narrowed, coverage } = analysis;
   const personas = useMemo(() => taxLookup(taxonomy.personas), [taxonomy]);
-  const net = agg.user.net;
+  const net = aggregates.user.net;
   const ids = useMemo(() => topIds(net, Math.max(3, settings.topN), { min: 0.005 }), [net, settings.topN]);
 
   const stats = useMemo(() => {
     let people = 0;
     for (let id = 0; id < net.length; id++) if (id !== BLANK_ID && net[id] > 0.005) people++;
-    const top3 = topIds(net, 3, { min: 0.005, include: (id) => id !== BLANK_ID }).reduce((a, id) => a + net[id], 0);
-    return { people, top3, unattributed: net[BLANK_ID] ?? 0 };
+    const topThreeBilled = topIds(net, 3, { min: 0.005, include: (id) => id !== BLANK_ID }).reduce((total, id) => total + net[id], 0);
+    return { people, top3: topThreeBilled, unattributed: net[BLANK_ID] ?? 0 };
   }, [net]);
 
   const rows = useMemo(
     () =>
       ids.map((id) => {
         const profile = id === BLANK_ID ? undefined : (users.byId.get(id) ?? population.byId.get(id));
-        return { id, name: dimLabel(store, 'user', id), billed: net[id], gross: agg.user.gross[id], covered: agg.user.discount[id], profile, persona: profile ? personas[profile.persona] : undefined };
+        return { id, name: dimLabel(store, 'user', id), billed: net[id], gross: aggregates.user.gross[id], covered: aggregates.user.discount[id], profile, persona: profile ? personas[profile.persona] : undefined };
       }),
-    [ids, store, net, agg, users, population, personas],
+    [ids, store, net, aggregates, users, population, personas],
   );
 
   const option = useMemo(
@@ -44,17 +44,17 @@ export function OverageUsers() {
       rankBarOption(colors, {
         labelWidth: 150,
         color: colors.warn,
-        items: rows.map((r) => {
-          const parts = [r.persona?.label, t('Usage {amount}', { amount: fmtUSD(r.gross) }), t('Covered {amount}', { amount: fmtUSD(r.covered) })];
-          if (r.id === BLANK_ID) parts.unshift(t('Repo-level products with no user. Click to show only these rows'));
-          else if (r.profile && !narrowed && r.profile.quotaCredits > 0) {
+        items: rows.map((row) => {
+          const parts = [row.persona?.label, t('Usage {amount}', { amount: fmtUSD(row.gross) }), t('Covered {amount}', { amount: fmtUSD(row.covered) })];
+          if (row.id === BLANK_ID) parts.unshift(t('Repo-level products with no user. Click to show only these rows'));
+          else if (row.profile && !narrowed && row.profile.quotaCredits > 0) {
             parts.push(
-              r.profile.balance < -0.005
-                ? t('Used {amount} more than the credits in their seat', { amount: fmtUSD(-r.profile.balance, 0) })
+              row.profile.balance < -0.005
+                ? t('Used {amount} more than the credits in their seat', { amount: fmtUSD(-row.profile.balance, 0) })
                 : t('Stayed within the credits in their seat'),
             );
           }
-          return { name: r.name, value: r.billed, color: r.id === BLANK_ID ? colors.muted : r.persona?.color, note: parts.filter(Boolean).join(' · ') };
+          return { name: row.name, value: row.billed, color: row.id === BLANK_ID ? colors.muted : row.persona?.color, note: parts.filter(Boolean).join(' · ') };
         }),
       }),
     [colors, rows, narrowed],
@@ -74,7 +74,7 @@ export function OverageUsers() {
     );
   }
 
-  if (agg.totals.net <= 0.005) {
+  if (aggregates.totals.net <= 0.005) {
     return (
       <Card title={t(TITLE)} subtitle={t(SUBTITLE)} calc="overage-users">
         <EmptyState
@@ -86,14 +86,14 @@ export function OverageUsers() {
     );
   }
 
-  const legend = [...new Map(rows.filter((r) => r.persona).map((r) => [r.persona!.id, r.persona!])).values()];
+  const legend = [...new Map(rows.filter((row) => row.persona).map((row) => [row.persona!.id, row.persona!])).values()];
   const summary =
     stats.people === 0
       ? null
       : stats.people > 3
         ? tp(stats.people, '{n} user had usage billed on top of seats. The top 3 account for {share} of the billed amount.', '{n} users had usage billed on top of seats. The top 3 account for {share} of the billed amount.', {
             n: fmtInt(stats.people),
-            share: fmtPct(stats.top3 / agg.totals.net, 0),
+            share: fmtPct(stats.top3 / aggregates.totals.net, 0),
           })
         : tp(stats.people, '{n} user had usage billed on top of seats.', '{n} users had usage billed on top of seats.', { n: fmtInt(stats.people) });
 
@@ -104,11 +104,11 @@ export function OverageUsers() {
       subtitle={t(SUBTITLE)}
       option={option}
       height={Math.max(140, rows.length * 26 + 16)}
-      onClick={(p) => {
-        const r = rows[p.dataIndex];
-        if (!r) return;
-        if (r.id === BLANK_ID) drill({ attribution: 'unattributed' }, { merge: true });
-        else useApp.getState().selectUser(r.id);
+      onClick={(event) => {
+        const row = rows[event.dataIndex];
+        if (!row) return;
+        if (row.id === BLANK_ID) drill({ attribution: 'unattributed' }, { merge: true });
+        else useApp.getState().selectUser(row.id);
       }}
       exportName="github-copilot-overage-users"
       label={t('Users ranked by usage billed on top of seats')}

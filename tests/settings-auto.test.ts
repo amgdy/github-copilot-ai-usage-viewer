@@ -28,7 +28,7 @@ describe('the Auto first from setting', () => {
   });
 
   it('sits in the Auto use class group, after Rarely uses Auto below', () => {
-    expect(BEHAVIOR_GROUPS.find((g) => g.title === 'Auto use class')?.keys).toEqual(['lowAuto', 'autoFirst']);
+    expect(BEHAVIOR_GROUPS.find((group) => group.title === 'Auto use class')?.keys).toEqual(['lowAuto', 'autoFirst']);
   });
 
   it('is named in the section reset, like every other setting on the page', () => {
@@ -40,7 +40,7 @@ describe('the Auto first from setting', () => {
 
 describe('the number settings', () => {
   it('give every setting a place on the page, and none twice', () => {
-    const grouped = BEHAVIOR_GROUPS.flatMap((g) => g.keys);
+    const grouped = BEHAVIOR_GROUPS.flatMap((group) => group.keys);
     expect(new Set(grouped).size).toBe(grouped.length);
     // The Estimates and rankings card holds the other two.
     expect([...grouped, 'autoDiscount', 'topN'].sort()).toEqual([...KEYS].sort());

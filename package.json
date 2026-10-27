@@ -37,26 +37,26 @@
     "i18n"
   ],
   "engines": {
-    "node": ">=22.12"
+    "node": "^26.0.0"
   },
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
-    "build:single": "tsc --noEmit && vite build --mode single",
+    "build": "npm run typecheck && vite build",
+    "build:single": "npm run typecheck && vite build --mode single",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc -p tsconfig.app.json && tsc -p tsconfig.node.json",
     "test": "vitest run",
     "test:watch": "vitest",
-    "gen:demo": "node --experimental-strip-types scripts/generate-demo.ts",
-    "check:prices": "node --experimental-strip-types scripts/check-prices.ts"
+    "gen:demo": "node scripts/generate-demo.ts",
+    "check:prices": "node scripts/check-prices.ts"
   },
   "dependencies": {
     "@fontsource-variable/mona-sans": "^5.3.0",
     "@fontsource/ibm-plex-sans-arabic": "^5.3.0",
     "clsx": "^2.1.1",
     "echarts": "^6.1.0",
-    "lucide-react": "^1.59.0",
+    "lucide-react": "^1.60.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "zustand": "^5.0.15"

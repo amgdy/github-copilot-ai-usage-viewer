@@ -5,7 +5,7 @@ import { EChart, useChartColors, type ChartClick } from '../../components/charts
 import { t, tp } from '../../i18n';
 import { useAnalysis } from '../../state/analysis';
 import { drill } from '../../state/router';
-import { fmtDay, ymd } from '../../lib/utils/date';
+import { fmtDay, dateParts } from '../../lib/utils/date';
 import { fmtInt, pluralize } from '../../lib/utils/format';
 import { adoptionVerdict, buildAdoption, newUserCut, verdictSentence, type VerdictKind } from './adoption';
 import { adoptionOption, hasPartialWeeks } from './adoptionChart';
@@ -23,19 +23,19 @@ export default function AdoptionCard() {
   const colors = useChartColors();
   const userCount = store.dicts.user.values.length;
 
-  const cut = newUserCut(range.start, store.minDay, settings.newUserDays);
+  const newUserCutoff = newUserCut(range.start, store.minDay, settings.newUserDays);
   const adoption = useMemo(
-    () => buildAdoption(store, userCount, mask, range, users.profiles.map((p) => p.globalFirstDay), cut),
-    [store, userCount, mask, range, users, cut],
+    () => buildAdoption(store, userCount, mask, range, users.profiles.map((profile) => profile.globalFirstDay), newUserCutoff),
+    [store, userCount, mask, range, users, newUserCutoff],
   );
   const verdict = useMemo(() => adoptionVerdict(adoption), [adoption]);
-  const withYear = ymd(range.start).y !== ymd(range.end).y;
+  const withYear = dateParts(range.start).y !== dateParts(range.end).y;
   const option = useMemo(() => adoptionOption({ colors, adoption, withYear }), [colors, adoption, withYear]);
 
-  const onClick = (p: ChartClick) => {
-    if (p.componentType !== 'series') return;
-    const i = p.dataIndex;
-    if (i >= 0 && i < adoption.count) drill({ dateFrom: adoption.startDay[i], dateTo: adoption.endDay[i] }, { merge: true });
+  const onClick = (event: ChartClick) => {
+    if (event.componentType !== 'series') return;
+    const weekIndex = event.dataIndex;
+    if (weekIndex >= 0 && weekIndex < adoption.count) drill({ dateFrom: adoption.startDay[weekIndex], dateTo: adoption.endDay[weekIndex] }, { merge: true });
   };
 
   const { icon: Icon, className } = VERDICT_VIEW[verdict.kind];
@@ -43,14 +43,14 @@ export default function AdoptionCard() {
 
   const firstDays = pluralize(settings.newUserDays, 'day');
   const notes = [t('A user counts as new in the week they first appear in the data. Active users per week are users with any usage that week.')];
-  if (cut > range.end) {
+  if (newUserCutoff > range.end) {
     notes.push(t('Users first seen in the first {days} of the data count as already using GitHub Copilot, so this range has no new users.', { days: firstDays }));
-  } else if (cut > range.start) {
+  } else if (newUserCutoff > range.start) {
     notes.push(
       tp(baseline, '{n} user counts as already using GitHub Copilot.', '{n} users count as already using GitHub Copilot.', { n: fmtInt(baseline) }),
       t('Users first seen in the first {days} of the data cannot be told apart from existing users, so new users are counted from {date}.', {
         days: firstDays,
-        date: fmtDay(cut, true),
+        date: fmtDay(newUserCutoff, true),
       }),
     );
   } else {

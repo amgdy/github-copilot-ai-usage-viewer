@@ -20,26 +20,26 @@ export const LEVER_DOC: Record<LeverId, string> = {
 };
 
 /** The context the analysis uses for its own plan, with the Auto rates of the whole filtered population, so the Balanced preset gives that plan. */
-export const leverContext = (a: Analysis, models: ModelTable, settings: Settings): LeverContext => ({ agg: a.agg, models, settings, autoRates: a.autoRates });
+export const leverContext = (analysis: Analysis, models: ModelTable, settings: Settings): LeverContext => ({ agg: analysis.agg, models, settings, autoRates: analysis.autoRates });
 export type NumericLever = Exclude<keyof LeverParams, 'target'>;
 export type PresetValues = Record<NumericLever, number>;
 
 /** Whole dollars from $100 up and cents below, so small single-user figures stay readable. */
-export const fmtMoney = (v: number): string => (Math.abs(v) >= 100 ? fmtUSD(v, 0) : fmtUSD(v, 2));
+export const fmtMoney = (amount: number): string => (Math.abs(amount) >= 100 ? fmtUSD(amount, 0) : fmtUSD(amount, 2));
 
 /** Below this monthly amount (USD) a lever counts as having no measurable effect. */
 export const MIN_EFFECT = 0.5;
 
 export const NUMERIC_LEVERS: NumericLever[] = ['modelShift', 'autoAdoption', 'cacheDiscipline', 'contextHygiene', 'longContext', 'capRunaway', 'capUtil'];
 
-const valuesOf = (l: LeverParams): PresetValues => ({
-  modelShift: l.modelShift,
-  autoAdoption: l.autoAdoption,
-  cacheDiscipline: l.cacheDiscipline,
-  contextHygiene: l.contextHygiene,
-  longContext: l.longContext,
-  capRunaway: l.capRunaway,
-  capUtil: l.capUtil,
+const valuesOf = (levers: LeverParams): PresetValues => ({
+  modelShift: levers.modelShift,
+  autoAdoption: levers.autoAdoption,
+  cacheDiscipline: levers.cacheDiscipline,
+  contextHygiene: levers.contextHygiene,
+  longContext: levers.longContext,
+  capRunaway: levers.capRunaway,
+  capUtil: levers.capUtil,
 });
 
 export type PresetId = 'conservative' | 'balanced' | 'ambitious';
@@ -70,16 +70,16 @@ export const PRESETS: Preset[] = [
 ];
 
 const near = (a: number, b: number): boolean => Math.abs(a - b) < 1e-9;
-const sameNumbers = (l: LeverParams, v: PresetValues): boolean => NUMERIC_LEVERS.every((k) => near(l[k], v[k]));
+const sameNumbers = (levers: LeverParams, presetValues: PresetValues): boolean => NUMERIC_LEVERS.every((key) => near(levers[key], presetValues[key]));
 
 /** The preset whose percentages equal the current ones, or "custom". The target model is not part of a preset. */
-export function matchPreset(l: LeverParams): PresetId | 'custom' {
-  return PRESETS.find((p) => sameNumbers(l, p.values))?.id ?? 'custom';
+export function matchPreset(levers: LeverParams): PresetId | 'custom' {
+  return PRESETS.find((preset) => sameNumbers(levers, preset.values))?.id ?? 'custom';
 }
 
-export const applyPreset = (l: LeverParams, p: Preset): LeverParams => ({ ...l, ...p.values });
+export const applyPreset = (levers: LeverParams, preset: Preset): LeverParams => ({ ...levers, ...preset.values });
 
-export const isDefaultLevers = (l: LeverParams): boolean => sameNumbers(l, valuesOf(DEFAULT_LEVERS)) && l.target === DEFAULT_LEVERS.target;
+export const isDefaultLevers = (levers: LeverParams): boolean => sameNumbers(levers, valuesOf(DEFAULT_LEVERS)) && levers.target === DEFAULT_LEVERS.target;
 
 export const SAME_VENDOR = 'same-vendor';
 
@@ -116,31 +116,31 @@ export interface SeatOption {
  * Why cash savings from using less cannot be calculated, or null when they can.
  * They only need the billed split: a pool that ran out is as large as what it covered, and a pool that never ran out billed nothing.
  */
-export function cashHiddenReason(a: Analysis): string | null {
-  if (a.narrowed) {
+export function cashHiddenReason(analysis: Analysis): string | null {
+  if (analysis.narrowed) {
     return t('Included credits are shared by the whole organization and cannot be split by a filter, so cash savings are not shown for a filtered view.');
   }
-  if (!a.coverage.billing) return t('The file does not say what was billed on top of seats, so cash savings cannot be calculated.');
-  if (a.pool.months.length === 0) return t('The pool size is not known, so cash savings cannot be calculated.');
+  if (!analysis.coverage.billing) return t('The file does not say what was billed on top of seats, so cash savings cannot be calculated.');
+  if (analysis.pool.months.length === 0) return t('The pool size is not known, so cash savings cannot be calculated.');
   return null;
 }
 
-export const isCashKnown = (a: Analysis): boolean => cashHiddenReason(a) === null;
+export const isCashKnown = (analysis: Analysis): boolean => cashHiddenReason(analysis) === null;
 
 /** Why the pool size, its unused credits and seat savings cannot be calculated, or null when they can. */
-export function poolUnknownReason(a: Analysis): string | null {
-  const cash = cashHiddenReason(a);
+export function poolUnknownReason(analysis: Analysis): string | null {
+  const cash = cashHiddenReason(analysis);
   if (cash) return cash;
-  if (a.pool.capacityExceeded || a.pool.capacity <= 0) {
+  if (analysis.pool.capacityExceeded || analysis.pool.capacity <= 0) {
     return t('The included credits used are more than the seats in this file provide, so the real pool size is unknown. Add your seat roster or extra seats in Settings to see the pool, its unused credits and seat savings.');
   }
   return null;
 }
 
-export const isPoolKnown = (a: Analysis): boolean => poolUnknownReason(a) === null;
+export const isPoolKnown = (analysis: Analysis): boolean => poolUnknownReason(analysis) === null;
 
-export function seatOptions(a: Analysis, settings: Settings): SeatOption[] {
-  const { seats, narrowed, pool } = a;
+export function seatOptions(analysis: Analysis, settings: Settings): SeatOption[] {
+  const { seats, narrowed, pool } = analysis;
   const blocked = narrowed
     ? t('Seats belong to the whole organization, so they are not available for a filtered view.')
     : pool.capacityExceeded
@@ -174,7 +174,7 @@ export function seatOptions(a: Analysis, settings: Settings): SeatOption[] {
 
 /** A switch counts only when the user turned it on and it is available. */
 export function effectiveSeats(flags: SeatFlags, options: SeatOption[]): SeatFlags {
-  const open = (key: keyof SeatFlags): boolean => flags[key] && options.find((o) => o.key === key)?.disabledReason === null;
+  const open = (key: keyof SeatFlags): boolean => flags[key] && options.find((option) => option.key === key)?.disabledReason === null;
   return { reclaimIdle: open('reclaimIdle'), downgrade: open('downgrade'), reclaimUnused: open('reclaimUnused') };
 }
 
@@ -200,29 +200,29 @@ export interface ScenarioFigures {
   billedAfter: number;
 }
 
-export const monthBilled = (m: ScenarioMonth): number => Math.max(0, m.gross - m.capacity);
-export const monthNewBilled = (m: ScenarioMonth): number => Math.max(0, m.newGross - m.newCapacity);
+export const monthBilled = (month: ScenarioMonth): number => Math.max(0, month.gross - month.capacity);
+export const monthNewBilled = (month: ScenarioMonth): number => Math.max(0, month.newGross - month.newCapacity);
 
 /** Monthly figures for the headline tiles. Usage comes from the monthly pool table when cash is known, else from the lever baseline. */
-export function scenarioFigures(s: Scenario, perMonth: number, cash: boolean, poolKnown: boolean): ScenarioFigures {
-  const n = s.months.length;
-  const avg = (pick: (m: ScenarioMonth) => number): number => (n > 0 ? s.months.reduce((a, m) => a + pick(m), 0) / n : 0);
-  const fromMonths = cash && n > 0;
+export function scenarioFigures(scenario: Scenario, perMonth: number, cash: boolean, poolKnown: boolean): ScenarioFigures {
+  const monthCount = scenario.months.length;
+  const average = (pick: (month: ScenarioMonth) => number): number => (monthCount > 0 ? scenario.months.reduce((total, month) => total + pick(month), 0) / monthCount : 0);
+  const fromMonths = cash && monthCount > 0;
   return {
     cash,
     poolKnown: cash && poolKnown,
-    months: n,
-    reduction: s.fraction,
-    usageBefore: fromMonths ? avg((m) => m.gross) : s.levers.baseline * perMonth,
-    usageAfter: fromMonths ? avg((m) => m.newGross) : s.levers.final * perMonth,
-    saveMonth: cash ? s.perMonth : 0,
-    saveYear: cash ? s.perMonth * 12 : 0,
-    costBefore: avg((m) => m.baseCost),
-    costAfter: avg((m) => m.newCost),
-    unusedBefore: avg((m) => m.baseWaste),
-    unusedAfter: avg((m) => m.newWaste),
-    billedBefore: avg(monthBilled),
-    billedAfter: avg(monthNewBilled),
+    months: monthCount,
+    reduction: scenario.fraction,
+    usageBefore: fromMonths ? average((month) => month.gross) : scenario.levers.baseline * perMonth,
+    usageAfter: fromMonths ? average((month) => month.newGross) : scenario.levers.final * perMonth,
+    saveMonth: cash ? scenario.perMonth : 0,
+    saveYear: cash ? scenario.perMonth * 12 : 0,
+    costBefore: average((month) => month.baseCost),
+    costAfter: average((month) => month.newCost),
+    unusedBefore: average((month) => month.baseWaste),
+    unusedAfter: average((month) => month.newWaste),
+    billedBefore: average(monthBilled),
+    billedAfter: average(monthNewBilled),
   };
 }
 
@@ -233,28 +233,28 @@ export interface NoEffectContext {
 }
 
 /** Plain reason why a lever saves nothing. */
-export function noEffectNote(id: LeverId, l: LeverParams, ctx: NoEffectContext): string {
-  if (l[id] <= 0) return t('The slider is at 0%.');
+export function noEffectNote(id: LeverId, levers: LeverParams, context: NoEffectContext): string {
+  if (levers[id] <= 0) return t('The slider is at 0%.');
   switch (id) {
     case 'modelShift':
-      return ctx.shiftRows === 0 ? t('No Powerful-tier model usage with a cheaper target was found.') : t('The saving is too small to measure.');
+      return context.shiftRows === 0 ? t('No Powerful-tier model usage with a cheaper target was found.') : t('The saving is too small to measure.');
     case 'autoAdoption':
       return t('There is no manual model usage left to move to Auto.');
     case 'cacheDiscipline':
     case 'contextHygiene':
-      return ctx.hasTokens ? t('The saving is too small to measure.') : t('The file has no token columns.');
+      return context.hasTokens ? t('The saving is too small to measure.') : t('The file has no token columns.');
     case 'longContext':
-      return ctx.longPremium <= 0 ? t('No long-context surcharges were found.') : t('The saving is too small to measure.');
+      return context.longPremium <= 0 ? t('No long-context surcharges were found.') : t('The saving is too small to measure.');
     case 'capRunaway':
-      return t('Nobody goes above {multiple} their included credits.', { multiple: fmtMultiple(l.capUtil) });
+      return t('Nobody goes above {multiple} their included credits.', { multiple: fmtMultiple(levers.capUtil) });
   }
 }
 
-export function leverSentence(id: LeverId, l: LeverParams): string {
-  const pct = fmtPct(l[id], 0);
+export function leverSentence(id: LeverId, levers: LeverParams): string {
+  const pct = fmtPct(levers[id], 0);
   switch (id) {
     case 'modelShift':
-      return t('{pct} of Powerful-tier usage moves to {target}', { pct, target: targetLabel(l.target) });
+      return t('{pct} of Powerful-tier usage moves to {target}', { pct, target: targetLabel(levers.target) });
     case 'autoAdoption':
       return t('{pct} of manually chosen model usage moves to Auto', { pct });
     case 'cacheDiscipline':
@@ -264,7 +264,7 @@ export function leverSentence(id: LeverId, l: LeverParams): string {
     case 'longContext':
       return t('{pct} of long-context surcharges avoided', { pct });
     case 'capRunaway':
-      return t('{pct} of usage above {multiple} included credits avoided', { pct, multiple: fmtMultiple(l.capUtil) });
+      return t('{pct} of usage above {multiple} included credits avoided', { pct, multiple: fmtMultiple(levers.capUtil) });
   }
 }
 
@@ -286,8 +286,8 @@ export interface ScenarioTextInput {
 }
 
 /** Plain-text version of the scenario for email or chat. */
-export function scenarioText(i: ScenarioTextInput): string {
-  const f = i.figures;
+export function scenarioText(input: ScenarioTextInput): string {
+  const figures = input.figures;
   const usd = fmtMoney;
   const out: string[] = [];
   const line = (text: string): void => {
@@ -295,16 +295,16 @@ export function scenarioText(i: ScenarioTextInput): string {
   };
   out.push(
     t('GitHub Copilot AI credits: what-if scenario'),
-    t('Period: {period}', { period: i.period }),
-    t('Scope: {scope}, {users}', { scope: i.scope, users: pluralize(i.userCount, 'user') }),
-    t('Preset: {preset}', { preset: i.presetLabel }),
+    t('Period: {period}', { period: input.period }),
+    t('Scope: {scope}, {users}', { scope: input.scope, users: pluralize(input.userCount, 'user') }),
+    t('Preset: {preset}', { preset: input.presetLabel }),
     '',
   );
 
   out.push(t('Assumptions'));
-  for (const id of LEVER_ORDER) line(`${t(LEVER_META[id].label)}: ${leverSentence(id, i.levers)}`);
+  for (const id of LEVER_ORDER) line(`${t(LEVER_META[id].label)}: ${leverSentence(id, input.levers)}`);
   out.push('', t('Seat actions'));
-  for (const { option, on } of i.seats) {
+  for (const { option, on } of input.seats) {
     const state = option.disabledReason
       ? `${t('not available')}. ${option.disabledReason}`
       : on
@@ -314,30 +314,30 @@ export function scenarioText(i: ScenarioTextInput): string {
   }
 
   out.push('', t('Results, per month'));
-  line(t('Usage reduction: {pct} (usage goes from {before} to {after})', { pct: fmtPct(f.reduction, 1), before: usd(f.usageBefore), after: usd(f.usageAfter) }));
-  if (f.cash) {
-    line(t('Cash saving: {month} a month, {year} a year', { month: usd(f.saveMonth), year: usd(f.saveYear) }));
-    if (f.poolKnown) {
-      line(t('Monthly cost: {before} now, {after} after', { before: usd(f.costBefore), after: usd(f.costAfter) }));
-      line(t('Unused included credits: {before} now, {after} after', { before: usd(f.unusedBefore), after: usd(f.unusedAfter) }));
+  line(t('Usage reduction: {pct} (usage goes from {before} to {after})', { pct: fmtPct(figures.reduction, 1), before: usd(figures.usageBefore), after: usd(figures.usageAfter) }));
+  if (figures.cash) {
+    line(t('Cash saving: {month} a month, {year} a year', { month: usd(figures.saveMonth), year: usd(figures.saveYear) }));
+    if (figures.poolKnown) {
+      line(t('Monthly cost: {before} now, {after} after', { before: usd(figures.costBefore), after: usd(figures.costAfter) }));
+      line(t('Unused included credits: {before} now, {after} after', { before: usd(figures.unusedBefore), after: usd(figures.unusedAfter) }));
     } else {
-      line(t('Billed on top of seats: {before} now, {after} after', { before: usd(f.billedBefore), after: usd(f.billedAfter) }));
-      if (i.poolNote) line(t('Pool size, cost and unused credits: not shown. {reason}', { reason: i.poolNote }));
+      line(t('Billed on top of seats: {before} now, {after} after', { before: usd(figures.billedBefore), after: usd(figures.billedAfter) }));
+      if (input.poolNote) line(t('Pool size, cost and unused credits: not shown. {reason}', { reason: input.poolNote }));
     }
   } else {
-    line(`${t('Cash saving: not shown.')} ${i.cashNote ?? ''}`.trim());
+    line(`${t('Cash saving: not shown.')} ${input.cashNote ?? ''}`.trim());
   }
 
   out.push('', t('Effect of each lever, in order (usage per month)'));
-  for (const step of i.scenario.levers.steps) {
-    line(t('{lever}: -{saving} (-{alone} on its own)', { lever: step.label, saving: usd(step.savings * i.perMonth), alone: usd(step.standalone * i.perMonth) }));
+  for (const step of input.scenario.levers.steps) {
+    line(t('{lever}: -{saving} (-{alone} on its own)', { lever: step.label, saving: usd(step.savings * input.perMonth), alone: usd(step.standalone * input.perMonth) }));
   }
 
   out.push('', t('Notes'));
   line(t('Cost is the larger of the pool of included credits and the usage. Using less saves cash only above the pool, and removing seats saves only up to the unused part of the pool.'));
   line(t('The levers are applied one after the other, so they do not double count.'));
-  if (f.cash && !f.poolKnown) line(t('Cash savings come from the overage that was billed: a month that ran out of included credits shows the real pool size, and a month that did not billed nothing.'));
-  else if (i.poolIsLowerBound) line(t('The pool size counts only the seats that appear in the report, so cash figures are a rough guide.'));
+  if (figures.cash && !figures.poolKnown) line(t('Cash savings come from the overage that was billed: a month that ran out of included credits shows the real pool size, and a month that did not billed nothing.'));
+  else if (input.poolIsLowerBound) line(t('The pool size counts only the seats that appear in the report, so cash figures are a rough guide.'));
   line(t('These are estimates from past usage, not a forecast.'));
   return out.join('\n');
 }

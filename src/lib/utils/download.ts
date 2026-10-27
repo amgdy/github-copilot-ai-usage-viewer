@@ -2,12 +2,12 @@ import { toCsv } from './format';
 
 export function downloadBlob(name: string, blob: Blob): void {
   const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = name;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = name;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
   setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 

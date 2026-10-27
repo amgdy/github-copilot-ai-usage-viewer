@@ -15,7 +15,7 @@ export function MissedList() {
   const classes = useMemo(() => taxLookup(taxonomy.autoUse), [taxonomy]);
 
   const { top, count } = useMemo(() => {
-    const withMissed = profiles.filter((p) => p.autoMissed > MIN_MISSED);
+    const withMissed = profiles.filter((user) => user.autoMissed > MIN_MISSED);
     withMissed.sort((a, b) => b.autoMissed - a.autoMissed || b.directBilled - a.directBilled);
     return { top: withMissed.slice(0, LIST_SIZE), count: withMissed.length };
   }, [profiles]);
@@ -27,19 +27,19 @@ export function MissedList() {
       ) : (
         <>
           <ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
-            {top.map((p) => (
-              <li key={p.id} className="min-w-0">
+            {top.map((user) => (
+              <li key={user.id} className="min-w-0">
                 <button
                   type="button"
-                  onClick={() => useApp.getState().selectUser(p.id)}
+                  onClick={() => useApp.getState().selectUser(user.id)}
                   className="block w-full min-w-0 rounded-md border border-border-muted bg-surface-2 px-2.5 py-2 text-start transition-colors hover:bg-surface-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
                 >
-                  <span className="block truncate text-sm font-medium">{p.name}</span>
-                  <span className="num block text-base font-semibold text-warn">{fmtUSD(p.autoMissed)}</span>
+                  <span className="block truncate text-sm font-medium">{user.name}</span>
+                  <span className="num block text-base font-semibold text-warn">{fmtUSD(user.autoMissed)}</span>
                   <span className="num block truncate text-xs text-fg-muted">
-                    {t('{amount} hand-picked · {share} on Auto', { amount: fmtUSD(p.directBilled, 0), share: fmtPct(p.autoShare, 0) })}
+                    {t('{amount} hand-picked · {share} on Auto', { amount: fmtUSD(user.directBilled, 0), share: fmtPct(user.autoShare, 0) })}
                   </span>
-                  <span className="block truncate text-xs text-fg-subtle">{classes[p.autoUse]?.label ?? ''}</span>
+                  <span className="block truncate text-xs text-fg-subtle">{classes[user.autoUse]?.label ?? ''}</span>
                 </button>
               </li>
             ))}

@@ -31,36 +31,36 @@ const LIST_LINKS: Partial<Record<ListId, readonly LinkId[]>> = {
   unmatched: ['grantAccess', 'seatAssignment'],
 };
 
-function cellOf(format: Field<unknown>['format'], v: Cell, inReport: boolean): ReactNode {
-  if (v === null || v === '') return <span className="text-fg-subtle">–</span>;
+function cellOf(format: Field<unknown>['format'], cell: Cell, inReport: boolean): ReactNode {
+  if (cell === null || cell === '') return <span className="text-fg-subtle">–</span>;
   switch (format) {
     case 'usd':
-      return <span className="num">{fmtUSD(Number(v))}</span>;
+      return <span className="num">{fmtUSD(Number(cell))}</span>;
     case 'int':
-      return <span className="num">{fmtInt(Number(v))}</span>;
+      return <span className="num">{fmtInt(Number(cell))}</span>;
     case 'date':
-      return <span className="num">{fmtIsoDay(String(v))}</span>;
+      return <span className="num">{fmtIsoDay(String(cell))}</span>;
     case 'plan':
-      return planText(String(v)) || '–';
+      return planText(String(cell)) || '–';
     case 'user':
-      return <span className={inReport ? 'font-medium text-accent' : 'font-medium'}>{String(v)}</span>;
+      return <span className={inReport ? 'font-medium text-accent' : 'font-medium'}>{String(cell)}</span>;
     default:
-      return String(v);
+      return String(cell);
   }
 }
 
 function columnsOf<T>(fields: readonly Field<T>[], inReport: (row: T) => boolean): Column<T>[] {
-  return fields.map((f) => ({
-    key: f.key,
-    header: f.header,
-    csvHeader: f.csvHeader,
-    hint: f.hint,
-    calc: f.calc,
-    align: f.align,
-    hidden: f.hidden,
-    value: f.value,
-    render: (row: T) => cellOf(f.format, f.value(row), inReport(row)),
-    total: f.sum ? (rows: T[]) => <span className="num">{fmtUSD(rows.reduce((s, r) => s + Number(f.value(r) ?? 0), 0))}</span> : undefined,
+  return fields.map((field) => ({
+    key: field.key,
+    header: field.header,
+    csvHeader: field.csvHeader,
+    hint: field.hint,
+    calc: field.calc,
+    align: field.align,
+    hidden: field.hidden,
+    value: field.value,
+    render: (row: T) => cellOf(field.format, field.value(row), inReport(row)),
+    total: field.sum ? (rows: T[]) => <span className="num">{fmtUSD(rows.reduce((sum, row) => sum + Number(field.value(row) ?? 0), 0))}</span> : undefined,
   }));
 }
 
@@ -89,11 +89,11 @@ export function LicenseLists({ report, list, onList }: { report: LicenseReport; 
           <DataTable
             key={list}
             rows={report.unmatched}
-            columns={columnsOf(unmatchedFields(), (u) => ids.has(u.name.trim().toLowerCase()))}
-            rowKey={(u) => u.name}
+            columns={columnsOf(unmatchedFields(), (user) => ids.has(user.name.trim().toLowerCase()))}
+            rowKey={(user) => user.name}
             exportName={listExportName(list)}
             searchable
-            onRowClick={(u) => open(u.name)}
+            onRowClick={(user) => open(user.name)}
             emptyText={empty}
             dense
           />
@@ -101,11 +101,11 @@ export function LicenseLists({ report, list, onList }: { report: LicenseReport; 
           <DataTable
             key={list}
             rows={findingsOf(report, list)}
-            columns={columnsOf(findingFields(list), (f) => f.inReport)}
-            rowKey={(f) => f.login}
+            columns={columnsOf(findingFields(list), (finding) => finding.inReport)}
+            rowKey={(finding) => finding.login}
             exportName={listExportName(list)}
             searchable
-            onRowClick={(f) => open(f.login)}
+            onRowClick={(finding) => open(finding.login)}
             emptyText={empty}
             dense
           />

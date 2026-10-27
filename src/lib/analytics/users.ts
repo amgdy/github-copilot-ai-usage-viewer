@@ -116,9 +116,9 @@ export interface GroupStat {
 const emptyGroup = (): GroupStat => ({ users: 0, gross: 0, net: 0, potential: 0, allotment: 0 });
 
 function groupOf<K extends string>(keys: readonly K[]): Record<K, GroupStat> {
-  const o = {} as Record<K, GroupStat>;
-  for (const k of keys) o[k] = emptyGroup();
-  return o;
+  const groups = {} as Record<K, GroupStat>;
+  for (const key of keys) groups[key] = emptyGroup();
+  return groups;
 }
 
 export const PERSONA_IDS: PersonaId[] = ['champion', 'steady', 'burst', 'dormant', 'runaway', 'new', 'lapsed'];
@@ -185,32 +185,32 @@ export function summarizeProfiles(profiles: UserProfile[]): Pick<UserSet, 'byId'
   };
   const totals = emptyGroup();
   const poolFlow = { takers: 0, takenUsd: 0, lenders: 0, lentUsd: 0 };
-  const add = (g: GroupStat, p: UserProfile) => {
-    g.users++;
-    g.gross += p.gross;
-    g.net += p.net;
-    g.potential += p.potential;
-    g.allotment += p.allotment;
+  const add = (group: GroupStat, user: UserProfile) => {
+    group.users++;
+    group.gross += user.gross;
+    group.net += user.net;
+    group.potential += user.potential;
+    group.allotment += user.allotment;
   };
   const byId = new Map<number, UserProfile>();
-  for (const p of profiles) {
-    byId.set(p.id, p);
-    add(totals, p);
-    add(groups.persona[p.persona], p);
-    add(groups.tier[p.tier], p);
-    add(groups.engagement[p.engagement], p);
-    if (p.isNew) add(groups.lifecycle.new, p);
-    if (p.lapsed) add(groups.lifecycle.lapsed, p);
-    add(groups.profile[p.profile], p);
-    add(groups.pareto[p.pareto], p);
-    add(groups.autoUse[p.autoUse], p);
-    for (const t of p.traits) add(groups.trait[t], p);
-    if (p.balance < 0) {
+  for (const user of profiles) {
+    byId.set(user.id, user);
+    add(totals, user);
+    add(groups.persona[user.persona], user);
+    add(groups.tier[user.tier], user);
+    add(groups.engagement[user.engagement], user);
+    if (user.isNew) add(groups.lifecycle.new, user);
+    if (user.lapsed) add(groups.lifecycle.lapsed, user);
+    add(groups.profile[user.profile], user);
+    add(groups.pareto[user.pareto], user);
+    add(groups.autoUse[user.autoUse], user);
+    for (const trait of user.traits) add(groups.trait[trait], user);
+    if (user.balance < 0) {
       poolFlow.takers++;
-      poolFlow.takenUsd += -p.balance;
-    } else if (p.balance > 0) {
+      poolFlow.takenUsd += -user.balance;
+    } else if (user.balance > 0) {
       poolFlow.lenders++;
-      poolFlow.lentUsd += p.balance;
+      poolFlow.lentUsd += user.balance;
     }
   }
   return { byId, groups, totals, poolFlow };
@@ -218,74 +218,74 @@ export function summarizeProfiles(profiles: UserProfile[]): Pick<UserSet, 'byId'
 
 export function buildProfiles(
   store: DataStore,
-  prep: Prepared,
+  prepared: Prepared,
   models: ModelTable,
-  agg: Aggregates,
+  aggregates: Aggregates,
   settings: Settings,
 ): UserSet {
-  const ua = agg.userAcc;
+  const userTotals = aggregates.userAcc;
   // Without a model column every row looks hand-picked, so Auto-based traits and potential would be made up.
   const modelsKnown = dataCoverage(store).models;
-  const autoRates = buildAutoRates(agg, settings.autoDiscount);
-  const nU = store.dicts.user.values.length;
-  const nM = agg.nModels;
-  const nMonths = agg.nMonths;
+  const autoRates = buildAutoRates(aggregates, settings.autoDiscount);
+  const userCount = store.dicts.user.values.length;
+  const modelIdCount = aggregates.nModels;
+  const nMonths = aggregates.nMonths;
   const users = store.dicts.user.values;
   const orgs = store.dicts.org.values;
-  const ccs = store.dicts.costCenter.values;
+  const costCenters = store.dicts.costCenter.values;
   const modelNames = store.dicts.model.values;
-  const scopeStart = agg.range.start;
-  const scopeEnd = agg.range.end;
-  const trendReliable = agg.range.length >= 14;
-  const fallbackQuotaCredits = defaultQuotaCredits(agg);
+  const scopeStart = aggregates.range.start;
+  const scopeEnd = aggregates.range.end;
+  const trendReliable = aggregates.range.length >= 14;
+  const fallbackQuotaCredits = defaultQuotaCredits(aggregates);
   const minSpend = settings.minSpendForTraits;
   const levers = DEFAULT_LEVERS;
-  const ctx: LeverContext = { agg, models, settings, autoRates };
+  const leverContext: LeverContext = { agg: aggregates, models, settings, autoRates };
   const licenseIndex = buildLicenseIndex(settings.roster, settings.rosterAsOf);
 
-  const { ratio: shiftRatio, rows: shiftRows } = modelShiftRatios(ctx, levers.target);
-  const powerfulGross = shiftRows.reduce((a, r) => a + r.gross, 0);
-  const fullSavePerGross = powerfulGross > 0 ? shiftRows.reduce((a, r) => a + r.savingsAtFull, 0) / powerfulGross : 0;
-  const cacheWriteEst = agg.totals.est.cacheWrite;
-  const cacheK = cacheWriteEst > 0 ? Math.min(1, cacheSavingsStandalone(ctx, 1) / cacheWriteEst) : 0;
+  const { ratio: shiftRatio, rows: shiftRows } = modelShiftRatios(leverContext, levers.target);
+  const powerfulGross = shiftRows.reduce((total, shiftRow) => total + shiftRow.gross, 0);
+  const fullSavePerGross = powerfulGross > 0 ? shiftRows.reduce((total, shiftRow) => total + shiftRow.savingsAtFull, 0) / powerfulGross : 0;
+  const cacheWriteEst = aggregates.totals.est.cacheWrite;
+  const cacheK = cacheWriteEst > 0 ? Math.min(1, cacheSavingsStandalone(leverContext, 1) / cacheWriteEst) : 0;
 
   const profiles: UserProfile[] = [];
   let hasCostCenters = false;
-  for (let u = 1; u < nU; u++) {
-    if (ua.rows[u] > 0 && ua.costCenter[u] !== -1) {
+  for (let userId = 1; userId < userCount; userId++) {
+    if (userTotals.rows[userId] > 0 && userTotals.costCenter[userId] !== -1) {
       hasCostCenters = true;
       break;
     }
   }
 
   let totalGross = 0;
-  for (let u = 1; u < nU; u++) {
-    if (ua.rows[u] <= 0) continue;
-    const gross = ua.gross[u];
+  for (let userId = 1; userId < userCount; userId++) {
+    if (userTotals.rows[userId] <= 0) continue;
+    const gross = userTotals.gross[userId];
     totalGross += gross;
-    const quota = ua.quotaMax[u];
+    const quota = userTotals.quotaMax[userId];
 
     let allotCredits = 0;
     let monthsWithRows = 0;
     let peakMonth = 0;
-    for (let s = 0; s < nMonths; s++) {
-      const mg = agg.userMonthGross[u * nMonths + s];
-      if (mg > 0) {
+    for (let monthIndex = 0; monthIndex < nMonths; monthIndex++) {
+      const monthGross = aggregates.userMonthGross[userId * nMonths + monthIndex];
+      if (monthGross > 0) {
         monthsWithRows++;
-        if (mg > peakMonth) peakMonth = mg;
+        if (monthGross > peakMonth) peakMonth = monthGross;
       }
-      allotCredits += agg.monthQuota[u * nMonths + s];
+      allotCredits += aggregates.monthQuota[userId * nMonths + monthIndex];
     }
     if (allotCredits <= 0) allotCredits = fallbackQuotaCredits * Math.max(1, monthsWithRows);
     const allotment = allotCredits * CREDIT_USD;
     const utilization = allotment > 0 ? gross / allotment : 0;
 
-    const globalFirst = prep.userFirstDay[u];
+    const globalFirst = prepared.userFirstDay[userId];
     const anchor = Math.max(globalFirst, scopeStart);
     const windowWorkdays = Math.max(MIN_WINDOW_WORKDAYS, workdaysBetween(anchor, scopeEnd));
-    const activeDays = ua.activeDays[u];
+    const activeDays = userTotals.activeDays[userId];
     const activeRate = Math.min(1, activeDays / windowWorkdays);
-    const lastDay = ua.lastDay[u];
+    const lastDay = userTotals.lastDay[userId];
     const daysSinceLast = Math.max(0, scopeEnd - lastDay);
 
     const isNew =
@@ -303,11 +303,11 @@ export function buildProfiles(
             : utilization >= tiers.minimal
               ? 'light'
               : 'minimal';
-    const eng = settings.engagement;
+    const engagementCutoffs = settings.engagement;
     const engagement: EngagementId =
-      activeRate >= eng.daily ? 'daily' : activeRate >= eng.regular ? 'regular' : activeRate >= eng.occasional ? 'occasional' : 'rare';
+      activeRate >= engagementCutoffs.daily ? 'daily' : activeRate >= engagementCutoffs.regular ? 'regular' : activeRate >= engagementCutoffs.occasional ? 'occasional' : 'rare';
 
-    const freq = activeRate >= eng.regular;
+    const frequent = activeRate >= engagementCutoffs.regular;
     const intense = utilization >= tiers.light;
     const persona: PersonaId =
       tier === 'runaway'
@@ -316,18 +316,18 @@ export function buildProfiles(
           ? 'new'
           : lapsed
             ? 'lapsed'
-            : freq && intense
+            : frequent && intense
               ? 'champion'
               : intense
                 ? 'burst'
-                : freq
+                : frequent
                   ? 'steady'
                   : 'dormant';
 
-    const tg = (c: number) => (gross > 0 ? ua.tier[u * CATEGORIES.length + c] / gross : 0);
-    const powerfulShare = tg(0);
-    const versatileShare = tg(1);
-    const lightweightShare = tg(2);
+    const categoryShare = (categoryIndex: number) => (gross > 0 ? userTotals.tier[userId * CATEGORIES.length + categoryIndex] / gross : 0);
+    const powerfulShare = categoryShare(0);
+    const versatileShare = categoryShare(1);
+    const lightweightShare = categoryShare(2);
     const profile: ProfileId =
       powerfulShare >= settings.frontierHeavy
         ? 'frontier'
@@ -335,31 +335,31 @@ export function buildProfiles(
           ? 'efficient'
           : 'balanced';
 
-    const prompt = ua.input[u] + ua.cacheRead[u] + ua.cacheWrite[u];
-    const cacheHit = prompt > 0 ? ua.cacheRead[u] / prompt : Number.NaN;
-    const autoShare = gross > 0 ? ua.autoGross[u] / gross : 0;
-    const auto = userAutoDiscount(ua, u, autoRates);
-    const directBilled = Math.max(0, gross - ua.autoGross[u]);
+    const prompt = userTotals.input[userId] + userTotals.cacheRead[userId] + userTotals.cacheWrite[userId];
+    const cacheHit = prompt > 0 ? userTotals.cacheRead[userId] / prompt : Number.NaN;
+    const autoShare = gross > 0 ? userTotals.autoGross[userId] / gross : 0;
+    const auto = userAutoDiscount(userTotals, userId, autoRates);
+    const directBilled = Math.max(0, gross - userTotals.autoGross[userId]);
     const autoUse: AutoUseId = modelsKnown && gross > 0 ? autoUseOf(autoShare, settings) : 'unknown';
-    const longShare = gross > 0 ? ua.longPremium[u] / gross : 0;
-    const peak = ua.peakDay[u];
+    const longShare = gross > 0 ? userTotals.longPremium[userId] / gross : 0;
+    const peak = userTotals.peakDay[userId];
     const peakShare = gross > 0 ? peak / gross : 0;
-    const recent = ua.recent[u];
-    const prior = ua.prior[u];
+    const recent = userTotals.recent[userId];
+    const prior = userTotals.prior[userId];
     const trend = prior > 0 ? recent / prior - 1 : Number.NaN;
 
     let modelCount = 0;
-    let topM = -1;
-    let topG = 0;
-    if (agg.userModel) {
-      const base = u * nM;
-      for (let m = 0; m < nM; m++) {
-        const v = agg.userModel[base + m];
-        if (v > 0) {
+    let topModelId = -1;
+    let topModelGross = 0;
+    if (aggregates.userModel) {
+      const base = userId * modelIdCount;
+      for (let modelId = 0; modelId < modelIdCount; modelId++) {
+        const modelGross = aggregates.userModel[base + modelId];
+        if (modelGross > 0) {
           modelCount++;
-          if (v > topG) {
-            topG = v;
-            topM = m;
+          if (modelGross > topModelGross) {
+            topModelGross = modelGross;
+            topModelId = modelId;
           }
         }
       }
@@ -367,7 +367,7 @@ export function buildProfiles(
 
     const traits: TraitId[] = [];
     const material = gross >= minSpend;
-    const pricedShare = gross > 0 ? ua.pricedGross[u] / gross : 0;
+    const pricedShare = gross > 0 ? userTotals.pricedGross[userId] / gross : 0;
     if (material && pricedShare >= 0.5 && Number.isFinite(cacheHit) && cacheHit < settings.lowCacheHit) traits.push('lowCache');
     if (material && longShare >= settings.longContextShare) traits.push('longContext');
     if (material && activeDays >= 3 && peakShare >= settings.spikeShare) traits.push('spiky');
@@ -375,53 +375,53 @@ export function buildProfiles(
     if (modelCount >= 4) traits.push('multiModel');
     if (trendReliable && recent >= minSpend && (prior <= 0 ? !isNew : recent >= 1.5 * prior)) traits.push('accelerating');
     if (trendReliable && prior > 0 && prior >= minSpend && recent <= 0.5 * prior) traits.push('fading');
-    if (hasCostCenters && ua.costCenter[u] === -1) traits.push('noCostCenter');
+    if (hasCostCenters && userTotals.costCenter[userId] === -1) traits.push('noCostCenter');
 
     // Optimization potential at the default lever settings (sequential, so levers never double count).
     let modelShift = 0;
-    if (agg.userModel) {
-      const base = u * nM;
-      for (let m = 0; m < nM; m++) {
-        const r = shiftRatio[m];
-        if (r < 1) modelShift += agg.userModel[base + m] * (1 - r);
+    if (aggregates.userModel) {
+      const base = userId * modelIdCount;
+      for (let modelId = 0; modelId < modelIdCount; modelId++) {
+        const ratio = shiftRatio[modelId];
+        if (ratio < 1) modelShift += aggregates.userModel[base + modelId] * (1 - ratio);
       }
     } else {
-      modelShift = ua.tier[u * CATEGORIES.length] * fullSavePerGross;
+      modelShift = userTotals.tier[userId * CATEGORIES.length] * fullSavePerGross;
     }
     const standalone: Record<LeverStep['id'], number> = {
       modelShift: modelShift * levers.modelShift,
       autoAdoption: modelsKnown ? directBilled * levers.autoAdoption * rateForPlan(autoRates, quota) : 0,
-      cacheDiscipline: ua.estCw[u] * levers.cacheDiscipline * cacheK,
-      contextHygiene: (ua.estIn[u] + ua.estCr[u] + ua.estCw[u]) * levers.contextHygiene,
-      longContext: ua.longPremium[u] * levers.longContext,
+      cacheDiscipline: userTotals.estCw[userId] * levers.cacheDiscipline * cacheK,
+      contextHygiene: (userTotals.estIn[userId] + userTotals.estCr[userId] + userTotals.estCw[userId]) * levers.contextHygiene,
+      longContext: userTotals.longPremium[userId] * levers.longContext,
       capRunaway: Math.max(0, gross - levers.capUtil * allotment) * levers.capRunaway,
     };
     const { steps, total } = applyLevers(gross, standalone, LEVER_META, LEVER_ORDER);
     const potentialBy = {} as Record<LeverStep['id'], number>;
-    for (const st of steps) potentialBy[st.id] = st.savings;
+    for (const step of steps) potentialBy[step.id] = step.savings;
     const potential = Math.min(total, gross);
 
-    const orgId = ua.org[u];
-    const ccId = ua.costCenter[u];
+    const orgId = userTotals.org[userId];
+    const costCenterId = userTotals.costCenter[userId];
     profiles.push({
-      id: u,
-      name: users[u],
+      id: userId,
+      name: users[userId],
       org: orgId >= 0 ? orgs[orgId] : '',
-      orgMixed: ua.orgMixed[u] === 1,
-      costCenter: ccId >= 0 ? ccs[ccId] : '',
-      costCenterMixed: ua.costCenterMixed[u] === 1,
+      orgMixed: userTotals.orgMixed[userId] === 1,
+      costCenter: costCenterId >= 0 ? costCenters[costCenterId] : '',
+      costCenterMixed: userTotals.costCenterMixed[userId] === 1,
       plan: planLabel(quota),
       quotaCredits: quota,
       allotment,
-      rows: ua.rows[u],
+      rows: userTotals.rows[userId],
       gross,
-      discount: ua.discount[u],
-      net: ua.net[u],
-      credits: ua.credits[u],
+      discount: userTotals.discount[userId],
+      net: userTotals.net[userId],
+      credits: userTotals.credits[userId],
       share: 0,
       cumShare: 0,
       rank: 0,
-      firstDay: ua.firstDay[u],
+      firstDay: userTotals.firstDay[userId],
       lastDay,
       globalFirstDay: globalFirst,
       activeDays,
@@ -445,58 +445,58 @@ export function buildProfiles(
       cacheHit,
       longShare,
       peakDay: peak,
-      peakDayIdx: ua.peakDayIdx[u],
+      peakDayIdx: userTotals.peakDayIdx[userId],
       peakShare,
       recent,
       prior,
       trend,
       costPerActiveDay: activeDays > 0 ? gross / activeDays : Number.NaN,
-      topModel: topM >= 0 ? modelNames[topM] : '',
-      topModelShare: gross > 0 ? topG / gross : 0,
+      topModel: topModelId >= 0 ? modelNames[topModelId] : '',
+      topModelShare: gross > 0 ? topModelGross / gross : 0,
       modelCount,
-      input: ua.input[u],
-      output: ua.output[u],
-      cacheRead: ua.cacheRead[u],
-      cacheWrite: ua.cacheWrite[u],
-      tokens: ua.input[u] + ua.output[u] + ua.cacheRead[u] + ua.cacheWrite[u],
-      costInput: ua.estIn[u],
-      costCacheRead: ua.estCr[u],
-      costCacheWrite: ua.estCw[u],
-      costOutput: ua.estOut[u],
-      tokenCoverage: gross > 0 ? Math.min(1, ua.pricedGross[u] / gross) : 0,
+      input: userTotals.input[userId],
+      output: userTotals.output[userId],
+      cacheRead: userTotals.cacheRead[userId],
+      cacheWrite: userTotals.cacheWrite[userId],
+      tokens: userTotals.input[userId] + userTotals.output[userId] + userTotals.cacheRead[userId] + userTotals.cacheWrite[userId],
+      costInput: userTotals.estIn[userId],
+      costCacheRead: userTotals.estCr[userId],
+      costCacheWrite: userTotals.estCw[userId],
+      costOutput: userTotals.estOut[userId],
+      tokenCoverage: gross > 0 ? Math.min(1, userTotals.pricedGross[userId] / gross) : 0,
       auto,
       directBilled,
-      autoMissed: modelsKnown ? userMissedDiscount(ua, u, autoRates) : 0,
+      autoMissed: modelsKnown ? userMissedDiscount(userTotals, userId, autoRates) : 0,
       autoUse,
       peakMonthGross: peakMonth,
       potential,
       potentialBy,
       efficiency: gross > 0 ? Math.max(0, Math.min(100, 100 * (1 - potential / gross))) : 100,
-      license: licenseIndex === null ? null : profileLicense(users[u], licenseIndex, settings.newUserDays),
+      license: licenseIndex === null ? null : profileLicense(users[userId], licenseIndex, settings.newUserDays),
     });
   }
 
   // Rank and Pareto classes: class is decided by the cumulative share *before* adding the user,
   // so the user who crosses the cutoff still belongs to the higher class.
   profiles.sort((a, b) => b.gross - a.gross || a.name.localeCompare(b.name));
-  let cum = 0;
-  profiles.forEach((p, i) => {
-    p.rank = i + 1;
-    const before = totalGross > 0 ? cum / totalGross : 0;
-    p.pareto = before < settings.pareto.a ? 'A' : before < settings.pareto.b ? 'B' : 'C';
-    cum += p.gross;
-    p.share = totalGross > 0 ? p.gross / totalGross : 0;
-    p.cumShare = totalGross > 0 ? cum / totalGross : 0;
+  let cumulativeGross = 0;
+  profiles.forEach((user, index) => {
+    user.rank = index + 1;
+    const before = totalGross > 0 ? cumulativeGross / totalGross : 0;
+    user.pareto = before < settings.pareto.a ? 'A' : before < settings.pareto.b ? 'B' : 'C';
+    cumulativeGross += user.gross;
+    user.share = totalGross > 0 ? user.gross / totalGross : 0;
+    user.cumShare = totalGross > 0 ? cumulativeGross / totalGross : 0;
   });
 
   const { byId, groups, totals, poolFlow } = summarizeProfiles(profiles);
 
-  const known = new Set(users.map((x) => x.toLowerCase()));
+  const known = new Set(users.map((login) => login.toLowerCase()));
   const inactive: InactiveSeat[] = [];
-  for (const r of uniqueRoster(settings.roster)) {
-    if (known.has(r.user.trim().toLowerCase())) continue;
-    const seat: InactiveSeat = { user: r.user.trim(), plan: r.plan ?? null };
-    if (licenseIndex !== null) seat.license = entryLicense(r, licenseIndex, settings.newUserDays);
+  for (const entry of uniqueRoster(settings.roster)) {
+    if (known.has(entry.user.trim().toLowerCase())) continue;
+    const seat: InactiveSeat = { user: entry.user.trim(), plan: entry.plan ?? null };
+    if (licenseIndex !== null) seat.license = entryLicense(entry, licenseIndex, settings.newUserDays);
     inactive.push(seat);
   }
 
@@ -504,26 +504,26 @@ export function buildProfiles(
 }
 
 /** Whether a user passes the post-filters (segments, tiers, engagement, profile, traits, Pareto, Auto use, spend). */
-export function userPassesFilters(p: UserProfile, f: Filters): boolean {
-  if (f.segments.length && !f.segments.includes(p.persona)) return false;
-  if (f.tiers.length && !f.tiers.includes(p.tier)) return false;
-  if (f.engagement.length) {
-    const ok = f.engagement.some((e) => e === p.engagement || (e === 'new' && p.isNew) || (e === 'lapsed' && p.lapsed));
+export function userPassesFilters(user: UserProfile, filters: Filters): boolean {
+  if (filters.segments.length && !filters.segments.includes(user.persona)) return false;
+  if (filters.tiers.length && !filters.tiers.includes(user.tier)) return false;
+  if (filters.engagement.length) {
+    const ok = filters.engagement.some((engagement) => engagement === user.engagement || (engagement === 'new' && user.isNew) || (engagement === 'lapsed' && user.lapsed));
     if (!ok) return false;
   }
-  if (f.profiles.length && !f.profiles.includes(p.profile)) return false;
-  if (f.traits.length && !f.traits.some((t) => p.traits.includes(t as TraitId))) return false;
-  if (f.paretoClasses.length && !f.paretoClasses.includes(p.pareto)) return false;
-  if (f.autoUse.length && !f.autoUse.includes(p.autoUse)) return false;
-  if (f.minUserSpend !== null && p.gross < f.minUserSpend) return false;
-  if (f.maxUserSpend !== null && p.gross > f.maxUserSpend) return false;
+  if (filters.profiles.length && !filters.profiles.includes(user.profile)) return false;
+  if (filters.traits.length && !filters.traits.some((trait) => user.traits.includes(trait as TraitId))) return false;
+  if (filters.paretoClasses.length && !filters.paretoClasses.includes(user.pareto)) return false;
+  if (filters.autoUse.length && !filters.autoUse.includes(user.autoUse)) return false;
+  if (filters.minUserSpend !== null && user.gross < filters.minUserSpend) return false;
+  if (filters.maxUserSpend !== null && user.gross > filters.maxUserSpend) return false;
   return true;
 }
 
 /** Marks the users that pass the post-filters; unattributed (blank-user) rows are only kept when no post-filter is set. */
-export function allowedUsers(set: UserSet, f: Filters, nUsers: number): Uint8Array {
+export function allowedUsers(set: UserSet, filters: Filters, nUsers: number): Uint8Array {
   const allowed = new Uint8Array(nUsers);
-  for (const p of set.profiles) if (userPassesFilters(p, f)) allowed[p.id] = 1;
+  for (const user of set.profiles) if (userPassesFilters(user, filters)) allowed[user.id] = 1;
   return allowed;
 }
 

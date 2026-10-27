@@ -15,7 +15,7 @@ Usage reports and license lists contain names and other private details.
 
 ## Set up
 
-You need Node 22.12 or newer.
+You need Node 26. If you use nvm or fnm, run `nvm use` or `fnm use` in the project folder. Both read the `.nvmrc` file.
 
 ```bash
 git clone https://github.com/amgdy/github-copilot-ai-usage-viewer.git
@@ -39,7 +39,7 @@ npm run build
 While you work, run single files, for example `npx vitest run tests/users.test.ts`. These guard tests are worth running often:
 
 ```bash
-npx vitest run tests/naming.test.ts tests/i18n.test.ts tests/metric-docs.test.ts
+npx vitest run tests/naming.test.ts tests/i18n.test.ts tests/metric-docs.test.ts tests/readable-names.test.ts
 ```
 
 ## Project rules in short
@@ -48,6 +48,7 @@ npx vitest run tests/naming.test.ts tests/i18n.test.ts tests/metric-docs.test.ts
 - Use very simple English: short sentences, everyday words, American spelling. No jargon, no exclamation marks, no emojis and no em dashes.
 - Every new text needs an Arabic translation in `src/i18n/ar/`. The layout must work right to left.
 - Every number needs a note that explains how it is calculated (`src/lib/metrics/docs/`).
+- Name variables and functions with full words (`seatCount`, not `sc`). `tests/readable-names.test.ts` lists the few short names that are allowed.
 - Put math in `src/lib/analytics/` as pure functions with tests.
 - Use only official links from `src/lib/links.ts`.
 - Follow the sorting rules in AGENTS.md for lists and dropdowns.

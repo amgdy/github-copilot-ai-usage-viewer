@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { useChartColors, type EChartsOption } from '../../components/charts/EChart';
-import { esc } from '../../components/charts/helpers';
+import { escapeHtml } from '../../components/charts/helpers';
 import type { ChartColors } from '../../components/charts/theme';
 import { Callout, Card, ChartCard, EmptyState, Segmented, cx } from '../../components/ui';
 import { msg, t, tp } from '../../i18n';
@@ -39,49 +39,49 @@ function cacheReadWriteText(read: number, write: number, readCost: number, write
 export function CacheTrend() {
   const { analysis, settings } = useAnalysis();
   const colors = useChartColors();
-  const { agg, range } = analysis;
+  const { agg: aggregates, range } = analysis;
   const [bucket, setBucket] = useState<TrendBucket>(() => (range.length > 90 ? 'week' : 'day'));
 
   const trend = useMemo(() => {
-    const b = makeBucketer(range.start, range.end, bucket);
-    const read = new Float64Array(b.count);
-    const write = new Float64Array(b.count);
-    const prompt = new Float64Array(b.count);
-    const d = agg.days;
-    for (let i = 0; i < d.input.length; i++) {
-      const k = b.indexOf(range.start + i);
-      if (k < 0 || k >= b.count) continue;
-      read[k] += d.cacheRead[i];
-      write[k] += d.cacheWrite[i];
-      prompt[k] += d.input[i] + d.cacheRead[i] + d.cacheWrite[i];
+    const bucketer = makeBucketer(range.start, range.end, bucket);
+    const read = new Float64Array(bucketer.count);
+    const write = new Float64Array(bucketer.count);
+    const prompt = new Float64Array(bucketer.count);
+    const days = aggregates.days;
+    for (let i = 0; i < days.input.length; i++) {
+      const bucketIndex = bucketer.indexOf(range.start + i);
+      if (bucketIndex < 0 || bucketIndex >= bucketer.count) continue;
+      read[bucketIndex] += days.cacheRead[i];
+      write[bucketIndex] += days.cacheWrite[i];
+      prompt[bucketIndex] += days.input[i] + days.cacheRead[i] + days.cacheWrite[i];
     }
     return {
-      labels: Array.from({ length: b.count }, (_, k) => b.label(k)),
-      hit: Array.from(read, (r, k): number | null => (prompt[k] > 0 ? r / prompt[k] : null)),
+      labels: Array.from({ length: bucketer.count }, (_, bucketIndex) => bucketer.label(bucketIndex)),
+      hit: Array.from(read, (readTokens, bucketIndex): number | null => (prompt[bucketIndex] > 0 ? readTokens / prompt[bucketIndex] : null)),
       read,
       write,
       prompt,
     };
-  }, [agg, range, bucket]);
+  }, [aggregates, range, bucket]);
 
   const option = useMemo<EChartsOption>(
     () => ({
       grid: { left: 8, right: 16, top: 16, bottom: 8, containLabel: true },
       tooltip: {
         trigger: 'axis',
-        formatter: (ps: unknown) => {
-          const i = ((Array.isArray(ps) ? ps[0] : ps) as { dataIndex: number }).dataIndex;
-          const h = trend.hit[i];
-          const head = `<b>${esc(trend.labels[i] ?? '')}</b><br/>`;
-          if (h === null || h === undefined) return `${head}${esc(t('No prompt tokens'))}`;
-          const rate = esc(t('Cache hit rate: {rate}', { rate: fmtPct(h, 1) }));
-          const rw = esc(t('Cache read: {read} tokens. Cache write: {write} tokens.', { read: fmtCompact(trend.read[i]), write: fmtCompact(trend.write[i]) }));
-          const all = esc(t('{n} prompt tokens', { n: fmtCompact(trend.prompt[i]) }));
-          return `${head}<b>${rate}</b><br/><span style="opacity:.75">${rw}<br/>${all}</span>`;
+        formatter: (params: unknown) => {
+          const bucketIndex = ((Array.isArray(params) ? params[0] : params) as { dataIndex: number }).dataIndex;
+          const hitRate = trend.hit[bucketIndex];
+          const head = `<b>${escapeHtml(trend.labels[bucketIndex] ?? '')}</b><br/>`;
+          if (hitRate === null || hitRate === undefined) return `${head}${escapeHtml(t('No prompt tokens'))}`;
+          const rate = escapeHtml(t('Cache hit rate: {rate}', { rate: fmtPct(hitRate, 1) }));
+          const readWriteText = escapeHtml(t('Cache read: {read} tokens. Cache write: {write} tokens.', { read: fmtCompact(trend.read[bucketIndex]), write: fmtCompact(trend.write[bucketIndex]) }));
+          const all = escapeHtml(t('{n} prompt tokens', { n: fmtCompact(trend.prompt[bucketIndex]) }));
+          return `${head}<b>${rate}</b><br/><span style="opacity:.75">${readWriteText}<br/>${all}</span>`;
         },
       },
       xAxis: { type: 'category', data: trend.labels, axisLabel: { hideOverlap: true } },
-      yAxis: { type: 'value', min: 0, max: 1, axisLabel: { formatter: (v: number) => fmtPct(v, 0) } },
+      yAxis: { type: 'value', min: 0, max: 1, axisLabel: { formatter: (rate: number) => fmtPct(rate, 0) } },
       series: [
         {
           type: 'line',
@@ -106,9 +106,9 @@ export function CacheTrend() {
     [trend, colors, settings.lowCacheHit],
   );
 
-  const totals = agg.totals;
+  const totals = aggregates.totals;
   const prompt = totals.input + totals.cacheRead + totals.cacheWrite;
-  const options = TREND_OPTIONS.map((o) => ({ value: o.value, label: t(o.label) }));
+  const options = TREND_OPTIONS.map((trendOption) => ({ value: trendOption.value, label: t(trendOption.label) }));
 
   return (
     <ChartCard
@@ -119,7 +119,7 @@ export function CacheTrend() {
       height={320}
       exportName="github-copilot-cache-hit-trend"
       label={t('Cache hit rate per period with the low cache line')}
-      empty={trend.hit.every((h) => h === null) ? t('No prompt tokens in this period') : false}
+      empty={trend.hit.every((hitRate) => hitRate === null) ? t('No prompt tokens in this period') : false}
       actions={<Segmented size="sm" label={t('Group by')} value={bucket} onChange={setBucket} options={options} />}
       footer={
         <div className="space-y-1">
@@ -133,7 +133,7 @@ export function CacheTrend() {
   );
 }
 
-const bucketColor = (c: ChartColors, b: CacheBucket): string => (b.hi <= CACHE_HIT_FAIR ? c.bad : b.lo >= CACHE_HIT_HEALTHY ? c.good : c.warn);
+const bucketColor = (colors: ChartColors, bucket: CacheBucket): string => (bucket.hi <= CACHE_HIT_FAIR ? colors.bad : bucket.lo >= CACHE_HIT_HEALTHY ? colors.good : colors.warn);
 
 export function CacheHistogram() {
   const { analysis, settings } = useAnalysis();
@@ -142,7 +142,7 @@ export function CacheHistogram() {
   const buckets = useMemo(() => cacheHitBuckets(profiles), [profiles]);
   const measured = buckets.reduce((a, b) => a + b.users, 0);
   const skipped = profiles.length - measured;
-  const redBars = buckets.filter((b) => b.hi <= CACHE_HIT_FAIR);
+  const redBars = buckets.filter((bucket) => bucket.hi <= CACHE_HIT_FAIR);
   const redNote = redBars.length
     ? `${tp(redBars.length, 'The red bar is below {limit}.', 'Red bars are below {limit}.', { limit: fmtPct(redBars[redBars.length - 1].hi, 0) })} `
     : '';
@@ -152,18 +152,18 @@ export function CacheHistogram() {
       grid: { left: 8, right: 16, top: 24, bottom: 8, containLabel: true },
       tooltip: {
         trigger: 'item',
-        formatter: (p: unknown) => {
-          const b = buckets[(p as { dataIndex: number }).dataIndex];
-          if (!b) return '';
-          const head = esc(t('Cache hit rate: {rate}', { rate: b.label }));
-          const users = esc(tp(b.users, '{n} user', '{n} users', { n: fmtInt(b.users) }));
-          const usage = esc(t('{usage} usage', { usage: money(b.gross) }));
+        formatter: (params: unknown) => {
+          const bucket = buckets[(params as { dataIndex: number }).dataIndex];
+          if (!bucket) return '';
+          const head = escapeHtml(t('Cache hit rate: {rate}', { rate: bucket.label }));
+          const users = escapeHtml(tp(bucket.users, '{n} user', '{n} users', { n: fmtInt(bucket.users) }));
+          const usage = escapeHtml(t('{usage} usage', { usage: money(bucket.gross) }));
           return `<b>${head}</b><br/>${users}<br/><span style="opacity:.75">${usage}</span>`;
         },
       },
       xAxis: {
         type: 'category',
-        data: buckets.map((b) => b.label),
+        data: buckets.map((bucket) => bucket.label),
         name: t('Cache hit rate'),
         nameLocation: 'middle',
         nameGap: 28,
@@ -174,7 +174,7 @@ export function CacheHistogram() {
         {
           type: 'bar',
           barMaxWidth: 52,
-          data: buckets.map((b) => ({ value: b.users, itemStyle: { color: bucketColor(colors, b) } })),
+          data: buckets.map((bucket) => ({ value: bucket.users, itemStyle: { color: bucketColor(colors, bucket) } })),
           label: { show: true, position: 'top', color: colors.textMuted, fontSize: 12 },
         },
       ],
@@ -206,13 +206,13 @@ export function CacheHistogram() {
 
 export function LowCacheUsers() {
   const { analysis, settings } = useAnalysis();
-  const selectUser = useApp((s) => s.selectUser);
+  const selectUser = useApp((state) => state.selectUser);
   const perMonth = usePerMonth();
   const rows = useMemo(
-    () => lowCacheHeavyUsers(analysis.users.profiles, settings.minSpendForTraits, 5).map((p) => ({ p, tip: cacheTip(p, settings) })),
+    () => lowCacheHeavyUsers(analysis.users.profiles, settings.minSpendForTraits, 5).map((user) => ({ p: user, tip: cacheTip(user, settings) })),
     [analysis, settings],
   );
-  const anyLow = rows.some((r) => r.p.cacheHit < settings.lowCacheHit);
+  const anyLow = rows.some((row) => row.p.cacheHit < settings.lowCacheHit);
 
   return (
     <Card
@@ -236,26 +236,26 @@ export function LowCacheUsers() {
             </div>
           ) : null}
           <ul className="divide-y divide-border-muted">
-            {rows.map(({ p, tip }) => {
+            {rows.map(({ p: user, tip }) => {
               const saving = tip && tip.id === 'cache' && tip.savingsUsd > 0 ? tip.savingsUsd * perMonth : 0;
               return (
-                <li key={p.id}>
+                <li key={user.id}>
                   <button
                     type="button"
                     className="block w-full px-4 py-2.5 text-start transition-colors hover:bg-surface-2"
-                    onClick={() => selectUser(p.id)}
+                    onClick={() => selectUser(user.id)}
                     title={t('Open the user profile')}
                   >
                     <div className="flex items-baseline justify-between gap-3">
-                      <span className="min-w-0 truncate text-sm font-medium">{p.name}</span>
-                      <span className={cx('num shrink-0 text-sm font-semibold', hitTone(p.cacheHit))}>{t('{rate} cache hit rate', { rate: fmtPct(p.cacheHit, 0) })}</span>
+                      <span className="min-w-0 truncate text-sm font-medium">{user.name}</span>
+                      <span className={cx('num shrink-0 text-sm font-semibold', hitTone(user.cacheHit))}>{t('{rate} cache hit rate', { rate: fmtPct(user.cacheHit, 0) })}</span>
                     </div>
                     <div className="num mt-0.5 text-xs text-fg-muted">
                       {saving >= 0.5
-                        ? t('{usage} usage, the cache could save about {saving} per month', { usage: money(p.gross), saving: money(saving) })
-                        : t('{usage} usage', { usage: money(p.gross) })}
+                        ? t('{usage} usage, the cache could save about {saving} per month', { usage: money(user.gross), saving: money(saving) })
+                        : t('{usage} usage', { usage: money(user.gross) })}
                     </div>
-                    <div className="num mt-0.5 text-xs text-fg-muted">{cacheReadWriteText(p.cacheRead, p.cacheWrite, p.costCacheRead, p.costCacheWrite)}</div>
+                    <div className="num mt-0.5 text-xs text-fg-muted">{cacheReadWriteText(user.cacheRead, user.cacheWrite, user.costCacheRead, user.costCacheWrite)}</div>
                     {tip ? (
                       <p className="mt-1 line-clamp-2 text-xs text-fg-muted">
                         <span className="font-medium text-fg">{t('Tip:')} </span>

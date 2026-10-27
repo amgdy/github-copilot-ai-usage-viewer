@@ -23,6 +23,6 @@ export const SECTIONS = [
 
 export type SectionId = (typeof SECTIONS)[number]['id'];
 
-export const SECTION_IDS: readonly SectionId[] = SECTIONS.map((s) => s.id);
+export const SECTION_IDS: readonly SectionId[] = SECTIONS.map((section) => section.id);
 
 export const domId = (id: SectionId): string => `settings-${id}`;

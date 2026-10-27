@@ -56,20 +56,20 @@ describe('display ordering', () => {
       { value: 'b', label: 'beta' },
       { value: 'a', label: 'Alpha' },
     ];
-    expect(sortOptions(options, (o) => o.label).map((o) => o.value)).toEqual(['all', 'a', 'b', 'z']);
-    expect(options.map((o) => o.value)).toEqual(['z', 'all', 'b', 'a']);
+    expect(sortOptions(options, (option) => option.label).map((option) => option.value)).toEqual(['all', 'a', 'b', 'z']);
+    expect(options.map((option) => option.value)).toEqual(['z', 'all', 'b', 'a']);
   });
 
   it('orders numeric labels naturally and keeps explicit scales intact', () => {
     const options = [{ value: 10, label: 'Group 10' }, { value: 2, label: 'Group 2' }];
-    expect(sortOptions(options, (o) => o.label).map((o) => o.value)).toEqual([2, 10]);
-    expect(sortOptions(options, (o) => o.label, 'given')).toEqual(options);
+    expect(sortOptions(options, (option) => option.label).map((option) => option.value)).toEqual([2, 10]);
+    expect(sortOptions(options, (option) => option.label, 'given')).toEqual(options);
   });
 
   it('sorts Arabic labels using Arabic collation', () => {
     applyLocale('ar', {});
     const options = [{ value: 'b', label: 'باء' }, { value: 'a', label: 'ألف' }];
-    expect(sortOptions(options, (o) => o.label).map((o) => o.value)).toEqual(['a', 'b']);
+    expect(sortOptions(options, (option) => option.label).map((option) => option.value)).toEqual(['a', 'b']);
   });
 });
 

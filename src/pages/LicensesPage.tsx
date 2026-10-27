@@ -32,7 +32,7 @@ function NoLicenses() {
 
 /** The as-of date, an old export, a list without activity data, and what the filters do here. */
 function Notices({ report, narrowed }: { report: LicenseReport; narrowed: boolean }) {
-  const as = asOfInfo(report);
+  const asOfDetails = asOfInfo(report);
   const scope = scopeOf(narrowed, report.scoped);
   const clear = (
     <button type="button" className="btn btn-sm" onClick={clearNarrowing}>
@@ -42,20 +42,20 @@ function Notices({ report, narrowed }: { report: LicenseReport; narrowed: boolea
   return (
     <div className="space-y-3">
       <p className="flex flex-wrap items-center gap-1.5 text-xs text-fg-muted">
-        {as.date
-          ? as.source === 'roster'
-            ? t('Days without activity are counted from {date}, the newest date in the license list.', { date: as.date })
-            : t('Days without activity are counted from {date}, the date of the license export.', { date: as.date })
+        {asOfDetails.date
+          ? asOfDetails.source === 'roster'
+            ? t('Days without activity are counted from {date}, the newest date in the license list.', { date: asOfDetails.date })
+            : t('Days without activity are counted from {date}, the date of the license export.', { date: asOfDetails.date })
           : t('The license list has no dates, so days without activity cannot be counted.')}
         <CalcInfo id="license-as-of" />
       </p>
-      {as.stale && as.behind !== null ? (
+      {asOfDetails.stale && asOfDetails.behind !== null ? (
         <Callout tone="warn" title={t('The license list is old')}>
           {tp(
-            as.behind,
+            asOfDetails.behind,
             'The usage report runs {n} day past the date of the license list. Seats may have changed since then, so import a new list.',
             'The usage report runs {n} days past the date of the license list. Seats may have changed since then, so import a new list.',
-            { n: fmtInt(as.behind) },
+            { n: fmtInt(asOfDetails.behind) },
           )}
         </Callout>
       ) : null}

@@ -29,15 +29,15 @@ function fixture(): RowSpec[] {
 
 const TOKEN_COLUMNS = ['input', 'output', 'cache_read', 'cache_write'];
 
-const render = (p: Pipeline): string =>
+const render = (pipeline: Pipeline): string =>
   renderToStaticMarkup(
     createElement(AnalysisProvider, {
-      dataset: { store: p.store, prep: p.prep, label: 'synthetic.csv', loadedAt: 0 },
+      dataset: { store: pipeline.store, prep: pipeline.prep, label: 'synthetic.csv', loadedAt: 0 },
       children: createElement(ModelsPage),
     }),
   );
 
-const count = (html: string, re: RegExp): number => html.match(re)?.length ?? 0;
+const count = (html: string, pattern: RegExp): number => html.match(pattern)?.length ?? 0;
 
 /** zustand hands the initial state to server renders, so the filters are set there for the time of one render. */
 function withFilters(filters: Partial<Filters>, run: () => string): string {
@@ -82,8 +82,8 @@ describe('Models page: render health', () => {
 
 describe('Models page: with a segment selected', () => {
   it('measures the plan rates on all users, and says so', async () => {
-    const p = await analyzeCsv(makeCsv(fixture()));
-    const text = textOf(withFilters({ autoUse: ['direct'] }, () => render(p)));
+    const pipeline = await analyzeCsv(makeCsv(fixture()));
+    const text = textOf(withFilters({ autoUse: ['direct'] }, () => render(pipeline)));
     expect(text).toContain('Plan discount rates are measured on all users in the current row filters, not only on the selected segment.');
     expect(text).toContain('Business');
     expect(text).toContain('No usage went through Auto in this scope.');
@@ -127,14 +127,14 @@ describe('Models page: Auto discount rate by plan', () => {
   });
 
   it('measures nothing when the file has no token columns, and says so', async () => {
-    const html = render(await analyzeCsv(makeCsv(fixture(), { columns: CSV_HEADER.filter((c) => !TOKEN_COLUMNS.includes(c)) })));
+    const html = render(await analyzeCsv(makeCsv(fixture(), { columns: CSV_HEADER.filter((column) => !TOKEN_COLUMNS.includes(column)) })));
     expect(html).toContain('This report has no token columns, so nothing can be measured and every plan uses the rate from Settings.');
     expect(count(html, />Measured</g)).toBe(0);
     expect(count(html, />Assumed</g)).toBe(3);
   });
 
   it('explains that there is nothing to measure when no usage went through Auto', async () => {
-    const direct = fixture().filter((r) => !/^auto/i.test(r.model ?? ''));
+    const direct = fixture().filter((row) => !/^auto/i.test(row.model ?? ''));
     const html = render(await analyzeCsv(makeCsv(direct)));
     expect(html).toContain('No usage went through Auto in the current row filters');
     expect(html).not.toContain('Auto discount by model');
@@ -151,7 +151,7 @@ describe('Models page: heavy users with the lowest Auto share', () => {
   });
 
   it('says so, and lists nobody, when every heavy user already reaches it', async () => {
-    const rows = fixture().filter((r) => r.user !== 'direct-1');
+    const rows = fixture().filter((row) => row.user !== 'direct-1');
     const block = between(textOf(render(await analyzeCsv(makeCsv(rows)))), 'Heavy users with the lowest Auto share', 'Estimates here use');
     expect(block).toContain('Each of the 3 biggest users already sends all of their usage through Auto.');
     for (const name of ['biz-1', 'biz-2', 'ent-1']) expect(block, name).not.toContain(name);
@@ -160,14 +160,14 @@ describe('Models page: heavy users with the lowest Auto share', () => {
 
 describe('Models page: a file without model names', () => {
   it('says so and leaves the Auto section out', async () => {
-    const html = render(await analyzeCsv(makeCsv(fixture(), { columns: CSV_HEADER.filter((c) => c !== 'model') })));
+    const html = render(await analyzeCsv(makeCsv(fixture(), { columns: CSV_HEADER.filter((column) => column !== 'model') })));
     expect(html).toContain('This file has no model names');
     expect(html).not.toContain('Auto discount rate by plan');
     expect(html).not.toContain('Auto model selection');
   });
 
   it('keeps the price card, without a column of zero usage', async () => {
-    const text = textOf(render(await analyzeCsv(makeCsv(fixture(), { columns: CSV_HEADER.filter((c) => c !== 'model') }))));
+    const text = textOf(render(await analyzeCsv(makeCsv(fixture(), { columns: CSV_HEADER.filter((column) => column !== 'model') }))));
     expect(text).toContain('Price card');
     expect(text).not.toContain('In your data');
     expect(text).not.toContain('Models you use are highlighted');

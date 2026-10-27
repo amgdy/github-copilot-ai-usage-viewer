@@ -38,29 +38,29 @@ export function MultiSelect({
   maxHeight?: number;
   emptyText?: string;
 }) {
-  const [q, setQ] = useState('');
+  const [query, setQuery] = useState('');
   const chosen = useMemo(() => new Set(selected), [selected]);
-  const sorted = useMemo(() => sortOptions(options, (o) => o.label, order), [options, order]);
+  const sorted = useMemo(() => sortOptions(options, (option) => option.label, order), [options, order]);
   const matches = useMemo(() => {
-    const needle = q.trim().toLowerCase();
-    return needle ? sorted.filter((o) => o.label.toLowerCase().includes(needle)) : sorted;
-  }, [sorted, q]);
+    const needle = query.trim().toLowerCase();
+    return needle ? sorted.filter((option) => option.label.toLowerCase().includes(needle)) : sorted;
+  }, [sorted, query]);
   // Keep selected values visible even when they no longer match the facet options.
-  const missing = selected.filter((s) => !options.some((o) => o.value === s));
+  const missing = selected.filter((selectedValue) => !options.some((option) => option.value === selectedValue));
   const list = matches.slice(0, MAX_RENDERED);
   const withSearch = searchable ?? options.length > 8;
 
   return (
     <div>
-      {withSearch ? <SearchInput value={q} onChange={setQ} placeholder={t('Search {n} options…', { n: options.length })} className="mb-1.5" /> : null}
+      {withSearch ? <SearchInput value={query} onChange={setQuery} placeholder={t('Search {n} options…', { n: options.length })} className="mb-1.5" /> : null}
       <div className="overflow-auto rounded-md border border-border-muted" style={{ maxHeight }}>
-        {missing.map((m) => (
-          <Row key={`missing-${m}`} option={{ value: m, label: m, count: 0 }} checked onToggle={onToggle} />
+        {missing.map((missingValue) => (
+          <Row key={`missing-${missingValue}`} option={{ value: missingValue, label: missingValue, count: 0 }} checked onToggle={onToggle} />
         ))}
-        {list.map((o) => (
-          <Row key={o.value} option={o} checked={chosen.has(o.value)} onToggle={onToggle} />
+        {list.map((option) => (
+          <Row key={option.value} option={option} checked={chosen.has(option.value)} onToggle={onToggle} />
         ))}
-        {!list.length && !missing.length ? <div className="px-3 py-3 text-center text-xs text-fg-muted">{q ? t('No match') : (emptyText ?? t('No options'))}</div> : null}
+        {!list.length && !missing.length ? <div className="px-3 py-3 text-center text-xs text-fg-muted">{query ? t('No match') : (emptyText ?? t('No options'))}</div> : null}
         {matches.length > MAX_RENDERED ? (
           <div className="border-t border-border-muted px-3 py-1.5 text-center text-[11px] text-fg-subtle">
             {t('Showing the first {shown} of {total}. Type to narrow the list.', { shown: MAX_RENDERED, total: matches.length })}
@@ -76,7 +76,7 @@ export function MultiSelect({
   );
 }
 
-function Row({ option, checked, onToggle }: { option: MultiOption; checked: boolean; onToggle: (v: string) => void }) {
+function Row({ option, checked, onToggle }: { option: MultiOption; checked: boolean; onToggle: (value: string) => void }) {
   return (
     <label title={option.title ?? option.label} className={cx('flex cursor-pointer items-center gap-2 px-2.5 py-1 text-xs hover:bg-surface-3', option.count === 0 && !checked && 'opacity-50')}>
       <input type="checkbox" className="accent-[var(--accent)]" checked={checked} onChange={() => onToggle(option.value)} />

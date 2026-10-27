@@ -5,7 +5,7 @@ import { t } from '../../i18n';
 import { cx } from './cx';
 
 /** Microsoft Learn pages get the Microsoft logo, every other source the GitHub logo. */
-const sourceGlyph = (l: DocLink) => (l.source === 'Microsoft Learn' ? 'microsoft' : 'github');
+const sourceGlyph = (link: DocLink) => (link.source === 'Microsoft Learn' ? 'microsoft' : 'github');
 
 export interface DocLinksProps {
   /** Link ids from lib/links, most useful first. */

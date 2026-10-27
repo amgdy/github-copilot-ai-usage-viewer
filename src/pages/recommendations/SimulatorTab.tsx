@@ -45,10 +45,10 @@ export function SimulatorTab({ levers, onLevers, seatFlags, onSeatFlags }: Simul
   const deferredFlags = useDeferredValue(flags);
   const stale = deferredLevers !== levers || deferredFlags !== flags;
 
-  const ctx = useMemo(() => leverContext(analysis, models, settings), [analysis, models, settings]);
+  const leverInputs = useMemo(() => leverContext(analysis, models, settings), [analysis, models, settings]);
   const scenario = useMemo(
-    () => runScenario(ctx, analysis.pool, analysis.users, analysis.seats, { levers: deferredLevers, ...deferredFlags }),
-    [ctx, analysis.pool, analysis.users, analysis.seats, deferredLevers, deferredFlags],
+    () => runScenario(leverInputs, analysis.pool, analysis.users, analysis.seats, { levers: deferredLevers, ...deferredFlags }),
+    [leverInputs, analysis.pool, analysis.users, analysis.seats, deferredLevers, deferredFlags],
   );
 
   const cashReason = cashHiddenReason(analysis);
@@ -56,7 +56,7 @@ export function SimulatorTab({ levers, onLevers, seatFlags, onSeatFlags }: Simul
   const figures = useMemo(() => scenarioFigures(scenario, perMonth, cashReason === null, poolReason === null), [scenario, perMonth, cashReason, poolReason]);
   const alone = useMemo(() => {
     const out = {} as Record<LeverId, number>;
-    for (const s of scenario.levers.steps) out[s.id] = s.standalone * perMonth;
+    for (const step of scenario.levers.steps) out[step.id] = step.standalone * perMonth;
     return out;
   }, [scenario, perMonth]);
   const seats: SeatState[] = options.map((option) => ({ option, on: deferredFlags[option.key] }));
@@ -76,7 +76,7 @@ export function SimulatorTab({ levers, onLevers, seatFlags, onSeatFlags }: Simul
       : chips.length
         ? t('whole organization ({filters})', { filters: list })
         : t('whole organization');
-    const preset = PRESETS.find((p) => p.id === matchPreset(deferredLevers));
+    const preset = PRESETS.find((candidate) => candidate.id === matchPreset(deferredLevers));
     return scenarioText({
       period: `${t('{from} to {to}', { from: fmtDay(analysis.range.start, true), to: fmtDay(analysis.range.end, true) })} (${pluralize(analysis.range.length, 'day')})`,
       scope,
