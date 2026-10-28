@@ -38,6 +38,7 @@ src/
     metrics/          how every number is calculated (docs/*.ts), shown in the app
     demo/             made-up data generator for the sample report, tests and `gen:demo`
     export/           executive summary (Markdown)
+    build/            build version and GitHub Actions run link, filled by vite.config.ts
     links.ts          official GitHub and Microsoft links used across the app
   i18n/               translation core; ar/*.ts holds the Arabic text
   state/              store (Zustand), router (hash), analysis provider, theme
@@ -119,6 +120,7 @@ Pages: Overview, Usage and pool, Users, Segments, Models, Efficiency, Organizati
 - The start page has two ways in: choose or drop your own files, or **View a sample report**. The sample is made up in the browser by `src/state/loadSample.ts`, which loads the generator only when clicked and never reads a file. While the sample is open, every page says so (`SampleNotice`), and the saved license list is left out of the analysis (`withoutRoster`), so real names never mix with invented data. Settings and Licenses say why the list is not used (`SampleListNote`), never compare the list with the sample's users, and turn off the button that fills the list from the loaded report, so invented users are never saved as seats. Any new code that reads `useApp((s) => s.dataset)` directly must check `dataset.sample` in the same way. `tests/landing.test.ts`, `tests/sample-report.test.ts`, `tests/sample-license-list.test.ts` and `tests/data-isolation.test.ts` guard this.
 - The sample generator (`src/lib/demo/generate.ts`) builds a made-up company with `DEMO_SEAT_COUNT` seats over three months. Logins follow the GitHub Enterprise Managed Users pattern: an invented Microsoft Entra ID login name, `_` and the short code `DEMO_SHORTCODE` (for example `KofiIto_nwind`). The months are built so that every recommendation shows in some view (the whole range, one month or the `northwind-labs` organization). Keep it that way when you change the generator; `tests/recommendations.test.ts` checks it.
 - No network calls, except the live price check that the user starts in Settings.
+- The build version (`BuildVersion`) is baked in at build time from the GitHub Actions variables. It links only to github.com runs and commits and never calls the network.
 - Settings are stored in `localStorage` (`ghcu.settings.v1`); the theme, color set, language, Arabic digits and the Show calculations switch in `ghcu.theme`, `ghcu.palette`, `ghcu.locale`, `ghcu.digits` and `ghcu.showCalc`. Every key starts with `ghcu.`: a new key must too, so "Delete saved settings" (`src/state/savedData.ts`, linked from the sidebar, the start page and Settings > Data on this device) removes it. Usage data stays in memory only.
 
 ## How to add things

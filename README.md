@@ -11,7 +11,7 @@
 
 **GitHub Copilot Usage Lens** is an analysis tool for the GitHub Copilot **AI credits usage report** (the CSV export from GitHub billing). Drop one or more files in and you get an interactive management view: how much is used and billed, who uses what, how the shared included credits behave, which users and models drive cost, which seats are idle, and a list of recommendations ordered by impact, each with an estimated saving and official GitHub and Microsoft links.
 
-**Try it:** [amgdy.com/github-copilot-usage-lens](https://amgdy.com/github-copilot-usage-lens/). Choose **View a sample report** to see every page with made-up data, or drop in your own file.
+**Try it:** [amgdy.github.io/github-copilot-usage-lens](https://amgdy.github.io/github-copilot-usage-lens/). Choose **View a sample report** to see every page with made-up data, or drop in your own file.
 
 ![Overview page of the sample report: usage, billed amount, included credits and the top actions](docs/screenshots/overview.png)
 
@@ -269,6 +269,8 @@ The suite covers the tokenizer and ingest (BOM, quoting, scientific notation, da
 ## Publishing the site
 
 The site is built by [.github/workflows/pages.yml](.github/workflows/pages.yml) and published with GitHub Pages. Every push to `main` runs the checks (types, tests, both builds) and then deploys `dist/`. The build uses relative paths, so it works under any repository name. The deploy steps run only while the repository is public. Before the first deploy, open Settings, then Pages, and set the source to **GitHub Actions**. Do this once for each repository, also for a fork.
+
+Each published build shows its version at the bottom of the sidebar and on the start page, for example "Version 1.0.0 · Build 42 · e3b1fb9 · 2026-10-28". "Build 42" opens the GitHub Actions run that made the site, and the short code opens the commit it was built from, so anyone can check that the site comes from this repository's public code. A build made on your own computer shows "Local build". The values come from the variables GitHub Actions sets for every run (`GITHUB_RUN_NUMBER`, `GITHUB_RUN_ID`, `GITHUB_SHA`), so the workflow needs no extra step. The version number comes from `package.json`.
 
 ## Contributing
 

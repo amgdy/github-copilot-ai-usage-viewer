@@ -91,6 +91,10 @@ Open the info button next to any number, or the Methodology page, for the full f
 - Seat prices are the public prices. Your contract may differ.
 - In Arabic, numbers show with Arabic-Indic digits (١٢٣) by default, or Latin digits if you choose them in Settings. Downloaded CSV files always use Latin digits. Column names of the original export stay in English.
 
+## Where the site comes from
+
+The sidebar and the start page show the version and the GitHub Actions build number. The build number opens the run that published the site, and the short commit code opens the exact code it was built from. Admins can check that the site is built from the public repository and nothing else.
+
 ## Official links
 
 - [GitHub Copilot billing](https://docs.github.com/en/enterprise-cloud@latest/billing/concepts/product-billing/github-copilot-billing) (GitHub Docs)

@@ -9,6 +9,7 @@ import { savedKeys } from '../state/savedData';
 import { datasetLabel, resolveTheme, useApp } from '../state/store';
 import { UPLOAD_ACCEPT, takeUploads } from '../pages/data/LoadControl';
 import { Brand } from './layout/Sidebar';
+import { BuildVersion } from './BuildVersion';
 import { DeleteSavedDataButton } from './DeleteSavedDataButton';
 import { Callout, DocLinks, Spinner } from './ui';
 import { cx } from './ui/cx';
@@ -216,6 +217,7 @@ export function Landing() {
               {t('This browser keeps your settings from an earlier visit.')} <DeleteSavedDataButton look="link" />
             </span>
           ) : null}
+          <BuildVersion className="mt-1.5 flex" />
         </footer>
       </div>
     </div>

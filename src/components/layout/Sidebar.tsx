@@ -4,6 +4,7 @@ import { t, tp } from '../../i18n';
 import { useAnalysis } from '../../state/analysis';
 import { navigate, useRoute, type PageId } from '../../state/router';
 import { useApp } from '../../state/store';
+import { BuildVersion } from '../BuildVersion';
 import { GitHubCopilotIcon } from '../icons/brand';
 import { BrandMark } from '../icons/BrandMark';
 import { cx } from '../ui/cx';
@@ -95,6 +96,7 @@ export function Sidebar() {
         <a href="#/settings/data" className="inline-flex items-center gap-1 text-fg-muted underline-offset-2 hover:text-accent hover:underline">
           <Trash2 size={11} aria-hidden /> {t('Reset or delete saved settings')}
         </a>
+        <BuildVersion className="flex text-[10px] text-fg-subtle" />
       </div>
     </aside>
   );
