@@ -18,6 +18,8 @@ const arabic: Dict = {
   'Local build': 'بناء محلي',
   'Open the GitHub Actions run that built this version': 'افتح تشغيل GitHub Actions الذي بنى هذا الإصدار',
   'Open the commit this version was built from': 'افتح الإيداع الذي بُني منه هذا الإصدار',
+  'Source code': 'الشيفرة المصدرية',
+  'Open the source code of this app on GitHub': 'افتح الشيفرة المصدرية لهذا التطبيق على GitHub',
   'Show the app in {language}': 'عرض التطبيق باللغة {language}',
   'the app': 'التطبيق',
   'Load a different file': 'تحميل ملف آخر',

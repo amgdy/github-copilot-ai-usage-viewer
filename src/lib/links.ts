@@ -14,6 +14,9 @@ export interface DocLink {
 
 const DOCS = 'https://docs.github.com/en/enterprise-cloud@latest';
 
+/** The GitHub repository with the source code of this app. */
+export const APP_REPOSITORY_URL = 'https://github.com/amgdy/github-copilot-usage-lens';
+
 export const LINKS = {
   // Billing and AI credits
   copilotBilling: { label: 'GitHub Copilot billing', url: `${DOCS}/billing/concepts/product-billing/github-copilot-billing`, source: 'GitHub Docs' },

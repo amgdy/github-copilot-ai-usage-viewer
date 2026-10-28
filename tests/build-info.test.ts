@@ -38,3 +38,13 @@ describe('describeBuild', () => {
     expect(describeBuild({ ...actionsBuild, commit: 'not-a-sha' }).commitUrl).toBeUndefined();
   });
 });
+
+describe('source code link', () => {
+  it('points to the GitHub repository named in package.json', async () => {
+    const { APP_REPOSITORY_URL } = await import('../src/lib/links');
+    const { readFileSync } = await import('node:fs');
+    const packageJson = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+    expect(APP_REPOSITORY_URL.startsWith('https://github.com/')).toBe(true);
+    expect(packageJson.repository.url).toBe(`git+${APP_REPOSITORY_URL}.git`);
+  });
+});

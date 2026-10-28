@@ -26,7 +26,7 @@ jobs:
     name: Build the site
     needs: ci
     if: ${{ github.event_name == 'public' || !github.event.repository.private }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     steps:
       - name: Check out the code
@@ -54,7 +54,7 @@ jobs:
   deploy:
     name: Deploy
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     permissions:
       pages: write

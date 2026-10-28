@@ -93,7 +93,7 @@ Open the info button next to any number, or the Methodology page, for the full f
 
 ## Where the site comes from
 
-The sidebar and the start page show the version and the GitHub Actions build number. The build number opens the run that published the site, and the short commit code opens the exact code it was built from. Admins can check that the site is built from the public repository and nothing else.
+The sidebar and the start page show a "Source code" link to the GitHub repository, the version and the GitHub Actions build number. The build number opens the run that published the site, and the short commit code opens the exact code it was built from. Admins can check that the site is built from the public repository and nothing else.
 
 ## Official links
 

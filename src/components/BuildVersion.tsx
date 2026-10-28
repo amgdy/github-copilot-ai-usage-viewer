@@ -1,13 +1,29 @@
 import { t } from '../i18n';
 import { BUILD_INFO } from '../lib/build/buildInfo';
+import { APP_REPOSITORY_URL } from '../lib/links';
+import { GitHubIcon } from './icons/brand';
 import { cx } from './ui/cx';
 
-/** The app version and the GitHub Actions run that built it. A build made on a computer says "local build". */
+/**
+ * A link to the source code on GitHub, the app version and the GitHub Actions run that built it.
+ * A build made on a computer says "local build".
+ */
 export function BuildVersion({ className }: { className?: string }) {
   const { version, runNumber, shortCommit, runUrl, commitUrl, builtOn } = BUILD_INFO;
   const linkClass = 'underline-offset-2 hover:text-accent hover:underline';
   return (
     <span className={cx('num inline-flex flex-wrap items-center gap-x-1.5', className)}>
+      <a
+        href={APP_REPOSITORY_URL}
+        target="_blank"
+        rel="noreferrer"
+        className={cx('inline-flex items-center gap-1', linkClass)}
+        title={t('Open the source code of this app on GitHub')}
+      >
+        <GitHubIcon size={11} aria-hidden />
+        {t('Source code')}
+      </a>
+      <span aria-hidden>·</span>
       <span>{t('Version {version}', { version })}</span>
       <span aria-hidden>·</span>
       {runNumber !== undefined ? (

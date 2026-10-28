@@ -110,6 +110,7 @@ Pages: Overview, Usage and pool, Users, Segments, Models, Efficiency, Organizati
 
 ### Node and TypeScript
 - The project uses **Node 26 only**. `engines` in `package.json`, `.nvmrc`, the CI workflow and the Pages workflow all use that one version. Dependabot skips major updates of `@types/node` so the types stay on version 26.
+- The workflows run on the fixed runner image `ubuntu-26.04`, not `ubuntu-latest`, so a change of the default image never changes the build without notice.
 - Files in `scripts/` run with plain `node` and its built-in TypeScript support. Keep them to syntax that only needs the types removed: no `enum`, no `namespace` and no constructor parameter properties such as `constructor(private x: T)`. Import local files with the `.ts` extension. `tsc` enforces this (`erasableSyntaxOnly`).
 - Types are checked with two configs. `tsconfig.app.json` covers the browser code in `src/` and stops at ES2023, so `tsc` fails if that code uses features that not every browser has yet, such as `Temporal`. `tsconfig.node.json` covers the code that runs only in Node (`scripts/`, `tests/`, `vite.config.ts`) and allows the newest features (`ESNext`).
 - In code that runs only in Node, use the built-ins: `import.meta.dirname` for paths, `fs.globSync` to list files, `util.parseArgs` for options, `Temporal` for dates and `Map.prototype.getOrInsert` or `getOrInsertComputed` to group values. The date helpers in `tests/helpers.ts` use `Temporal`, so the tests check the app's own date math against a separate calendar.
