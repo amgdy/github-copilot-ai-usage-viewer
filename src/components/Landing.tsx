@@ -5,9 +5,11 @@ import { LanguageButton } from './layout/LanguageButton';
 import { fmtInt } from '../lib/utils/format';
 import { navigate } from '../state/router';
 import { loadSample } from '../state/loadSample';
+import { savedKeys } from '../state/savedData';
 import { datasetLabel, resolveTheme, useApp } from '../state/store';
 import { UPLOAD_ACCEPT, takeUploads } from '../pages/data/LoadControl';
 import { Brand } from './layout/Sidebar';
+import { DeleteSavedDataButton } from './DeleteSavedDataButton';
 import { Callout, DocLinks, Spinner } from './ui';
 import { cx } from './ui/cx';
 
@@ -42,6 +44,7 @@ export function Landing() {
   const theme = useApp((state) => state.theme);
   const setTheme = useApp((state) => state.setTheme);
   const dataset = useApp((state) => state.dataset);
+  const [hasSavedData] = useState(() => savedKeys().length > 0);
   const setPickingData = useApp((state) => state.setPickingData);
   const dark = resolveTheme(theme) === 'dark';
   const [over, setOver] = useState(false);
@@ -208,6 +211,11 @@ export function Landing() {
           {t('Columns the report needs: {columns} and the token columns. Other columns are ignored.', {
             columns: 'date, username, model, quantity, gross_amount, discount_amount, net_amount, total_monthly_quota, organization, cost_center_name',
           })}
+          {hasSavedData ? (
+            <span className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-1">
+              {t('This browser keeps your settings from an earlier visit.')} <DeleteSavedDataButton look="link" />
+            </span>
+          ) : null}
         </footer>
       </div>
     </div>

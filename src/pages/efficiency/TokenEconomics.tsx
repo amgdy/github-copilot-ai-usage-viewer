@@ -10,7 +10,7 @@ import { PriceSource } from '../models/parts';
 import { CacheHistogram, CacheTrend, LowCacheUsers } from './CacheCards';
 import { costSplitTokens, money, tokenRows, type TokenKind, type TokenRow } from './metrics';
 
-/** Four hues far apart (cobalt, moss, ochre, petrol), so cache read and output never look alike. */
+/** Four hues far apart (purple, green, yellow, blue), so cache read and output never look alike. */
 const kindColors = (chartColors: ChartColors): Record<TokenKind, string> => ({ input: chartColors.palette[2], cacheRead: chartColors.palette[3], cacheWrite: chartColors.palette[4], output: chartColors.accent });
 
 function mixOption(chartColors: ChartColors, rows: TokenRow[], withCost: boolean): EChartsOption {

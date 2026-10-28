@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-labelledby="usage-lens-title usage-lens-description">
+  <title id="usage-lens-title">GitHub Copilot Usage Lens</title>
+  <desc id="usage-lens-description">A coffee mug with a handle holds a shared credit pool. Blue liquid and rising usage bars are brought into focus by a magnifying lens. In an eight-second loop, the liquid level rises and falls while the lens scans the bars. Motion stops when reduced motion is requested.</desc>
+  <style>
+.animated-mark-scan, .animated-mark-counter-scan, .animated-mark-liquid {
+  animation-duration: 8s;
+  animation-timing-function: cubic-bezier(.45, 0, .25, 1);
+  animation-iteration-count: infinite;
+}
+.animated-mark-scan { animation-name: animated-mark-scanning; }
+.animated-mark-counter-scan { animation-name: animated-mark-counter-scanning; }
+.animated-mark-liquid { animation-name: animated-mark-level; }
+@keyframes animated-mark-scanning {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(-22px, 8px); }
+  50% { transform: translate(-14px, -24px); }
+  75% { transform: translate(10px, -10px); }
+}
+@keyframes animated-mark-counter-scanning {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(22px, -8px); }
+  50% { transform: translate(14px, 24px); }
+  75% { transform: translate(-10px, 10px); }
+}
+@keyframes animated-mark-level {
+  0%, 100% { transform: translateY(14px); }
+  25% { transform: translateY(-30px); }
+  50% { transform: translateY(-8px); }
+  75% { transform: translateY(10px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .animated-mark-scan, .animated-mark-counter-scan, .animated-mark-liquid {
+    animation: none;
+    transform: none;
+  }
+}
+</style>
+  <defs>
+    <clipPath id="animated-mark-vessel">
+      <path d="M59 61H169V177Q169 197 149 197H79Q59 197 59 177Z" />
+    </clipPath>
+    <clipPath id="animated-mark-focus">
+      <circle cx="158" cy="130" r="41" />
+    </clipPath>
+    <mask id="animated-mark-clearance" maskUnits="userSpaceOnUse" x="0" y="0" width="256" height="256">
+      <path fill="#fff" d="M0 0H256V256H0Z" />
+      <g class="animated-mark-scan" fill="#000">
+        <circle cx="158" cy="130" r="59" />
+        <path d="M193 165L224 196" fill="none" stroke="#000" stroke-width="31" stroke-linecap="round" />
+      </g>
+    </mask>
+  </defs>
+  <g mask="url(#animated-mark-clearance)">
+    <path d="M51 83H34C6 83 6 143 34 143H51" fill="none" stroke="#1f2328" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" />
+    <g clip-path="url(#animated-mark-vessel)" fill="#0969da">
+      <g class="animated-mark-liquid">
+        <path opacity=".18" d="M48 143C72 159 96 133 119 141S153 151 178 135V230H48Z" />
+        <path d="M48 143C72 159 96 133 119 141S153 151 178 135" fill="none" stroke="#0969da" stroke-width="2" opacity=".4" />
+      </g>
+      <path d="M76 139H94V188H76ZM103 115H121V188H103ZM130 91H148V188H130Z" />
+    </g>
+    <g fill="none" stroke="#1f2328" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M51 56V177Q51 208 82 208H146Q177 208 177 177V56" />
+      <ellipse cx="114" cy="56" rx="63" ry="18" />
+    </g>
+  </g>
+  <g class="animated-mark-scan">
+    <g clip-path="url(#animated-mark-focus)" fill="#0969da">
+      <g class="animated-mark-counter-scan">
+        <g class="animated-mark-liquid">
+          <path opacity=".18" d="M72 135C99 151 124 126 148 135S188 143 230 127V230H72Z" />
+          <path d="M72 135C99 151 124 126 148 135S188 143 230 127" fill="none" stroke="#0969da" stroke-width="2.5" opacity=".4" />
+        </g>
+        <path d="M97 156H116V210H97ZM124 132H143V210H124ZM151 108H170V210H151ZM178 84H197V210H178Z" />
+      </g>
+    </g>
+    <path d="M193 165L224 196" fill="none" stroke="#1f2328" stroke-width="15" stroke-linecap="round" />
+    <circle cx="158" cy="130" r="48" fill="none" stroke="#1f2328" stroke-width="10" />
+  </g>
+</svg>

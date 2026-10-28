@@ -34,6 +34,7 @@ import {
   type UserSet,
 } from '../src/lib/analytics/users';
 import { PRICE_CARD } from '../src/lib/pricing/card';
+import { DEMO_SEAT_COUNT } from '../src/lib/demo/generate';
 import {
   BAD_TEXT,
   analyzeCsv,
@@ -56,6 +57,9 @@ type Cat = 'Powerful' | 'Versatile' | 'Lightweight' | 'Unknown';
 const CARD_CATEGORY = new Map<string, Cat>(PRICE_CARD.map((pricedModel) => [pricedModel.name, pricedModel.category as Cat]));
 const makeFilters = (over: Partial<Filters> = {}): Filters => ({ ...emptyFilters(), ...over });
 type DemoPipeline = Awaited<ReturnType<typeof analyzeDemo>>;
+/** The default demo story: six runaway users start agent work in September, and a team of 22 joins in the last week. */
+const DEMO_RUNAWAY_USERS = 6;
+const DEMO_NEW_TEAM_SIZE = 22;
 
 // ---------------------------------------------------------------------------------------------
 // Independent oracle: per-user statistics recomputed from the raw CSV rows.
@@ -584,16 +588,18 @@ describe('user profiles on the demo dataset', () => {
     expect(pipeline.analysis.population.groups.persona.runaway.potential).toBeGreaterThan(0);
   });
 
-  it('segment sizes of the demo look like a realistic organisation', () => {
-    const groups = pipeline.analysis.population.groups;
-    expect(groups.persona.runaway.users).toBe(3);
+  it('segment sizes of the demo look like a realistic organization', () => {
+    const population = pipeline.analysis.population;
+    const groups = population.groups;
+    expect(population.profiles.length).toBe(DEMO_SEAT_COUNT);
+    expect(groups.persona.runaway.users).toBe(DEMO_RUNAWAY_USERS);
     expect(groups.tier.runaway.users).toBe(groups.persona.runaway.users);
-    expect(groups.lifecycle.new.users).toBeGreaterThan(0);
+    expect(groups.lifecycle.new.users).toBe(DEMO_NEW_TEAM_SIZE);
     expect(groups.lifecycle.lapsed.users).toBeGreaterThan(0);
-    expect(pipeline.analysis.population.hasCostCenters).toBe(true);
+    expect(population.hasCostCenters).toBe(true);
     expect(groups.trait.noCostCenter.users).toBeGreaterThan(0);
-    expect(pipeline.analysis.population.poolFlow.takers).toBeGreaterThan(0);
-    expect(pipeline.analysis.population.poolFlow.lenders).toBeGreaterThan(0);
+    expect(population.poolFlow.takers).toBeGreaterThan(0);
+    expect(population.poolFlow.lenders).toBeGreaterThan(0);
   });
 });
 
@@ -651,8 +657,9 @@ describe('profile settings change the classification', () => {
     expect(everyone.groups.lifecycle.lapsed.users).toBe(everyone.profiles.filter((profile) => !profile.isNew && profile.lastDay < pipeline.store.maxDay).length);
     expect(everyone.groups.lifecycle.lapsed.users).toBeGreaterThan(pipeline.analysis.population.groups.lifecycle.lapsed.users);
     expect(withSettings({ newUserDays: 0 }).a.population.groups.lifecycle.new.users).toBe(0);
-    // nobody can be new when the "new" window is longer than the data span minus the grace period
-    expect(withSettings({ newUserDays: 60 }).a.population.groups.lifecycle.new.users).toBe(0);
+    // A new user needs a full "new" window of data before the first day, so nobody is new when the window is as long as the data.
+    const dataDays = pipeline.store.maxDay - pipeline.store.minDay + 1;
+    expect(withSettings({ newUserDays: dataDays }).a.population.groups.lifecycle.new.users).toBe(0);
   });
 
   it('a higher activity threshold means fewer active days and a lower engagement', () => {
@@ -1373,7 +1380,7 @@ describe('per-user action rows', () => {
     const analysis = pipeline.run(makeFilters({ tiers: ['runaway'] }));
     const { rows } = userActionRows(analysis.users, pipeline.settings);
     expect(rows.length).toBe(analysis.users.profiles.length);
-    expect(rows.length).toBe(3);
+    expect(rows.length).toBe(DEMO_RUNAWAY_USERS);
   });
 
   it('adds the token columns: rounded counts that add up to the total', () => {

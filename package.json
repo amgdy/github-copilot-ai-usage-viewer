@@ -1,26 +1,27 @@
 {
-  "name": "github-copilot-ai-usage-viewer",
+  "name": "github-copilot-ai-usage-analysis",
   "private": true,
   "version": "1.0.0",
-  "description": "Interactive viewer for GitHub Copilot AI usage (AI credits) CSV reports: filters, rankings, user classification and cost-optimization recommendations. Runs 100% in the browser.",
+  "description": "Interactive analysis of the GitHub Copilot AI credits usage report (CSV): filters, rankings, user groups and cost-saving recommendations. Runs only in the browser.",
   "license": "MIT",
   "author": {
     "name": "amgdy",
     "url": "https://github.com/amgdy"
   },
-  "homepage": "https://amgdy.github.io/github-copilot-ai-usage-viewer/",
+  "homepage": "https://amgdy.github.io/github-copilot-ai-usage-analysis/",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/amgdy/github-copilot-ai-usage-viewer.git"
+    "url": "git+https://github.com/amgdy/github-copilot-ai-usage-analysis.git"
   },
   "bugs": {
-    "url": "https://github.com/amgdy/github-copilot-ai-usage-viewer/issues"
+    "url": "https://github.com/amgdy/github-copilot-ai-usage-analysis/issues"
   },
   "keywords": [
     "github-copilot",
     "ai-credits",
     "usage-report",
     "usage-analytics",
+    "usage-analysis",
     "cost-optimization",
     "finops",
     "dashboard",

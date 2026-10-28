@@ -8,10 +8,10 @@ export const SAMPLE_FILE_NAME = 'sample-usage-report.csv';
 const pad = (value: number) => String(value).padStart(2, '0');
 const isoDay = (date: Date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 
-/** The sample covers last month and this month up to yesterday, so it looks like a fresh export. */
+/** The sample covers the two months before this one and this month up to yesterday, so it looks like a fresh export. */
 export function sampleRange(today = new Date()): { start: string; end: string } {
   const end = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1);
-  const start = new Date(end.getFullYear(), end.getMonth() - 1, 1);
+  const start = new Date(end.getFullYear(), end.getMonth() - 2, 1);
   return { start: isoDay(start), end: isoDay(end) };
 }
 

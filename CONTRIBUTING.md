@@ -1,6 +1,6 @@
 # Contributing
 
-Thank you for helping. This project is a viewer for the GitHub Copilot AI credits usage report. It runs only in the browser.
+Thank you for helping. This project, GitHub Copilot Usage Lens, analyzes the GitHub Copilot AI credits usage report. It runs only in the browser.
 
 Read [AGENTS.md](AGENTS.md) first. It explains how the project is organized and the rules for every change.
 
@@ -18,8 +18,8 @@ Usage reports and license lists contain names and other private details.
 You need Node 26. If you use nvm or fnm, run `nvm use` or `fnm use` in the project folder. Both read the `.nvmrc` file.
 
 ```bash
-git clone https://github.com/amgdy/github-copilot-ai-usage-viewer.git
-cd github-copilot-ai-usage-viewer
+git clone https://github.com/amgdy/github-copilot-ai-usage-analysis.git
+cd github-copilot-ai-usage-analysis
 npm install
 npm run dev
 ```

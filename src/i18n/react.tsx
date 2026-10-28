@@ -1,9 +1,14 @@
 import { Fragment, useSyncExternalStore, type ReactNode } from 'react';
-import { getLocale, subscribeLocale, t, type Locale } from './core';
+import { getDigitStyle, getLocale, subscribeLocale, t, type DigitStyle, type Locale } from './core';
 
 /** The current language. Components that call t() re-render anyway, because the app remounts on a language change. */
 export function useLocale(): Locale {
   return useSyncExternalStore(subscribeLocale, getLocale, getLocale);
+}
+
+/** How Arabic shows digits right now. The app remounts when it changes, like it does for the language. */
+export function useDigitStyle(): DigitStyle {
+  return useSyncExternalStore(subscribeLocale, getDigitStyle, getDigitStyle);
 }
 
 /**

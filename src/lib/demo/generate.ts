@@ -1,13 +1,18 @@
 import { PRICE_CARD, type CardEntry } from '../pricing/card.ts';
-import { dayFromYMD, dowOf, isoDate } from '../utils/date.ts';
+import { dayFromYMD, dowOf, isoDate, monthEndDay, monthIndexOf, monthStartDay } from '../utils/date.ts';
 
 /**
  * Deterministic synthetic GitHub Copilot AI-credit report. It mirrors the real export format and the real billing
- * rules: gross = list price of the tokens (10% less for requests handled by Auto model selection), the monthly pool
- * (the sum of the seats' included credits) covers usage first-come-first-served, and whatever is left over is billed.
+ * rules: gross = price card price of the tokens (10% less for requests handled by Auto model selection), the monthly
+ * pool (the sum of the seats' included credits) covers usage first-come-first-served, and whatever is left over is billed.
+ *
+ * The default range covers three months of a made-up company with Enterprise Managed Users logins (`KofiIto_nwind`):
+ * month 1 is a careful rollout that leaves the pool under-used, month 2 has runaway agent sessions that drain the pool
+ * and end in a release freeze, and month 3 is calmer and healthier, with a holiday and a new team joining at the end.
+ * Together with the small `northwind-labs` organization, this lets every recommendation show in some view.
  */
 
-/** Share of the list price that Auto model selection bills, as in a real export: the discount is inside `quantity`. */
+/** Share of the price card price that Auto model selection bills, as in a real export: the discount is inside `quantity`. */
 const AUTO_PRICE_FACTOR = 0.9;
 
 export interface DemoOptions {
@@ -103,36 +108,60 @@ interface Persona {
   longFrac: [number, number];
   /** Month-over-month growth of the user's spend (end of period vs start). */
   growth: [number, number];
+  /**
+   * Spend multiplier per calendar month of the report: the first month, the second month, and every month after that.
+   * The default three months tell a story: a careful first month, a second month with agent work that drains the pool,
+   * and a third month where session limits calm the agent work and coaching lifts everyday use.
+   */
+  monthScale: [number, number, number];
 }
 
 const PERSONAS: Persona[] = [
-  { id: 'champion', count: 8, util: [1.0, 2.1], pWork: [0.85, 0.98], pWeekend: 0.12, sigma: 0.55, mix: [['balanced', 3], ['frontier', 1]], autoRate: [0.3, 0.8], cacheGood: 0.9, longFrac: [0, 0.01], growth: [0.9, 1.3] },
-  { id: 'core', count: 8, util: [0.5, 0.95], pWork: [0.6, 0.85], pWeekend: 0.05, sigma: 0.6, mix: [['balanced', 5], ['efficient', 1], ['frontier', 1]], autoRate: [0, 0.6], cacheGood: 0.8, longFrac: [0, 0.01], growth: [0.85, 1.3] },
-  { id: 'steady', count: 16, util: [0.12, 0.38], pWork: [0.4, 0.8], pWeekend: 0.03, sigma: 0.65, mix: [['balanced', 3], ['efficient', 3], ['frontier', 1]], autoRate: [0, 0.5], cacheGood: 0.7, longFrac: [0, 0], growth: [0.85, 1.3] },
-  { id: 'light', count: 4, util: [0.1, 0.3], pWork: [0.1, 0.2], pWeekend: 0.01, sigma: 0.7, mix: [['efficient', 2], ['balanced', 1]], autoRate: [0, 0.4], cacheGood: 0.7, longFrac: [0, 0], growth: [0.8, 1.2] },
-  { id: 'burst', count: 7, util: [0.25, 0.9], pWork: [0.08, 0.2], pWeekend: 0.02, sigma: 1.15, mix: [['frontier', 2], ['balanced', 1]], autoRate: [0, 0.2], cacheGood: 0.5, longFrac: [0, 0.03], growth: [0.8, 1.5] },
-  { id: 'dormant', count: 7, util: [0.005, 0.07], pWork: [0.03, 0.1], pWeekend: 0, sigma: 0.6, mix: [['efficient', 1]], autoRate: [0, 0.2], cacheGood: 0.5, longFrac: [0, 0], growth: [0.7, 1] },
-  { id: 'runaway', count: 3, util: [5, 9], pWork: [0.8, 0.95], pWeekend: 0.25, sigma: 0.5, mix: [['heavy', 1]], autoRate: [0, 0.05], cacheGood: 0.2, longFrac: [0.25, 0.6], growth: [1.1, 1.8] },
-  { id: 'new', count: 4, util: [0.3, 0.9], pWork: [0.6, 0.9], pWeekend: 0.05, sigma: 0.6, mix: [['balanced', 1]], autoRate: [0, 0.6], cacheGood: 0.7, longFrac: [0, 0], growth: [1, 1.6] },
-  { id: 'lapsed', count: 3, util: [0.3, 0.8], pWork: [0.5, 0.8], pWeekend: 0.03, sigma: 0.6, mix: [['balanced', 1], ['efficient', 1]], autoRate: [0, 0.4], cacheGood: 0.7, longFrac: [0, 0], growth: [0.6, 1] },
+  { id: 'champion', count: 14, util: [1.0, 2.1], pWork: [0.85, 0.98], pWeekend: 0.12, sigma: 0.55, mix: [['balanced', 3], ['frontier', 1]], autoRate: [0.3, 0.8], cacheGood: 0.9, longFrac: [0, 0.01], growth: [0.9, 1.3], monthScale: [0.75, 1, 1.2] },
+  { id: 'core', count: 18, util: [0.5, 0.95], pWork: [0.6, 0.85], pWeekend: 0.05, sigma: 0.6, mix: [['balanced', 5], ['efficient', 1], ['frontier', 1]], autoRate: [0, 0.6], cacheGood: 0.8, longFrac: [0, 0.01], growth: [0.85, 1.3], monthScale: [0.6, 1, 1.35] },
+  { id: 'steady', count: 34, util: [0.12, 0.38], pWork: [0.4, 0.8], pWeekend: 0.03, sigma: 0.65, mix: [['balanced', 3], ['efficient', 3], ['frontier', 1]], autoRate: [0, 0.5], cacheGood: 0.7, longFrac: [0, 0], growth: [0.85, 1.3], monthScale: [0.55, 1, 1.4] },
+  { id: 'light', count: 12, util: [0.1, 0.3], pWork: [0.1, 0.2], pWeekend: 0.01, sigma: 0.7, mix: [['efficient', 2], ['balanced', 1]], autoRate: [0, 0.4], cacheGood: 0.7, longFrac: [0, 0], growth: [0.8, 1.2], monthScale: [0.7, 1, 1.3] },
+  { id: 'burst', count: 12, util: [0.25, 0.9], pWork: [0.08, 0.2], pWeekend: 0.02, sigma: 1.15, mix: [['frontier', 2], ['balanced', 1]], autoRate: [0, 0.2], cacheGood: 0.5, longFrac: [0, 0.03], growth: [0.8, 1.5], monthScale: [0.6, 1, 1.3] },
+  { id: 'dormant', count: 14, util: [0.005, 0.07], pWork: [0.03, 0.1], pWeekend: 0, sigma: 0.6, mix: [['efficient', 1]], autoRate: [0, 0.2], cacheGood: 0.5, longFrac: [0, 0], growth: [0.7, 1], monthScale: [1, 1, 1] },
+  { id: 'runaway', count: 6, util: [8, 14], pWork: [0.8, 0.95], pWeekend: 0.25, sigma: 0.5, mix: [['heavy', 1]], autoRate: [0, 0.05], cacheGood: 0.2, longFrac: [0.25, 0.6], growth: [1.1, 1.8], monthScale: [1, 1, 0.1] },
+  { id: 'new', count: 22, util: [0.6, 1.4], pWork: [0.6, 0.9], pWeekend: 0.05, sigma: 0.6, mix: [['balanced', 1]], autoRate: [0, 0.6], cacheGood: 0.7, longFrac: [0, 0], growth: [1, 1.6], monthScale: [1, 1, 1] },
+  { id: 'lapsed', count: 8, util: [0.3, 0.8], pWork: [0.5, 0.8], pWeekend: 0.03, sigma: 0.6, mix: [['balanced', 1], ['efficient', 1]], autoRate: [0, 0.4], cacheGood: 0.7, longFrac: [0, 0], growth: [0.6, 1], monthScale: [0.8, 1, 1] },
 ];
+
+/** Total number of made-up seats. Each one gets at least one row, so the report always shows this many users. */
+export const DEMO_SEAT_COUNT = PERSONAS.reduce((sum, persona) => sum + persona.count, 0);
+
+/**
+ * Made-up enterprise shortcode. GitHub Enterprise Managed Users get a login made of the Entra ID login name, an underscore
+ * and the enterprise shortcode, such as `AvaNguyen_nwind`.
+ */
+export const DEMO_SHORTCODE = 'nwind';
 
 const FIRST = [
-  'ava', 'liam', 'noah', 'mia', 'zoe', 'omar', 'lena', 'ravi', 'chloe', 'ethan', 'sofia', 'jack', 'nina', 'yuki', 'amir', 'ella', 'hugo', 'ivy', 'kai', 'luca',
-  'maya', 'nico', 'olive', 'pablo', 'quinn', 'rosa', 'sam', 'tara', 'uma', 'vik', 'wren', 'xena', 'yara', 'zane', 'abel', 'bea', 'cole', 'dara', 'eli', 'fay',
-  'gus', 'hana', 'ian', 'jade', 'kofi', 'lila', 'milo', 'nora', 'otto', 'pia', 'remy', 'sana', 'theo', 'una', 'vera', 'will', 'xavi', 'yana', 'zack', 'anya',
+  'Ava', 'Liam', 'Noah', 'Mia', 'Zoe', 'Omar', 'Lena', 'Ravi', 'Chloe', 'Ethan', 'Sofia', 'Jack', 'Nina', 'Yuki', 'Amir', 'Ella', 'Hugo', 'Ivy', 'Kai', 'Luca',
+  'Maya', 'Nico', 'Olive', 'Pablo', 'Quinn', 'Rosa', 'Sam', 'Tara', 'Uma', 'Vik', 'Wren', 'Xena', 'Yara', 'Zane', 'Abel', 'Bea', 'Cole', 'Dara', 'Eli', 'Fay',
+  'Gus', 'Hana', 'Ian', 'Jade', 'Kofi', 'Lila', 'Milo', 'Nora', 'Otto', 'Pia', 'Remy', 'Sana', 'Theo', 'Una', 'Vera', 'Will', 'Xavi', 'Yana', 'Zack', 'Anya',
 ];
 const LAST = [
-  'nguyen', 'patel', 'garcia', 'kim', 'rossi', 'khan', 'silva', 'novak', 'olsen', 'meyer', 'sato', 'ali', 'cohen', 'dubois', 'fischer', 'gupta', 'haas', 'ito', 'jones', 'klein',
-  'lopez', 'moreau', 'nakamura', 'ortiz', 'petrov', 'quist', 'reyes', 'singh', 'tan', 'ueda', 'vogel', 'wong', 'xu', 'yilmaz', 'zhou', 'adler', 'baker', 'chen', 'diaz', 'evans',
-  'ford', 'grant', 'hill', 'ibarra', 'joshi', 'kaur', 'lund', 'mori', 'noor', 'owens', 'park', 'reid', 'shah', 'tran', 'usman', 'voss', 'ward', 'yamada', 'zahn', 'berg',
+  'Nguyen', 'Patel', 'Garcia', 'Kim', 'Rossi', 'Khan', 'Silva', 'Novak', 'Olsen', 'Meyer', 'Sato', 'Ali', 'Cohen', 'Dubois', 'Fischer', 'Gupta', 'Haas', 'Ito', 'Jones', 'Klein',
+  'Lopez', 'Moreau', 'Nakamura', 'Ortiz', 'Petrov', 'Quist', 'Reyes', 'Singh', 'Tan', 'Ueda', 'Vogel', 'Wong', 'Xu', 'Yilmaz', 'Zhou', 'Adler', 'Baker', 'Chen', 'Diaz', 'Evans',
+  'Ford', 'Grant', 'Hill', 'Ibarra', 'Joshi', 'Kaur', 'Lund', 'Mori', 'Noor', 'Owens', 'Park', 'Reid', 'Shah', 'Tran', 'Usman', 'Voss', 'Ward', 'Yamada', 'Zahn', 'Berg',
 ];
 
-const ORGS: { name: string; weight: number; centers: string[] }[] = [
-  { name: 'northwind-platform', weight: 4, centers: ['Platform Services', 'Security Operations'] },
-  { name: 'northwind-apps', weight: 3.4, centers: ['Mobile Studio', 'Web Storefront', 'Release Quality'] },
-  { name: 'northwind-data', weight: 2.6, centers: ['Analytics Lab'] },
+interface DemoOrg {
+  name: string;
+  weight: number;
+  centers: string[];
+}
+
+const ORGS: DemoOrg[] = [
+  { name: 'northwind-platform', weight: 4, centers: ['Developer Experience', 'Platform Services', 'Security Operations'] },
+  { name: 'northwind-apps', weight: 3.4, centers: ['Mobile Studio', 'Release Quality', 'Web Storefront'] },
+  { name: 'northwind-data', weight: 2.6, centers: ['Analytics Lab', 'Data Engineering'] },
+  // A small lab where one agent-heavy user carries most of the usage.
+  { name: 'northwind-labs', weight: 0.5, centers: ['Applied AI Research'] },
 ];
+const LABS = ORGS[3];
 
 const REPOS = ['billing-api', 'storefront-ui', 'ios-client', 'etl-jobs', 'deploy-scripts', 'login-service', 'model-lab'];
 
@@ -155,6 +184,7 @@ interface DemoUser {
   cacheGood: boolean;
   longFrac: number;
   sigma: number;
+  monthScale: [number, number, number];
 }
 
 interface Row {
@@ -234,20 +264,30 @@ function throughAuto(card: CardEntry, priced: Priced, longFrac: number): Priced 
   return { ...tokens, cost: listCost(card, tokens, longFrac) };
 }
 
+/** An Enterprise Managed Users login: the Entra ID login name, then `_` and the enterprise shortcode. Name clashes get a number, as in Entra ID. */
+function loginOf(random: Rng, taken: Set<string>): string {
+  const loginName = `${FIRST[Math.floor(random() * FIRST.length)]}${LAST[Math.floor(random() * LAST.length)]}`;
+  let login = `${loginName}_${DEMO_SHORTCODE}`;
+  for (let suffix = 2; taken.has(login); suffix++) login = `${loginName}${suffix}_${DEMO_SHORTCODE}`;
+  taken.add(login);
+  return login;
+}
+
 function buildUsers(random: Rng, firstDay: number, lastDay: number): DemoUser[] {
   const users: DemoUser[] = [];
-  const nameKeys = new Set<string>();
-  const total = PERSONAS.reduce((sum, persona) => sum + persona.count, 0);
+  const logins = new Set<string>();
   const span = lastDay - firstDay;
-  let userCount = 0;
+  // Agent work starts in the second month of the report; with a one-month report it starts on the first day.
+  const secondMonthStart = Math.min(lastDay, monthStartDay(monthIndexOf(firstDay) + 1));
+  let labsRunawayPlaced = false;
   for (const persona of PERSONAS) {
     for (let k = 0; k < persona.count; k++) {
-      let name = '';
-      do {
-        name = `${FIRST[Math.floor(random() * FIRST.length)]}-${LAST[Math.floor(random() * LAST.length)]}`;
-      } while (nameKeys.has(name));
-      nameKeys.add(name);
-      const org = pickWeighted(random, ORGS.map((orgOption) => [orgOption, orgOption.weight] as [(typeof ORGS)[number], number]));
+      const name = loginOf(random, logins);
+      let org = pickWeighted(random, ORGS.map((orgOption) => [orgOption, orgOption.weight] as [DemoOrg, number]));
+      if (persona.id === 'runaway' && !labsRunawayPlaced) {
+        org = LABS;
+        labsRunawayPlaced = true;
+      } else if (persona.id === 'runaway' && org === LABS) org = ORGS[0];
       const enterprise = chance(random, persona.id === 'runaway' ? 0.4 : 0.34);
       const quota = enterprise ? 3900 : 1900;
       const utilization = between(random, persona.util[0], persona.util[1]);
@@ -256,15 +296,17 @@ function buildUsers(random: Rng, firstDay: number, lastDay: number): DemoUser[] 
       const base = (utilization * quota * 0.01) / (expectedDays * Math.exp((persona.sigma * persona.sigma) / 2));
       let first = firstDay;
       let last = lastDay;
-      if (persona.id === 'new') first = lastDay - Math.floor(between(random, 3, 12));
+      // A new team joins during the last week, so recent usage grows.
+      if (persona.id === 'new') first = lastDay - Math.floor(between(random, 0, 7));
       if (persona.id === 'lapsed') last = lastDay - Math.floor(between(random, 9, 30));
+      if (persona.id === 'runaway') first = Math.max(firstDay, secondMonthStart + Math.floor(between(random, 0, 4)));
       if (persona.id === 'burst' && chance(random, 0.3)) first = firstDay + Math.floor(between(random, 3, span / 2));
       const noCostCenter = persona.id !== 'runaway' && chance(random, 0.09);
       users.push({
         name,
         persona,
         org: org.name,
-        org2: !noCostCenter && chance(random, 0.04) ? ORGS.find((otherOrg) => otherOrg.name !== org.name)!.name : null,
+        org2: !noCostCenter && org !== LABS && chance(random, 0.04) ? ORGS.find((otherOrg) => otherOrg.name !== org.name)!.name : null,
         costCenter: noCostCenter ? '' : org.centers[Math.floor(random() * org.centers.length)],
         quota,
         first,
@@ -278,11 +320,11 @@ function buildUsers(random: Rng, firstDay: number, lastDay: number): DemoUser[] 
         cacheGood: chance(random, persona.cacheGood),
         longFrac: between(random, persona.longFrac[0], persona.longFrac[1]),
         sigma: persona.sigma,
+        monthScale: persona.monthScale,
       });
-      userCount++;
     }
   }
-  if (userCount !== total) throw new Error('persona counts do not add up');
+  if (users.length !== DEMO_SEAT_COUNT) throw new Error('persona counts do not add up');
   return users;
 }
 
@@ -291,7 +333,7 @@ const formatNumber = (value: number): string => String(Number(value.toFixed(9)))
 
 export function generateDemo(options: DemoOptions = {}): DemoResult {
   const random = mulberry32(options.seed ?? 20261026);
-  const [startYear, startMonth, startDayOfMonth] = (options.start ?? '2026-09-01').split('-').map(Number);
+  const [startYear, startMonth, startDayOfMonth] = (options.start ?? '2026-08-01').split('-').map(Number);
   const [endYear, endMonth, endDayOfMonth] = (options.end ?? '2026-10-26').split('-').map(Number);
   const firstDay = dayFromYMD(startYear, startMonth - 1, startDayOfMonth);
   const lastDay = dayFromYMD(endYear, endMonth - 1, endDayOfMonth);
@@ -301,11 +343,19 @@ export function generateDemo(options: DemoOptions = {}): DemoResult {
   const span = Math.max(1, lastDay - firstDay);
   // Team-wide spike days (e.g. a hackathon): everybody uses a bit more.
   const spikeDays = new Set<number>([firstDay + Math.floor(span * 0.45), firstDay + Math.floor(span * 0.78)]);
+  const firstMonth = monthIndexOf(firstDay);
+  const monthNumber = (day: number): number => Math.min(2, monthIndexOf(day) - firstMonth);
+  // A release freeze in the last week of the second month: fewer people use GitHub Copilot.
+  const freezeEnd = monthEndDay(firstMonth + 1);
+  const isFreeze = (day: number): boolean => freezeEnd <= lastDay && day > freezeEnd - 7 && day <= freezeEnd;
+  // A two-day company holiday in the week before the last one, so the last week shows a clear rise.
+  const holidays = new Set<number>();
+  for (let day = lastDay - 11; day <= lastDay - 7 && holidays.size < 2; day++) if (day >= firstDay && dowOf(day) < 5) holidays.add(day);
 
   /** One active day of one user: one to three model rows. */
   const emitUserDay = (randomStream: Rng, user: DemoUser, day: number, spike: boolean): void => {
     const growth = 1 + (user.growth - 1) * ((day - firstDay) / span);
-    const dayTarget = logNormal(randomStream, user.base * growth * (spike ? 2.4 : 1), user.sigma);
+    const dayTarget = logNormal(randomStream, user.base * growth * user.monthScale[monthNumber(day)] * (spike ? 2.4 : 1), user.sigma);
     const modelCount = 1 + (chance(randomStream, 0.45) ? 1 : 0) + (chance(randomStream, 0.15) ? 1 : 0);
     const used = new Set<string>();
     const weights = Array.from({ length: modelCount }, () => 0.25 + randomStream());
@@ -350,21 +400,23 @@ export function generateDemo(options: DemoOptions = {}): DemoResult {
   for (let day = firstDay; day <= lastDay; day++) {
     const weekday = dowOf(day) < 5;
     const spike = spikeDays.has(day);
+    const freeze = isFreeze(day);
+    const quiet = freeze ? 0.35 : holidays.has(day) ? 0.25 : 1;
     for (const user of users) {
       if (day < user.first || day > user.last) continue;
-      const probability = (weekday ? user.pWork : user.pWeekend) * (spike && weekday ? 1.25 : 1);
+      const probability = (weekday ? user.pWork : user.pWeekend) * (spike && weekday ? 1.25 : 1) * quiet;
       if (!chance(random, Math.min(0.99, probability))) continue;
       active.add(user);
       emitUserDay(random, user, day, spike);
     }
     // Repository-level products (no user): code quality and code security scans.
-    if (weekday && chance(random, 0.55)) {
-      const scanCount = 1 + Math.floor(random() * 3);
+    if (weekday && chance(random, 0.75)) {
+      const scanCount = 1 + Math.floor(random() * 4);
       for (let i = 0; i < scanCount; i++) {
         const security = chance(random, 0.35);
         const model = security ? 'GPT-5.3-Codex' : 'GPT-5.6 Terra';
         const card = CARD.get(model)!;
-        const usage = priceRow(random, card, between(random, 0.002, 0.06), true, 0);
+        const usage = priceRow(random, card, between(random, 0.25, 3), true, 0);
         rows.push({
           day,
           user: '',

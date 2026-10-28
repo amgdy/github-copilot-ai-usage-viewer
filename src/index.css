@@ -3,101 +3,228 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /*
- * Brand theme: ink on warm paper, white panels drawn with hairlines, and one petrol color for the brand,
- * links and the first chart series. Petrol stands for the shared pool of included credits.
+ * Brand theme, inspired by GitHub's Primer colors: calm neutral grays, white panels drawn with hairlines,
+ * GitHub blue for the brand, links and the first chart series, and GitHub green for the main action.
  * Chart tokens stay as literal colors because the canvas renderer cannot resolve color-mix().
  */
 :root,
 html[data-theme='light'] {
   color-scheme: light;
-  --theme-background: #f5f4ef;
+  --theme-background: #f2f4f7;
   --theme-surface: #ffffff;
-  --theme-text: #1a1a17;
-  --theme-muted: #5e5d56;
-  --theme-subtle: #6b6a62;
-  --theme-accent: #0e6e74;
-  --theme-accentHover: #0a575c;
-  --theme-soft: #e3efee;
-  --theme-border: #e2e0d8;
-  --theme-borderMuted: #ebe9e2;
-  --theme-secondary: #3f63c2;
+  --theme-text: #1f2328;
+  --theme-muted: #4b535d;
+  --theme-subtle: #656d76;
+  --theme-accent: #0969da;
+  --theme-accentHover: #0550ae;
+  --theme-soft: #ddf4ff;
+  --theme-border: #c8d1da;
+  --theme-borderMuted: #dee3e8;
+  --theme-secondary: #8250df;
   --theme-onAccent: #ffffff;
-  --theme-primary: #1a1a17;
-  --theme-primaryHover: #383832;
+  --theme-primary: #1f883d;
+  --theme-primaryHover: #1a7f37;
   --theme-onPrimary: #ffffff;
-  --theme-focus: #0e6e74;
-  --theme-controlBorder: #c9c7bd;
-  --theme-success: #24773e;
-  --theme-warning: #9a5b00;
-  --theme-danger: #b42318;
-  --theme-yellow: #b98900;
-  --theme-orange: #b4531f;
-  --theme-ink: #1a1a17;
-  --theme-surfaceSoft: #f0efe9;
-  --theme-surfaceSunken: #e8e6df;
-  --theme-axis: #b9b7ad;
-  --theme-highlight: rgba(14, 110, 116, 0.12);
+  --theme-focus: #0969da;
+  --theme-controlBorder: #b6c0ca;
+  --theme-success: #1a7f37;
+  --theme-warning: #9a5800;
+  --theme-danger: #cf222e;
+  --theme-yellow: #bf8700;
+  --theme-orange: #bc4c00;
+  --theme-ink: #1f2328;
+  --theme-surfaceSoft: #f6f8fa;
+  --theme-surfaceSunken: #eaeef2;
+  --theme-axis: #9aa5b1;
+  --theme-highlight: rgba(9, 105, 218, 0.1);
   --theme-shadow: none;
-  --theme-shadow-pop: 0 1px 2px rgba(26, 26, 23, 0.06), 0 10px 28px -8px rgba(26, 26, 23, 0.22);
-  --theme-shadow-drawer: 0 18px 48px -12px rgba(26, 26, 23, 0.3);
-  --cp-series-1: #0e6e74;
-  --cp-series-2: #c8643f;
-  --cp-series-3: #3f63c2;
-  --cp-series-4: #6e9a3a;
-  --cp-series-5: #d19a2a;
-  --cp-series-6: #8e4f96;
-  --cp-series-7: #5fa8ac;
-  --cp-series-8: #b8463b;
-  --cp-series-9: #2c3e66;
-  --cp-series-10: #bfae8c;
-  --cp-series-11: #6a7686;
-  --cp-series-12: #a3a096;
+  --theme-shadow-pop: 0 1px 2px rgba(31, 35, 40, 0.06), 0 10px 28px -8px rgba(31, 35, 40, 0.2);
+  --theme-shadow-drawer: 0 18px 48px -12px rgba(31, 35, 40, 0.28);
+  --cp-series-1: #0969da;
+  --cp-series-2: #e16f24;
+  --cp-series-3: #8250df;
+  --cp-series-4: #2da44e;
+  --cp-series-5: #b08800;
+  --cp-series-6: #bf3989;
+  --cp-series-7: #179b9b;
+  --cp-series-8: #cf222e;
+  --cp-series-9: #856d4c;
+  --cp-series-10: #54aeff;
+  --cp-series-11: #6e7781;
+  --cp-series-12: #9aa5b1;
 }
 
 html[data-theme='dark'] {
   color-scheme: dark;
-  --theme-background: #11110f;
-  --theme-surface: #191917;
-  --theme-text: #edece6;
-  --theme-muted: #a8a79f;
-  --theme-subtle: #8c8b83;
-  --theme-accent: #4fc2c4;
-  --theme-accentHover: #74d3d4;
-  --theme-soft: #14302f;
-  --theme-border: #2e2e2a;
-  --theme-borderMuted: #252522;
-  --theme-secondary: #7d9cf0;
-  --theme-onAccent: #0b1f1f;
-  --theme-primary: #edece6;
-  --theme-primaryHover: #d4d3cc;
-  --theme-onPrimary: #11110f;
-  --theme-focus: #4fc2c4;
-  --theme-controlBorder: #45453f;
-  --theme-success: #5cc27e;
-  --theme-warning: #e0a43a;
-  --theme-danger: #f0705f;
+  --theme-background: #0d1117;
+  --theme-surface: #151b23;
+  --theme-text: #f0f6fc;
+  --theme-muted: #9198a1;
+  --theme-subtle: #9198a1;
+  --theme-accent: #4493f8;
+  --theme-accentHover: #79b8ff;
+  --theme-soft: #12253f;
+  --theme-border: #3d444d;
+  --theme-borderMuted: #2a3038;
+  --theme-secondary: #ab7df8;
+  --theme-onAccent: #0d1117;
+  --theme-primary: #238636;
+  --theme-primaryHover: #29903b;
+  --theme-onPrimary: #ffffff;
+  --theme-focus: #4493f8;
+  --theme-controlBorder: #3d444d;
+  --theme-success: #3fb950;
+  --theme-warning: #d29922;
+  --theme-danger: #f85149;
   --theme-yellow: #e3b341;
-  --theme-orange: #f0915a;
-  --theme-ink: #edece6;
-  --theme-surfaceSoft: #20201d;
-  --theme-surfaceSunken: #2a2a26;
-  --theme-axis: #55554e;
-  --theme-highlight: rgba(79, 194, 196, 0.18);
+  --theme-orange: #db6d28;
+  --theme-ink: #f0f6fc;
+  --theme-surfaceSoft: #1c2128;
+  --theme-surfaceSunken: #262c36;
+  --theme-axis: #545d68;
+  --theme-highlight: rgba(68, 147, 248, 0.16);
   --theme-shadow: none;
-  --theme-shadow-pop: 0 1px 2px rgba(0, 0, 0, 0.4), 0 12px 32px -8px rgba(0, 0, 0, 0.6);
-  --theme-shadow-drawer: 0 18px 48px -12px rgba(0, 0, 0, 0.7);
-  --cp-series-1: #4fc2c4;
-  --cp-series-2: #e58a62;
-  --cp-series-3: #7d9cf0;
-  --cp-series-4: #9cc266;
-  --cp-series-5: #e9b850;
-  --cp-series-6: #c08ac8;
-  --cp-series-7: #8fd0d0;
-  --cp-series-8: #e36f62;
-  --cp-series-9: #a9b8da;
-  --cp-series-10: #d6c7a6;
-  --cp-series-11: #9aa5b3;
-  --cp-series-12: #8a877d;
+  --theme-shadow-pop: 0 1px 2px rgba(1, 4, 9, 0.4), 0 12px 32px -8px rgba(1, 4, 9, 0.65);
+  --theme-shadow-drawer: 0 18px 48px -12px rgba(1, 4, 9, 0.75);
+  --cp-series-1: #4493f8;
+  --cp-series-2: #f0883e;
+  --cp-series-3: #ab7df8;
+  --cp-series-4: #3fb950;
+  --cp-series-5: #d29922;
+  --cp-series-6: #db61a2;
+  --cp-series-7: #39c5cf;
+  --cp-series-8: #f85149;
+  --cp-series-9: #a88b6a;
+  --cp-series-10: #79c0ff;
+  --cp-series-11: #9198a1;
+  --cp-series-12: #656c76;
+}
+
+/*
+ * Other color sets, like the ones GitHub offers in its own appearance settings. They change only the colors that
+ * differ from the default set above. Every text color keeps a contrast of at least 4.5 to 1 (tests/theme.test.ts).
+ */
+html[data-theme='light'][data-palette='contrast'] {
+  --theme-background: #ffffff;
+  --theme-surface: #ffffff;
+  --theme-text: #010409;
+  --theme-muted: #2f363d;
+  --theme-subtle: #3d454e;
+  --theme-accent: #0349b4;
+  --theme-accentHover: #023b95;
+  --theme-soft: #dff7ff;
+  --theme-border: #59636e;
+  --theme-borderMuted: #9aa5b1;
+  --theme-secondary: #622cbc;
+  --theme-primary: #055d20;
+  --theme-primaryHover: #024c1a;
+  --theme-focus: #0349b4;
+  --theme-controlBorder: #59636e;
+  --theme-success: #055d20;
+  --theme-warning: #744500;
+  --theme-danger: #a0111f;
+  --theme-yellow: #744500;
+  --theme-orange: #873800;
+  --theme-ink: #010409;
+  --theme-surfaceSoft: #eef1f4;
+  --theme-surfaceSunken: #e0e6eb;
+  --theme-axis: #59636e;
+  --theme-highlight: rgba(3, 73, 180, 0.12);
+  --cp-series-1: #0349b4;
+  --cp-series-2: #b35900;
+  --cp-series-3: #622cbc;
+  --cp-series-4: #055d20;
+  --cp-series-5: #8a6d00;
+  --cp-series-6: #971368;
+  --cp-series-7: #036a6a;
+  --cp-series-8: #a0111f;
+  --cp-series-9: #5c4a33;
+  --cp-series-10: #368cf9;
+  --cp-series-11: #3d454e;
+  --cp-series-12: #818b98;
+}
+
+html[data-theme='dark'][data-palette='contrast'] {
+  --theme-background: #010409;
+  --theme-surface: #0d1117;
+  --theme-text: #ffffff;
+  --theme-muted: #c9d1d9;
+  --theme-subtle: #b7bdc8;
+  --theme-accent: #74b9ff;
+  --theme-accentHover: #a5d2ff;
+  --theme-soft: #102a4c;
+  --theme-border: #9198a1;
+  --theme-borderMuted: #545d68;
+  --theme-secondary: #c39dff;
+  --theme-onAccent: #010409;
+  --theme-primary: #09b43a;
+  --theme-primaryHover: #2bd853;
+  --theme-onPrimary: #010409;
+  --theme-focus: #74b9ff;
+  --theme-controlBorder: #9198a1;
+  --theme-success: #2bd853;
+  --theme-warning: #f0b72f;
+  --theme-danger: #ff8e8a;
+  --theme-yellow: #f0b72f;
+  --theme-orange: #fe9a2d;
+  --theme-ink: #ffffff;
+  --theme-surfaceSoft: #151b23;
+  --theme-surfaceSunken: #212830;
+  --theme-axis: #9198a1;
+  --theme-highlight: rgba(116, 185, 255, 0.2);
+  --cp-series-1: #74b9ff;
+  --cp-series-2: #fe9a2d;
+  --cp-series-3: #c39dff;
+  --cp-series-4: #2bd853;
+  --cp-series-5: #f0b72f;
+  --cp-series-6: #ff8dc7;
+  --cp-series-7: #5ce1e6;
+  --cp-series-8: #ff8e8a;
+  --cp-series-9: #d1b38c;
+  --cp-series-10: #b7dcff;
+  --cp-series-11: #c9d1d9;
+  --cp-series-12: #9198a1;
+}
+
+/* Colorblind friendly: good is blue and bad is orange, and the charts use the Okabe-Ito colors. */
+html[data-theme='light'][data-palette='colorblind'] {
+  --theme-primary: #0969da;
+  --theme-primaryHover: #0550ae;
+  --theme-success: #0969da;
+  --theme-danger: #b34400;
+  --theme-orange: #b34400;
+  --cp-series-1: #0072b2;
+  --cp-series-2: #e69f00;
+  --cp-series-3: #009e73;
+  --cp-series-4: #cc79a7;
+  --cp-series-5: #56b4e9;
+  --cp-series-6: #d55e00;
+  --cp-series-7: #b8a200;
+  --cp-series-8: #1f2328;
+  --cp-series-9: #8a6d4c;
+  --cp-series-10: #7cc6f0;
+  --cp-series-11: #6e7781;
+  --cp-series-12: #9aa5b1;
+}
+
+html[data-theme='dark'][data-palette='colorblind'] {
+  --theme-primary: #1f6feb;
+  --theme-primaryHover: #388bfd;
+  --theme-success: #58a6ff;
+  --theme-danger: #f0883e;
+  --theme-orange: #f0883e;
+  --cp-series-1: #56b4e9;
+  --cp-series-2: #e69f00;
+  --cp-series-3: #2fbf95;
+  --cp-series-4: #e08ab8;
+  --cp-series-5: #a6dcf7;
+  --cp-series-6: #ff7a1a;
+  --cp-series-7: #f0e442;
+  --cp-series-8: #f0f6fc;
+  --cp-series-9: #c4a582;
+  --cp-series-10: #3d8fd1;
+  --cp-series-11: #9198a1;
+  --cp-series-12: #656c76;
 }
 
 :root {
@@ -215,8 +342,11 @@ html[data-theme='dark'] {
     font-size: 14px;
     line-height: 1.5;
     font-optical-sizing: auto;
-    -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+  }
+  /* Light text on a dark page looks bolder, so only the dark theme thins it. The light theme keeps the full weight. */
+  html.dark body {
+    -webkit-font-smoothing: antialiased;
   }
   /* Arabic needs the Arabic font stack, a taller line and no letter spacing. */
   html[dir='rtl'] body {
@@ -261,7 +391,7 @@ html[data-theme='dark'] {
 }
 
 @layer components {
-  /* Controls: 4 px corners, hairline borders, no shadows. The main action is ink, not a color. */
+  /* Controls: 4 px corners, hairline borders, no shadows. The main action is GitHub green. */
   .btn {
     @apply inline-flex min-h-9 items-center justify-center gap-1.5 rounded-md border border-control bg-surface px-3 py-1.5 text-sm font-medium text-fg hover:border-fg-subtle hover:bg-surface-2 disabled:opacity-50 disabled:hover:border-control disabled:hover:bg-surface;
     transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
@@ -293,7 +423,7 @@ html[data-theme='dark'] {
   .num {
     font-variant-numeric: tabular-nums;
   }
-  /* Panels are white sheets on the paper background, drawn with a hairline. */
+  /* Panels are white sheets on the gray page, drawn with a hairline. */
   .card {
     @apply rounded-xl border border-border bg-surface;
   }
@@ -377,6 +507,75 @@ html[data-theme='dark'] {
 }
 .anim-fade {
   animation: fade-in 120ms ease-out;
+}
+/* The animated brand mark: the pool level rises and falls while the lens scans the bars. Units are the mark's own 256 grid. */
+.brand-mark-scan,
+.brand-mark-counter-scan,
+.brand-mark-liquid {
+  animation-duration: 8s;
+  animation-timing-function: cubic-bezier(0.45, 0, 0.25, 1);
+  animation-iteration-count: infinite;
+}
+.brand-mark-scan {
+  animation-name: brand-mark-scanning;
+}
+.brand-mark-counter-scan {
+  animation-name: brand-mark-counter-scanning;
+}
+.brand-mark-liquid {
+  animation-name: brand-mark-level;
+}
+@keyframes brand-mark-scanning {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(-22px, 8px);
+  }
+  50% {
+    transform: translate(-14px, -24px);
+  }
+  75% {
+    transform: translate(10px, -10px);
+  }
+}
+@keyframes brand-mark-counter-scanning {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(22px, -8px);
+  }
+  50% {
+    transform: translate(14px, 24px);
+  }
+  75% {
+    transform: translate(-10px, 10px);
+  }
+}
+@keyframes brand-mark-level {
+  0%,
+  100% {
+    transform: translateY(14px);
+  }
+  25% {
+    transform: translateY(-30px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+  75% {
+    transform: translateY(10px);
+  }
+}
+@media print {
+  .brand-mark-scan,
+  .brand-mark-counter-scan,
+  .brand-mark-liquid {
+    animation: none;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   *,

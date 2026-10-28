@@ -15,7 +15,7 @@ export function PrintHeader() {
   const today = Math.floor(Date.now() / 86_400_000);
   return (
     <div className="mb-4 hidden border-b border-border pb-2 text-xs text-fg-muted print:block">
-      <div className="text-sm font-semibold text-fg">{t('GitHub Copilot AI usage report')}</div>
+      <div className="text-sm font-semibold text-fg">{t('GitHub Copilot Usage Lens')}</div>
       <div>
         {t('{name} · {start} to {end} ({days}) · printed {today}', {
           name: datasetLabel(dataset),

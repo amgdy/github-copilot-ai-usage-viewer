@@ -4,7 +4,7 @@ A guide for people and AI coding agents who work on this project. Read it before
 
 ## What this project is
 
-A report viewer for the **GitHub Copilot AI credits usage report** (the CSV you download from GitHub billing). An admin drops the file into the page and gets a management view: how much is used, how much is billed, who uses what, which models cost the most, how the included credits are shared, which seats are idle, and what to do about it.
+**GitHub Copilot Usage Lens** (short name: Usage Lens): a report viewer for the **GitHub Copilot AI credits usage report** (the CSV you download from GitHub billing). An admin drops the file into the page and gets a management view: how much is used, how much is billed, who uses what, which models cost the most, how the included credits are shared, which seats are idle, and what to do about it.
 
 - Everything runs **in the browser**. There is no server, no database and no login. Files are never uploaded.
 - English is the main language. Arabic is fully supported, with a right-to-left layout.
@@ -76,11 +76,11 @@ Pages: Overview, Usage and pool, Users, Segments, Models, Efficiency, Organizati
 - When cache data exists, show **both cache read and cache write**.
 
 ### Visual design
-- The app should look like a printed company report, not a generic dashboard: ink on warm paper, white panels drawn with thin lines, and one petrol color for the brand, links and the first chart series. No gradients, glows, big shadows or decorative icons.
+- The app should look like a printed company report, not a generic dashboard: GitHub Primer colors: a light gray page (dark gray in dark mode), white panels drawn with thin lines, GitHub blue for the brand, links and the first chart series, and GitHub green only for the main action button. Charts use the Primer data colors (`--cp-series-*`). Settings also offers GitHub's other color sets: **High contrast** and **Colorblind friendly** (blue for good, orange for bad, Okabe-Ito chart colors). They live in `src/index.css` as `html[data-theme=…][data-palette=…]` rules that override only the colors that change. No gradients, glows, big shadows or decorative icons.
 - Fonts are bundled so the report looks the same offline (`src/fonts.css`): Mona Sans by GitHub for English and IBM Plex Sans Arabic for Arabic. Titles and big numbers use `font-display` (a wider Mona Sans).
 - Use the shared tokens in `src/index.css`. Corners are small: 2 px marks, 3 px tags, 4 px controls, 6 px blocks and 8 px panels. Bars, dots and labels are square; only switches and info buttons are round.
-- Use the shared pieces: `.eyebrow` for small section labels, Lucide icons for navigation and feature lists, `.card` for panels and `Brand` for the ring mark and name. Do not add palettes for single components.
-- Keep layouts usable in Arabic and right to left, in light and dark. `tests/theme.test.ts` checks the colors, the contrast of every text color, the corner sizes and the bundled fonts.
+- Use the shared pieces: `.eyebrow` for small section labels, Lucide icons for navigation and feature lists, `.card` for panels and `Brand` for the mark and name. The mark (`BrandMark`) is a coffee mug that holds the credit pool, with usage bars and a lens; `Brand` shows it animated (CSS only, stopped for reduced motion and print). The favicon in `index.html` is the still version, and the logo files are in `docs/brand/`. Keep all three in step when the mark changes. Do not add palettes for single components.
+- Keep layouts usable in Arabic and right to left, in light and dark. `tests/theme.test.ts` checks the colors, the contrast of every text color in every color set, the corner sizes and the bundled fonts.
 
 ### Every number explains itself
 - Each figure on a page has a doc in `src/lib/metrics/docs/<area>.ts` (what it is, the formula, the inputs, an example, the limits, links) and shows it through the info button (`CalcInfo`). The Methodology page lists them all.
@@ -91,7 +91,8 @@ Pages: Overview, Usage and pool, Users, Segments, Models, Efficiency, Organizati
 - Arabic goes in `src/i18n/ar/<area>.ts` (and `ar/docs-<area>.ts` for metric docs). A key lives in only one file; shared words go in `ar/common.ts`.
 - Lib code imports from `src/i18n/core.ts`; components import from `src/i18n`.
 - The app remounts when the language changes, so lib code may call `t()` at run time. Text built once at load time is not rebuilt.
-- Layout must work right to left: use logical classes (`ms-`, `me-`, `ps-`, `pe-`, `start-`, `end-`, `text-start`, `text-end`), never `left`/`right`. Digits stay Latin in Arabic.
+- Layout must work right to left: use logical classes (`ms-`, `me-`, `ps-`, `pe-`, `start-`, `end-`, `text-start`, `text-end`), never `left`/`right`.
+- Arabic shows Arabic-Indic digits (١٢٣) by default; Settings can switch to Latin digits. Format every shown number with the helpers in `src/lib/utils/format.ts` and `date.ts`, or wrap it in `localizeDigits`. Numbers passed to `t()` as numbers are converted too; strings such as logins and model names never are. CSV files always use Latin digits. `tests/arabic-digits.test.ts` checks this.
 - `tests/i18n.test.ts` finds missing Arabic, raw English in JSX and left/right classes.
 
 ### Links
@@ -116,8 +117,9 @@ Pages: Overview, Usage and pool, Users, Segments, Models, Efficiency, Organizati
 ### Data and privacy
 - Never read, copy, bundle or test with real customer exports. Git ignores a local `samples/` folder, `*.csv` and `seats*.json` because they may hold private files: do not open them. Tests use made-up data (`tests/fixtures.ts`, `makeCsv`, `generateDemo`).
 - The start page has two ways in: choose or drop your own files, or **View a sample report**. The sample is made up in the browser by `src/state/loadSample.ts`, which loads the generator only when clicked and never reads a file. While the sample is open, every page says so (`SampleNotice`), and the saved license list is left out of the analysis (`withoutRoster`), so real names never mix with invented data. Settings and Licenses say why the list is not used (`SampleListNote`), never compare the list with the sample's users, and turn off the button that fills the list from the loaded report, so invented users are never saved as seats. Any new code that reads `useApp((s) => s.dataset)` directly must check `dataset.sample` in the same way. `tests/landing.test.ts`, `tests/sample-report.test.ts`, `tests/sample-license-list.test.ts` and `tests/data-isolation.test.ts` guard this.
+- The sample generator (`src/lib/demo/generate.ts`) builds a made-up company with `DEMO_SEAT_COUNT` seats over three months. Logins follow the GitHub Enterprise Managed Users pattern: an invented Microsoft Entra ID login name, `_` and the short code `DEMO_SHORTCODE` (for example `KofiIto_nwind`). The months are built so that every recommendation shows in some view (the whole range, one month or the `northwind-labs` organization). Keep it that way when you change the generator; `tests/recommendations.test.ts` checks it.
 - No network calls, except the live price check that the user starts in Settings.
-- Settings are stored in `localStorage` (`ghcu.settings.v1`); usage data stays in memory only.
+- Settings are stored in `localStorage` (`ghcu.settings.v1`); the theme, color set, language, Arabic digits and the Show calculations switch in `ghcu.theme`, `ghcu.palette`, `ghcu.locale`, `ghcu.digits` and `ghcu.showCalc`. Every key starts with `ghcu.`: a new key must too, so "Delete saved settings" (`src/state/savedData.ts`, linked from the sidebar, the start page and Settings > Data on this device) removes it. Usage data stays in memory only.
 
 ## How to add things
 

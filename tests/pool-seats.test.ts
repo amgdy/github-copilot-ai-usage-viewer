@@ -106,18 +106,28 @@ function expectedProjection(expectedMonth: NaiveMonth, poolMonth: MonthPool, ran
   };
 }
 
-const NAMES = ['A', 'B', 'A+B', 'demo'] as const;
+const NAMES = ['A', 'B', 'A+B', 'demo', 'demo mid-September'] as const;
 type DsName = (typeof NAMES)[number];
 const data = {} as Record<DsName, { rows: NaiveRow[]; pl: Pipeline }>;
 
+/** Last day of the demo report when it is downloaded in the middle of September, while the runaway users drain the pool. */
+const MID_SEPTEMBER = '2026-09-15';
+
 beforeAll(async () => {
-  const [pipelineA, pipelineB, pipelineBoth, demo] = await Promise.all([analyzeFixtures([FIXTURE_A]), analyzeFixtures([FIXTURE_B]), analyzeFixtures([FIXTURE_A, FIXTURE_B]), analyzeDemo()]);
+  const [pipelineA, pipelineB, pipelineBoth, demo, midSeptember] = await Promise.all([
+    analyzeFixtures([FIXTURE_A]),
+    analyzeFixtures([FIXTURE_B]),
+    analyzeFixtures([FIXTURE_A, FIXTURE_B]),
+    analyzeDemo(),
+    analyzeDemo({ demo: { end: MID_SEPTEMBER } }),
+  ]);
   const rowsA = naiveRows(readFixture(FIXTURE_A));
   const rowsB = naiveRows(readFixture(FIXTURE_B));
   data.A = { rows: rowsA, pl: pipelineA };
   data.B = { rows: rowsB, pl: pipelineB };
   data['A+B'] = { rows: [...rowsA, ...rowsB], pl: pipelineBoth };
   data.demo = { rows: naiveRows(demo.demo.csv), pl: demo };
+  data['demo mid-September'] = { rows: naiveRows(midSeptember.demo.csv), pl: midSeptember };
 });
 
 const poolWith = (pipeline: Pipeline, settings: Partial<Settings>, includeExtras = true) =>
@@ -351,10 +361,17 @@ describe('pool: known fixture facts', () => {
     expect(pool.capacityExceeded).toBe(true);
   });
 
-  it('demo: two months, September complete and exhausted, October projected to run out', () => {
+  it('demo: three months, August with spare credits, September complete and exhausted, October projected to stay within the pool', () => {
     const pool = data.demo.pl.analysis.pool;
-    expect(pool.months.map((month) => month.key)).toEqual(['2026-09', '2026-10']);
-    const [september, october] = pool.months;
+    expect(pool.months.map((month) => month.key)).toEqual(['2026-08', '2026-09', '2026-10']);
+    const [august, september, october] = pool.months;
+    expect(august.complete).toBe(true);
+    expect(august.projection).toBeNull();
+    expect(august.net).toBe(0);
+    expect(august.exhaustedOn).toBeNull();
+    expect(august.capacityExceeded).toBe(false);
+    expect(august.utilization).toBeGreaterThan(0);
+    expect(august.utilization).toBeLessThan(0.5);
     expect(september.complete).toBe(true);
     expect(september.projection).toBeNull();
     expect(september.net).toBeGreaterThan(0);
@@ -362,22 +379,50 @@ describe('pool: known fixture facts', () => {
     expect(september.exhaustedOn!).toBeGreaterThanOrEqual(september.monthStart);
     expect(september.exhaustedOn!).toBeLessThanOrEqual(september.monthEnd);
     expect(september.capacityExceeded).toBe(false);
+    expect(september.utilization).toBeCloseTo(1, 6);
     expect(october.complete).toBe(false);
     expect(october.net).toBe(0);
     expect(october.exhaustedOn).toBeNull();
     expect(october.capacityExceeded).toBe(false);
     expect(october.daysObserved).toBeLessThanOrEqual(26);
+    expect(october.utilization).toBeGreaterThan(august.utilization);
+    expect(october.utilization).toBeLessThan(1);
     const projection = october.projection!;
     expect(projection.asOf).toBe(parseDay('2026-10-26'));
     expect(projection.daysLeft).toBe(5);
-    expect(projection.exhaustionDate).not.toBeNull();
-    expect(projection.exhaustionDate!).toBeGreaterThan(projection.asOf);
-    expect(projection.exhaustionDate!).toBeLessThanOrEqual(october.monthEnd);
-    expect(projection.projNet).toBeGreaterThan(0);
+    expect(projection.projGross).toBeGreaterThan(october.gross);
+    expect(projection.projGrossHigh).toBeLessThan(october.capacity);
+    expect(projection.exhaustionDate).toBeNull();
+    expect(projection.projNetHigh).toBe(0);
     expect(pool.monthsExhausted).toBe(1);
     expect(pool.latest).toBe(october);
-    expect(pool.capacity).toBeCloseTo(september.capacity + october.capacity, 9);
+    expect(pool.capacity).toBeCloseTo(august.capacity + september.capacity + october.capacity, 9);
     expect(pool.billed).toBeCloseTo(september.net, 9);
+  });
+
+  it('demo cut in mid-September: September is still running and its pool is projected to run out', () => {
+    const pool = data['demo mid-September'].pl.analysis.pool;
+    expect(pool.months.map((month) => month.key)).toEqual(['2026-08', '2026-09']);
+    const [august, september] = pool.months;
+    expect(august.complete).toBe(true);
+    expect(august.projection).toBeNull();
+    expect(august.net).toBe(0);
+    expect(september.complete).toBe(false);
+    expect(september.net).toBe(0);
+    expect(september.exhaustedOn).toBeNull();
+    expect(september.capacityExceeded).toBe(false);
+    const projection = september.projection!;
+    expect(projection.asOf).toBe(parseDay(MID_SEPTEMBER));
+    expect(projection.daysLeft).toBe(15);
+    expect(projection.exhaustionDate).not.toBeNull();
+    expect(projection.exhaustionDate!).toBeGreaterThan(projection.asOf);
+    expect(projection.exhaustionDate!).toBeLessThanOrEqual(september.monthEnd);
+    expect(projection.projGross).toBeGreaterThan(september.capacity);
+    expect(projection.projNet).toBeCloseTo(projection.projGross - september.capacity, 6);
+    expect(projection.projNet).toBeGreaterThan(0);
+    expect(pool.monthsExhausted).toBe(0);
+    expect(pool.latest).toBe(september);
+    expect(pool.billed).toBe(0);
   });
 
   it('demo: the capacity of a month is the sum of the quotas of the users seen that month', () => {
@@ -386,7 +431,8 @@ describe('pool: known fixture facts', () => {
     pipeline.analysis.pool.months.forEach((month, index) => {
       expect(month.capacity).toBeCloseTo(sum([...expectedMonths[index].quota.values()]) * 0.01, 9);
     });
-    const [september, october] = pipeline.analysis.pool.months;
+    const [august, september, october] = pipeline.analysis.pool.months;
+    expect(september.users).toBeGreaterThanOrEqual(august.users);
     expect(october.users).toBeGreaterThanOrEqual(september.users);
   });
 });
@@ -513,12 +559,12 @@ describe('roster and extra seats extend the pool', () => {
     const demo = data.demo.pl;
     const base = poolWith(demo, {});
     const withRoster = poolWith(demo, { roster: ghosts });
-    expect(base.months).toHaveLength(2);
+    expect(base.months).toHaveLength(3);
     base.months.forEach((month, index) => {
       expect(withRoster.months[index].extraCapacity).toBeCloseTo(58, 9);
       expect(withRoster.months[index].capacity).toBeCloseTo(month.capacity + 58, 9);
     });
-    expect(withRoster.capacity).toBeCloseTo(base.capacity + 116, 9);
+    expect(withRoster.capacity).toBeCloseTo(base.capacity + 3 * 58, 9);
   });
 
   it('a roster user already in the report (any case, surrounding spaces) adds nothing', () => {
@@ -647,27 +693,40 @@ describe('budget status', () => {
     expect(budgetStatus.hitDate).toBeNull();
   });
 
-  it('demo October, pool not yet exhausted: the budget is hit after the pool runs out', () => {
+  it('demo mid-September, pool not yet exhausted: the budget is hit after the pool runs out', () => {
     for (const budget of [100, 200, 260]) {
-      const pool = withBudget('demo', budget);
-      const october = pool.latest!;
-      const projection = october.projection!;
+      const pool = withBudget('demo mid-September', budget);
+      const september = pool.latest!;
+      const projection = september.projection!;
       const budgetStatus = pool.budget!;
-      expect(budgetStatus.month).toBe('Oct 2026');
+      expect(budgetStatus.month).toBe('Sep 2026');
       expect(budgetStatus.billedToDate).toBe(0);
       expect(budgetStatus.burn).toBe(0);
       expect(budgetStatus.projectedBilled).toBeCloseTo(projection.projNet, 9);
       expect(projection.projNet).toBeGreaterThanOrEqual(budget);
       const rate = (projection.rateMtd + projection.rate7) / 2;
-      expect(budgetStatus.hitDate, `budget ${budget}`).toBe(Math.min(october.monthEnd, projection.exhaustionDate! + Math.ceil(budget / rate)));
+      expect(budgetStatus.hitDate, `budget ${budget}`).toBe(Math.min(september.monthEnd, projection.exhaustionDate! + Math.ceil(budget / rate)));
+      expect(budgetStatus.hitDate!).toBeGreaterThan(projection.exhaustionDate!);
     }
   });
 
-  it('demo October: a budget above the projected overage will not be hit', () => {
-    const budgetStatus = withBudget('demo', 1000).budget!;
+  it('demo mid-September: a budget above the projected overage will not be hit', () => {
+    const budgetStatus = withBudget('demo mid-September', 1000).budget!;
     expect(budgetStatus.hitDate).toBeNull();
     expect(budgetStatus.projectedBurn!).toBeLessThan(1);
     expect(budgetStatus.projectedBurn!).toBeGreaterThan(0);
+  });
+
+  it('demo October: the pool is not projected to run out, so nothing is projected as billed and no budget is hit', () => {
+    for (const budget of [1, 100]) {
+      const budgetStatus = withBudget('demo', budget).budget!;
+      expect(budgetStatus.month).toBe('Oct 2026');
+      expect(budgetStatus.billedToDate).toBe(0);
+      expect(budgetStatus.burn).toBe(0);
+      expect(budgetStatus.projectedBilled).toBe(0);
+      expect(budgetStatus.projectedBurn).toBe(0);
+      expect(budgetStatus.hitDate).toBeNull();
+    }
   });
 
   it('a finished month has no projection, so only the billed share is reported', () => {

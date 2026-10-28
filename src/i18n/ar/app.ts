@@ -45,11 +45,9 @@ const arabic: Dict = {
 
   // Shell and side bar
   'Load other data': 'تحميل بيانات أخرى',
-  'GitHub Copilot AI usage': 'استخدام الذكاء الاصطناعي في GitHub Copilot',
   'Worked out in {ms} ms in your browser. Usage is AI credits × $0.01. Estimates are marked as estimates. Every number has a calculation button, and the Methodology page lists them all.':
     'تم الحساب في {ms} ملّي ثانية داخل متصفحك. الاستخدام = أرصدة الذكاء الاصطناعي × $0.01. التقديرات مكتوب عليها أنها تقديرات. لكل رقم زر يشرح طريقة حسابه، وصفحة المنهجية تعرضها كلها.',
   'GitHub Copilot usage': 'استخدام GitHub Copilot',
-  'AI credits report viewer': 'عارض تقرير أرصدة الذكاء الاصطناعي',
   'Report sections': 'أقسام التقرير',
   'Your file is read in this browser tab only. Nothing is uploaded.': 'يُقرأ ملفك في علامة التبويب هذه فقط. لا يُرفع أي شيء.',
 
@@ -107,7 +105,6 @@ const arabic: Dict = {
   'Every user with their group, usage and suggested next step.': 'كل مستخدم مع مجموعته واستخدامه والخطوة التالية المقترحة.',
   'Print or save as PDF': 'طباعة أو حفظ كملف PDF',
   'Prints this page in light colors, without the menus.': 'يطبع هذه الصفحة بألوان فاتحة ودون القوائم.',
-  'GitHub Copilot AI usage report': 'تقرير استخدام الذكاء الاصطناعي في GitHub Copilot',
   '{name} · {start} to {end} ({days}) · printed {today}': '{name} · من {start} إلى {end} ({days}) · طُبع في {today}',
   'Filters: {list}': 'عوامل التصفية: {list}',
   'Filters: none (all rows)': 'عوامل التصفية: لا شيء (كل الصفوف)',
@@ -129,7 +126,6 @@ const arabic: Dict = {
 
   // Brand, contents list and sample report
   'GitHub Copilot': 'GitHub Copilot',
-  'Usage report': 'تقرير الاستخدام',
   '{n} urgent actions': plural('إجراء عاجل واحد', 'إجراءان عاجلان', '{n} إجراءات عاجلة', '{n} إجراءً عاجلًا', '{n} إجراء عاجل'),
   'Making a sample report…': 'جارٍ إنشاء تقرير تجريبي…',
   'Sample report (made-up data)': 'تقرير تجريبي (بيانات وهمية)',
@@ -148,6 +144,7 @@ const arabic: Dict = {
   'Open a report': 'افتح تقريرًا',
   or: 'أو',
   'View a sample report': 'اعرض تقريرًا تجريبيًا',
+  'This browser keeps your settings from an earlier visit.': 'يحتفظ هذا المتصفح بإعداداتك من زيارة سابقة.',
   'The sample uses made-up people and numbers. It is made in this browser tab.': 'يستخدم التقرير التجريبي أشخاصًا وأرقامًا وهمية، ويُنشأ في علامة التبويب هذه.',
 };
 

@@ -8,12 +8,16 @@ vi.mock('../src/state/loadDataset', () => ({ loadSources }));
 const { loadSample, sampleRange, SAMPLE_FILE_NAME } = await import('../src/state/loadSample');
 
 describe('sample report dates', () => {
-  it('covers last month and this month up to yesterday', () => {
-    expect(sampleRange(new Date(2026, 4, 15))).toEqual({ start: '2026-04-01', end: '2026-05-14' });
+  it('covers the two months before this one and this month up to yesterday', () => {
+    expect(sampleRange(new Date(2026, 4, 15))).toEqual({ start: '2026-03-01', end: '2026-05-14' });
+    expect(sampleRange(new Date(2026, 9, 28))).toEqual({ start: '2026-08-01', end: '2026-10-27' });
+    // On the first day of a month, yesterday is in the month before, so the sample is three full months.
+    expect(sampleRange(new Date(2026, 10, 1))).toEqual({ start: '2026-08-01', end: '2026-10-31' });
   });
 
   it('works across a new year', () => {
-    expect(sampleRange(new Date(2026, 0, 1))).toEqual({ start: '2025-11-01', end: '2025-12-31' });
+    expect(sampleRange(new Date(2027, 0, 5))).toEqual({ start: '2026-11-01', end: '2027-01-04' });
+    expect(sampleRange(new Date(2026, 0, 1))).toEqual({ start: '2025-10-01', end: '2025-12-31' });
   });
 });
 
@@ -31,7 +35,7 @@ describe('loading the sample report', () => {
     expect(options).toEqual({ sample: true });
   });
 
-  it('uses dates from the last two months, so it looks like a fresh export', async () => {
+  it('uses dates from the last three months, so it looks like a fresh export', async () => {
     await loadSample();
     const [sources] = loadSources.mock.calls[0] as [{ data: string }[]];
     const dates = naiveRows(sources[0].data).map((row) => row.date);

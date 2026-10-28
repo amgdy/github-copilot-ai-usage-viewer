@@ -1,6 +1,6 @@
 # Third-party notices
 
-This app ships code, fonts and icons made by other people. They are listed here with their licenses. The app itself is under the [MIT License](LICENSE).
+GitHub Copilot Usage Lens ships code, fonts and icons made by other people. They are listed here with their licenses. The app itself is under the [MIT License](LICENSE).
 
 Only things that end up in the production build are listed. Build and test tools (Vite, Vitest, TypeScript, Tailwind CSS and similar) are not shipped. Exact versions are in `package-lock.json`.
 

@@ -27,7 +27,7 @@ export function Segmented<T extends string | number>({
   label?: string;
 }) {
   return (
-    <div role="radiogroup" aria-label={label} className={cx('inline-flex max-w-full flex-wrap gap-0.5 rounded-md border border-border bg-surface p-0.5', className)}>
+    <div role="radiogroup" aria-label={label} className={cx('inline-flex max-w-full flex-wrap gap-0.5 rounded-md border border-border bg-surface-2 p-0.5', className)}>
       {options.map((option) => {
         const on = option.value === value;
         return (
@@ -41,7 +41,7 @@ export function Segmented<T extends string | number>({
             className={cx(
               'whitespace-nowrap rounded-sm font-medium transition-colors',
               size === 'sm' ? 'px-2 py-0.5 text-xs' : 'px-2.5 py-1 text-xs',
-              on ? 'bg-primary text-primary-fg' : 'text-fg-muted hover:bg-surface-3 hover:text-fg',
+              on ? 'bg-surface text-fg ring-1 ring-control' : 'text-fg-muted hover:bg-surface-3 hover:text-fg',
             )}
           >
             {option.label}

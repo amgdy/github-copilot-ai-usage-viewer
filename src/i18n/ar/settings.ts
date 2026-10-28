@@ -73,11 +73,29 @@ const arabic: Dict = {
   'Your device is using the light theme now.': 'يستخدم جهازك المظهر الفاتح الآن.',
   'The dark theme is on.': 'المظهر الداكن مفعّل.',
   'The light theme is on.': 'المظهر الفاتح مفعّل.',
-  'Choose the color theme for this device.': 'اختر مظهر الألوان لهذا الجهاز.',
+  'Choose the theme, the colors and the digits for this device.': 'اختر المظهر والألوان وشكل الأرقام لهذا الجهاز.',
   Theme: 'المظهر',
   'System follows the light or dark setting of your device.': 'خيار إعداد الجهاز يتبع الوضع الفاتح أو الداكن في جهازك.',
   'This choice is saved in this browser and is not part of the exported settings.':
     'يُحفظ هذا الاختيار في هذا المتصفح، ولا يدخل ضمن الإعدادات المصدّرة.',
+  Colors: 'الألوان',
+  'GitHub colors': 'ألوان GitHub',
+  'The default GitHub colors': 'ألوان GitHub الافتراضية',
+  'High contrast': 'تباين عالٍ',
+  'Darker text and stronger lines, easier to read': 'نص أغمق وخطوط أوضح لقراءة أسهل',
+  'Colorblind friendly': 'مناسب لعمى الألوان',
+  'Blue for good and orange for bad, with chart colors that stay apart for most color vision types':
+    'الأزرق للجيد والبرتقالي للسيئ، مع ألوان رسوم يسهل تمييزها لمعظم أنواع رؤية الألوان',
+  'High contrast makes text darker and lines stronger. Colorblind friendly uses blue for good and orange for bad, and chart colors that are easy to tell apart.':
+    'التباين العالي يجعل النص أغمق والخطوط أوضح. والخيار المناسب لعمى الألوان يستخدم الأزرق للجيد والبرتقالي للسيئ، وألوان رسوم يسهل تمييزها.',
+  'Each choice works with the light and the dark theme.': 'كل خيار يعمل مع المظهر الفاتح والداكن.',
+  'Numbers in Arabic': 'الأرقام في العربية',
+  'Arabic-Indic digits ({sample})': 'أرقام عربية مشرقية ({sample})',
+  'Latin digits ({sample})': 'أرقام لاتينية ({sample})',
+  'Show numbers as ١٢٣ in Arabic': 'اعرض الأرقام بالشكل ١٢٣ في العربية',
+  'Show numbers as 123 in Arabic': 'اعرض الأرقام بالشكل 123 في العربية',
+  'Choose the digits used when the app is in Arabic. English always uses 123. Downloaded CSV files always use 123 so other tools can read them.':
+    'اختر شكل الأرقام عندما يكون التطبيق بالعربية. تستخدم الإنجليزية دائمًا 123. وتستخدم ملفات CSV المنزّلة دائمًا 123 لتقرأها الأدوات الأخرى.',
 
   // Budget
   'The budget card compares the amount billed so far this month, and the projected month end, with this amount.':
@@ -108,8 +126,14 @@ const arabic: Dict = {
   'What this app keeps in your browser, and how to back up or move your settings.':
     'ما يحفظه هذا التطبيق في متصفحك، وكيف تحفظ نسخة من إعداداتك أو تنقلها.',
   'What stays on this device': 'ما يبقى على هذا الجهاز',
-  'Settings are saved in this browser, in local storage under the key {key}. The theme and the language are saved there too, under {theme} and {locale}.':
-    'تُحفظ الإعدادات في هذا المتصفح، في التخزين المحلي تحت المفتاح {key}. ويُحفظ المظهر واللغة هناك أيضًا، تحت {theme} و{locale}.',
+  'Settings are saved in this browser, in local storage under the key {key}. The theme, the colors, the language, the digits for Arabic and the Show calculations switch are saved there too. Every key starts with {prefix}.':
+    'تُحفظ الإعدادات في هذا المتصفح، في التخزين المحلي تحت المفتاح {key}. ويُحفظ هناك أيضًا المظهر والألوان واللغة وشكل الأرقام في العربية ومفتاح إظهار طرق الحساب. يبدأ كل مفتاح بـ {prefix}.',
+  'Delete everything saved on this device': 'احذف كل ما حُفظ على هذا الجهاز',
+  'Remove all settings this app keeps in this browser.': 'أزل كل الإعدادات التي يحفظها هذا التطبيق في هذا المتصفح.',
+  'Nothing is saved in this browser yet. Every setting is at its default.': 'لم يُحفظ شيء في هذا المتصفح بعد. كل إعداد على قيمته الافتراضية.',
+  'Saved now:': 'المحفوظ الآن:',
+  'This deletes the settings, the license list, the theme, the colors, the language and the digit choice, then opens the app again from the start. A loaded report is closed, because it is only kept in memory. Other websites are not touched. Export a settings file first if you may want them back.':
+    'يحذف هذا الإعدادات وقائمة التراخيص والمظهر والألوان واللغة واختيار الأرقام، ثم يفتح التطبيق من البداية. ويُغلق التقرير المحمّل لأنه محفوظ في الذاكرة فقط. لا تتأثر المواقع الأخرى. صدّر ملف إعدادات أولًا إذا كنت قد تحتاجها لاحقًا.',
   'The report is never saved. It is read from the file you choose and kept in memory while the tab is open. Closing or reloading the tab removes it.':
     'لا يُحفظ التقرير أبدًا. يُقرأ من الملف الذي تختاره ويبقى في الذاكرة ما دامت علامة التبويب مفتوحة. إغلاق علامة التبويب أو إعادة تحميلها يزيله.',
   'Nothing is uploaded. Clearing the site data of this browser removes the saved settings, and another browser starts with the defaults.':

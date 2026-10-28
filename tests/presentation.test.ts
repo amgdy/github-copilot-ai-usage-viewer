@@ -42,7 +42,7 @@ describe('shared chart presentation', () => {
     applyLocale('ar', { Total: 'الإجمالي', 'and {n} more': 'و{n} غيرها' });
     const html = stackTooltip(String, { max: 1 })([{ name: 'Day', seriesName: '<unsafe>', value: 2 }, { name: 'Day', value: 1 }]);
     expect(html).toContain('الإجمالي');
-    expect(html).toContain('و1 غيرها');
+    expect(html).toContain('و١ غيرها');
     expect(html).toContain('&lt;unsafe&gt;');
     expect(html).not.toContain('<unsafe>');
   });

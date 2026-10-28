@@ -3,7 +3,7 @@ import { ArrowRight } from 'lucide-react';
 import type { ChartColors } from '../../components/charts/theme';
 import { VendorIcon } from '../../components/icons';
 import { Badge, CalcInfo, CalcLine, cx, type CalcRef } from '../../components/ui';
-import { t, T } from '../../i18n';
+import { localizeDigits, t, T } from '../../i18n';
 import { CATEGORY_COLORS } from '../../lib/analytics/taxonomy';
 import { CARD_AS_OF, CARD_SOURCE, type Vendor } from '../../lib/pricing/card';
 import type { Category } from '../../lib/types';
@@ -13,7 +13,7 @@ import { navigate, type PageId } from '../../state/router';
 
 /** USD per 1M tokens, with at least two decimals ("$0.10", "$0.175", "$14.00"). A dash when there is no price. */
 export const fmtRate = (price: number): string =>
-  Number.isFinite(price) ? `$${price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 3 })}` : '–';
+  Number.isFinite(price) ? localizeDigits(`$${price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 3 })}`) : '–';
 
 /** Whole numbers below 1,000, compact above ("842", "12.4K"). */
 export const fmtCount = (count: number): string => (Math.abs(count) >= 1000 ? fmtCompact(count) : fmtInt(count));

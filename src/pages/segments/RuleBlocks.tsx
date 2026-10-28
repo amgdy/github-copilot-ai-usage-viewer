@@ -1,6 +1,6 @@
 import { type ReactNode } from 'react';
 import { TaxBadge } from '../../components/ui';
-import { msg, t } from '../../i18n';
+import { localizeDigits, msg, t } from '../../i18n';
 import { PLAN_CREDITS, PLAN_PRICE, type Settings } from '../../lib/analytics/settings';
 import type { Taxonomy, TaxonomyItem } from '../../lib/analytics/taxonomy';
 import { lensUnavailableReason, unavailableReason, type Availability, type LensId } from './lenses';
@@ -24,8 +24,8 @@ export const RULE_SUMMARY: Record<LensId, string> = {
 };
 
 const pct = (share: number): string => `${Number((share * 100).toFixed(1))}%`;
-const dollars = (amount: number): string => `$${amount.toLocaleString('en-US', { minimumFractionDigits: Number.isInteger(amount) ? 0 : 2, maximumFractionDigits: 4 })}`;
-const formatInteger = (count: number): string => count.toLocaleString('en-US');
+const dollars = (amount: number): string => localizeDigits(`$${amount.toLocaleString('en-US', { minimumFractionDigits: Number.isInteger(amount) ? 0 : 2, maximumFractionDigits: 4 })}`);
+const formatInteger = (count: number): string => localizeDigits(count.toLocaleString('en-US'));
 const byId = (items: TaxonomyItem[]): Map<string, TaxonomyItem> => new Map(items.map((item) => [item.id, item]));
 
 interface RuleItem {

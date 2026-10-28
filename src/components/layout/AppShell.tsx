@@ -83,7 +83,7 @@ export function AppShell() {
 
   useEffect(() => {
     main.current?.scrollTo({ top: 0 });
-    document.title = `${t(navItem(page).label)} · ${t('GitHub Copilot AI usage')}`;
+    document.title = `${t(navItem(page).label)} · ${t('GitHub Copilot Usage Lens')}`;
   }, [page]);
 
   return (

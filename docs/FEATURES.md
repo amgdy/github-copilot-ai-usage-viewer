@@ -1,10 +1,12 @@
-# GitHub Copilot usage viewer: features and value for admins
+# GitHub Copilot Usage Lens: features and value for admins
 
-This app turns the GitHub Copilot usage report (a CSV file from GitHub billing) into clear pages that answer one question: **are we getting good value from GitHub Copilot, and what should we change?**
+GitHub Copilot Usage Lens turns the GitHub Copilot usage report (a CSV file from GitHub billing) into clear pages that answer one question: **are we getting good value from GitHub Copilot, and what should we change?**
 
 It is written for managers and admins, not only for technical people. Every number has an info button that explains, in plain words, how it was calculated.
 
 Your files never leave your computer. The app runs in your browser and does not send your data anywhere.
+
+![Overview page of the sample report](screenshots/overview.png)
 
 ## The key values for admins
 
@@ -26,7 +28,7 @@ Listed from the most valuable to the least.
 | 12 | **Numbers you can trust** | Every figure has its formula, inputs, an example and its limits, in the app and on the Methodology page. Model prices come from the official GitHub Docs page, with the date of the snapshot, and can be checked live. |
 | 13 | **English and Arabic** | The whole app works in English (the main language) and Arabic, with a right-to-left layout. Switch with the language button at the top. |
 | 14 | **Private and simple to share** | No server and no upload. The app can be built as one HTML file that works offline. |
-| 15 | **Try it first with a sample report** | One click opens a full report made from invented people and numbers, so you can see every page before you load your own file. Every page says it is a sample, and your saved license list is never mixed in. |
+| 15 | **Try it first with a sample report** | One click opens a full report made from invented people and numbers, so you can see every page before you load your own file. The sample has 140 people over three months, with logins in the GitHub Enterprise Managed Users style (`KofiIto_nwind`), and it shows every kind of recommendation. Every page says it is a sample, and your saved license list is never mixed in. |
 
 ## The pages
 
@@ -43,7 +45,7 @@ Listed from the most valuable to the least.
 | **Recommendations** | All recommendations, most impact first, with filters, a what-if simulator and seat actions. | What to do next, in what order. |
 | **Licenses** | Seat coverage, last activity, pending cancellations and seats with no usage in the report. | Which seats to review with their owners before removing or moving them. |
 | **Data** | File quality, what each file adds, a row explorer, and other GitHub exports you can add for better results. | Whether the numbers are complete. |
-| **Settings** | Theme, budget, every threshold behind the groups, the seat list, model price overrides and a live price check. | How the app should judge your data. |
+| **Settings** | Theme, colors (GitHub, high contrast or colorblind friendly), Arabic digits, budget, every threshold behind the groups, the seat list, model price overrides and a live price check. | How the app should judge your data. |
 | **Methodology** | Every calculation in one place, searchable. | How a number was made. |
 
 Filters at the top apply to every page: dates, weekdays, users, plans, organizations, cost centers, models, vendors, Auto or manual, products, repositories, covered or billed, and user groups. Clicking a bar, slice or row narrows the whole app to it. Every chart and table can be downloaded.
@@ -54,9 +56,9 @@ Filters at the top apply to every page: dates, weekdays, users, plans, organizat
 | --- | --- | --- | --- |
 | **GitHub Copilot usage report** (CSV) | Yes | In GitHub, open Billing and licensing, then the AI usage page, and choose Get usage report. GitHub emails you a link to the file. | All usage, cost, model, user and token numbers. |
 | **License list** (seat assignments) | Recommended. The activity report CSV is the easiest choice for most admins. | Download the GitHub Copilot activity report in GitHub's organization or enterprise settings. Use the REST API JSON as an advanced option for plans, seat start dates, pending cancellations or repeatable exports. | Better included-credit estimates and activity context for seat review. The activity report has no plan or seat start date. Check its scope and seat count against GitHub; the app cannot identify seats omitted from a CSV. |
-| **Settings file** (JSON) | Optional | Exported from this app's Settings page. | Your budget, thresholds, seat list and price overrides, shared with your team. |
+| **Settings file** (JSON) | Optional | Exported from this app's Settings page. | Your budget, thresholds, seat list and price overrides, shared with your team. Settings are saved in this browser; **Delete saved settings** removes them all in one click. |
 
-No file yet? Choose **View a sample report** on the start page to look around with invented data first.
+No file yet? Choose **View a sample report** on the start page to look around with invented data first. Each month of the sample shows a different side: pick the first month to see unused included credits, the second for billed overage and budgets, and the third for a healthy month. Filter on the organization `northwind-labs` to see one person using most of the credits.
 
 ## Other GitHub exports that improve the analysis
 
@@ -87,7 +89,7 @@ Open the info button next to any number, or the Methodology page, for the full f
 - The usage report has AI credits only. **Code completions and next edit suggestions are not in it.** A user who looks idle may still use GitHub Copilot every day. Check the license list's last activity before you remove a seat.
 - Projections follow the recent daily rate. They are a guide, not a promise.
 - Seat prices are the public prices. Your contract may differ.
-- Numbers show with Latin digits in Arabic. Column names of the original export stay in English.
+- In Arabic, numbers show with Arabic-Indic digits (١٢٣) by default, or Latin digits if you choose them in Settings. Downloaded CSV files always use Latin digits. Column names of the original export stay in English.
 
 ## Official links
 

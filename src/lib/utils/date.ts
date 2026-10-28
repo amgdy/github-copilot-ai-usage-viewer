@@ -1,4 +1,4 @@
-import { getLocale, subscribeLocale } from '../../i18n/core.ts';
+import { getLocale, localizeDigits, subscribeLocale } from '../../i18n/core.ts';
 
 const MS_DAY = 86_400_000;
 
@@ -75,12 +75,12 @@ export function monthKey(monthIdx: number): string {
 }
 
 export function monthLabel(monthIdx: number): string {
-  return `${MONTHS[monthIdx % 12]} ${Math.floor(monthIdx / 12)}`;
+  return localizeDigits(`${MONTHS[monthIdx % 12]} ${Math.floor(monthIdx / 12)}`);
 }
 
 export function fmtDay(day: number, withYear = false): string {
   const { y: year, m0: zeroBasedMonth, d: dayOfMonth } = dateParts(day);
-  if (getLocale() === 'ar') return withYear ? `${dayOfMonth} ${MONTHS[zeroBasedMonth]} ${year}` : `${dayOfMonth} ${MONTHS[zeroBasedMonth]}`;
+  if (getLocale() === 'ar') return localizeDigits(withYear ? `${dayOfMonth} ${MONTHS[zeroBasedMonth]} ${year}` : `${dayOfMonth} ${MONTHS[zeroBasedMonth]}`);
   return withYear ? `${MONTHS[zeroBasedMonth]} ${dayOfMonth}, ${year}` : `${MONTHS[zeroBasedMonth]} ${dayOfMonth}`;
 }
 

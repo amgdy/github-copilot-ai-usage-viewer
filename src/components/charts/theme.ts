@@ -69,6 +69,8 @@ export function themeObject(colors: ChartColors) {
     splitLine: { lineStyle: { color: colors.grid } },
     nameTextStyle: { color: colors.textMuted },
   };
+  // Only number axes: category axes hold names such as models, whose digits stay as they are.
+  const numberLabel = { ...axisCommon.axisLabel, ...(usesArabicDigits() ? { formatter: arabicAxisNumber } : {}) };
   return {
     color: colors.palette,
     backgroundColor: 'transparent',
@@ -94,9 +96,9 @@ export function themeObject(colors: ChartColors) {
       axisPointer: { lineStyle: { color: colors.axis }, crossStyle: { color: colors.axis }, shadowStyle: { color: colors.highlight } },
     },
     categoryAxis: { ...axisCommon, splitLine: { show: false } },
-    valueAxis: { ...axisCommon, axisLine: { show: false } },
+    valueAxis: { ...axisCommon, axisLabel: numberLabel, axisLine: { show: false } },
     timeAxis: axisCommon,
-    logAxis: { ...axisCommon, axisLine: { show: false } },
+    logAxis: { ...axisCommon, axisLabel: numberLabel, axisLine: { show: false } },
     dataZoom: {
       textStyle: { color: colors.textMuted },
       borderColor: colors.axis,
@@ -119,3 +121,9 @@ export function themeObject(colors: ChartColors) {
   };
 }
 import { color as echartsColor } from 'echarts/core';
+import { localizeDigits, usesArabicDigits } from '../../i18n/core';
+
+/** Axis labels that a chart does not format itself, in Arabic-Indic digits when Arabic uses them. */
+function arabicAxisNumber(value: string | number): string {
+  return localizeDigits(typeof value === 'number' ? value.toLocaleString('en-US') : value);
+}

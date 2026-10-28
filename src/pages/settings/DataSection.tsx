@@ -4,6 +4,8 @@ import { Callout, Card } from '../../components/ui';
 import type { Settings } from '../../lib/analytics/settings';
 import { downloadText } from '../../lib/utils/download';
 import { T, t } from '../../i18n';
+import { DeleteSavedDataButton } from '../../components/DeleteSavedDataButton';
+import { savedKeys, STORAGE_PREFIX } from '../../state/savedData';
 import { useApp } from '../../state/store';
 import { ImportOutcome, type Outcome } from './ImportOutcome';
 import { MAX_SETTINGS_FILE_BYTES, SETTINGS_STORAGE_KEY, diffSettings, isStored, readSettingsFile, settingsFileName, settingsJson, storageWorks } from './settings-io';
@@ -82,11 +84,10 @@ export function DataSection({ onReplaced }: Props) {
         <ul className="list-disc space-y-1.5 ps-5 text-xs text-fg-muted">
           <li>
             <T
-              text="Settings are saved in this browser, in local storage under the key {key}. The theme and the language are saved there too, under {theme} and {locale}."
+              text="Settings are saved in this browser, in local storage under the key {key}. The theme, the colors, the language, the digits for Arabic and the Show calculations switch are saved there too. Every key starts with {prefix}."
               values={{
                 key: <code className="kbd">{SETTINGS_STORAGE_KEY}</code>,
-                theme: <code className="kbd">ghcu.theme</code>,
-                locale: <code className="kbd">ghcu.locale</code>,
+                prefix: <code className="kbd">{STORAGE_PREFIX}</code>,
               }}
             />
           </li>
@@ -120,6 +121,8 @@ export function DataSection({ onReplaced }: Props) {
 
       <div aria-live="polite">{outcome ? <ImportOutcome outcome={outcome} canUndo={canUndo} onUndo={undo} /> : null}</div>
 
+      <SavedDataCard settings={settings} />
+
       <Card title={t('Reset all settings')} subtitle={t('Put every setting back to its default.')}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="min-w-0 flex-1 basis-64 text-xs text-fg-muted">
@@ -135,5 +138,39 @@ export function DataSection({ onReplaced }: Props) {
         </div>
       </Card>
     </SettingsSection>
+  );
+}
+
+/** Lists what is saved in this browser right now and offers to delete all of it. */
+function SavedDataCard({ settings }: { settings: Settings }) {
+  const theme = useApp((state) => state.theme);
+  const palette = useApp((state) => state.palette);
+  const showCalc = useApp((state) => state.showCalc);
+  const [keys, setKeys] = useState<string[]>(savedKeys);
+  useEffect(() => setKeys(savedKeys()), [settings, theme, palette, showCalc]);
+
+  return (
+    <Card title={t('Delete everything saved on this device')} subtitle={t('Remove all settings this app keeps in this browser.')}>
+      <p className="text-xs text-fg-muted">
+        {keys.length === 0 ? t('Nothing is saved in this browser yet. Every setting is at its default.') : t('Saved now:')}
+      </p>
+      {keys.length > 0 ? (
+        <ul className="mt-1.5 flex flex-wrap gap-1.5">
+          {keys.map((key) => (
+            <li key={key}>
+              <code className="kbd">{key}</code>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+        <p className="min-w-0 flex-1 basis-64 text-xs text-fg-muted">
+          {t(
+            'This deletes the settings, the license list, the theme, the colors, the language and the digit choice, then opens the app again from the start. A loaded report is closed, because it is only kept in memory. Other websites are not touched. Export a settings file first if you may want them back.',
+          )}
+        </p>
+        <DeleteSavedDataButton />
+      </div>
+    </Card>
   );
 }

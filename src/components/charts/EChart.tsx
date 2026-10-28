@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { Download } from 'lucide-react';
 import type { EChartsOption } from 'echarts';
+import { useApp } from '../../state/store';
 import { useResolvedTheme } from '../../state/theme';
 import { t } from '../../i18n';
 import { cx } from '../ui/cx';
@@ -38,7 +39,8 @@ export interface EChartProps {
 /** Colors for the active color scheme, for building chart options. */
 export function useChartColors(): ChartColors {
   const scheme = useResolvedTheme();
-  return useMemo(() => chartColors(), [scheme]);
+  const palette = useApp((state) => state.palette);
+  return useMemo(() => chartColors(), [scheme, palette]);
 }
 
 export function EChart({ option, height = 280, className, onClick, label, exportName }: EChartProps) {

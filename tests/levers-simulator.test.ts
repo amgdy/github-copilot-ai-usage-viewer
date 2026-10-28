@@ -1003,12 +1003,21 @@ describe('monthInputs turns the pool into the months of the cost model', () => {
     expect(monthInput.gross).toBeGreaterThan(poolMonth.gross);
   });
 
-  it('demo: September is complete (observed), October is projected', () => {
-    const [september, october] = monthInputs(datasets.demo.analysis.pool);
+  it('demo: August and September are complete (observed), October is projected', () => {
+    const { months } = datasets.demo.analysis.pool;
+    const inputs = monthInputs(datasets.demo.analysis.pool);
+    expect(inputs).toHaveLength(3);
+    const [august, september, october] = inputs;
+    expect(august.projected).toBe(false);
     expect(september.projected).toBe(false);
     expect(october.projected).toBe(true);
-    expect(september.gross).toBeCloseTo(datasets.demo.analysis.pool.months[0].gross, 9);
-    expect(october.gross).toBeGreaterThan(datasets.demo.analysis.pool.months[1].gross);
+    expect(august.gross).toBeCloseTo(months[0].gross, 9);
+    expect(september.gross).toBeCloseTo(months[1].gross, 9);
+    expect(october.gross).toBeGreaterThan(months[2].gross);
+    // Only September used more than its pool; August and October left included credits unused
+    expect(august.gross).toBeLessThan(august.capacity);
+    expect(september.gross).toBeGreaterThan(september.capacity);
+    expect(october.gross).toBeLessThan(october.capacity);
   });
 
   it('seats outside the file: a pool that never ran out is assumed to cover everything projected (partial-export fixture)', () => {
@@ -1111,11 +1120,11 @@ describe('runScenario', () => {
     expect(scenarioOf(datasets.demo, { reclaimIdle: false, downgrade: false, reclaimUnused: false }).seatValue).toBe(0);
   });
 
-  it('demo: the base cost is what the two months cost (the pool or the usage, whichever is larger)', () => {
+  it('demo: the base cost is what the three months cost (the pool or the usage, whichever is larger)', () => {
     const { months } = datasets.demo.analysis.pool;
-    const sepGross = datasets.rows.demo.filter((row) => row.date.startsWith('2026-09')).reduce((total, row) => total + numOf(row, 'gross_amount'), 0);
-    const octProjected = months[1].projection!.projGross;
-    const expected = Math.max(months[0].capacity, sepGross) + Math.max(months[1].capacity, octProjected);
+    const grossOf = (monthKey: string): number => datasets.rows.demo.filter((row) => row.date.startsWith(monthKey)).reduce((total, row) => total + numOf(row, 'gross_amount'), 0);
+    const octProjected = months[2].projection!.projGross;
+    const expected = Math.max(months[0].capacity, grossOf('2026-08')) + Math.max(months[1].capacity, grossOf('2026-09')) + Math.max(months[2].capacity, octProjected);
     expect(datasets.demo.analysis.plan.baseCost).toBeCloseTo(expected, 6);
     expect(datasets.demo.analysis.plan.newCost).toBeLessThan(datasets.demo.analysis.plan.baseCost);
     expect(datasets.demo.analysis.plan.saving).toBeGreaterThan(0);
@@ -1126,10 +1135,15 @@ describe('runScenario', () => {
     const seatsOnly = scenarioOf(datasets.demo, { levers: ZERO });
     const both = scenarioOf(datasets.demo);
     expect(levers.saving).toBeGreaterThan(0);
-    expect(both.saving).toBeGreaterThanOrEqual(levers.saving - 1e-9);
+    expect(seatsOnly.saving).toBeGreaterThan(0);
+    expect(both.saving).toBeGreaterThan(levers.saving);
     expect(both.saving).toBeGreaterThanOrEqual(seatsOnly.saving - 1e-9);
-    // usage above the pool in every month, so seat removal alone cannot save anything
-    expect(seatsOnly.saving).toBeCloseTo(0, 9);
+    // September used more than its pool, so seat removal alone saves nothing there; August and October only save their unused credits
+    const [august, september, october] = seatsOnly.months;
+    expect(seatsOnly.seatValue).toBeGreaterThan(0);
+    expect(september.saving).toBeCloseTo(0, 9);
+    for (const month of [august, october]) expect(month.saving).toBeCloseTo(Math.min(seatsOnly.seatValue, month.capacity - month.gross), 9);
+    expect(seatsOnly.saving).toBeCloseTo(august.saving + october.saving, 9);
   });
 
   it('zero levers and no seat action change nothing', () => {

@@ -35,6 +35,42 @@ export function getLocale(): Locale {
   return locale;
 }
 
+/** How Arabic shows digits: Arabic-Indic (١٢٣, the common style in Arabic text) or Latin (123). English always uses Latin. */
+export type DigitStyle = 'arabic' | 'latin';
+
+let digitStyle: DigitStyle = 'arabic';
+
+export function getDigitStyle(): DigitStyle {
+  return digitStyle;
+}
+
+/** Switches the Arabic digit style. App code uses `setDigitStyle` from ./load, which also remembers the choice. */
+export function applyDigitStyle(next: DigitStyle): void {
+  digitStyle = next;
+  for (const listener of listeners) listener();
+}
+
+/** True when numbers are shown with Arabic-Indic digits right now. */
+export function usesArabicDigits(): boolean {
+  return locale === 'ar' && digitStyle === 'arabic';
+}
+
+const ARABIC_INDIC_DIGITS = '٠١٢٣٤٥٦٧٨٩';
+
+/**
+ * Writes the digits of a formatted number in the current style: "12,345.6%" becomes "١٢٬٣٤٥٫٦٪" in Arabic.
+ * Separators and the percent sign change only next to a digit, so other text is left alone. Use it only for
+ * numbers the app formats, never for names such as logins or model names.
+ */
+export function localizeDigits(text: string): string {
+  if (!usesArabicDigits()) return text;
+  return text
+    .replace(/(\d)\.(?=\d)/g, '$1٫')
+    .replace(/(\d),(?=\d)/g, '$1٬')
+    .replace(/(\d)%/g, '$1٪')
+    .replace(/\d/g, (digit) => ARABIC_INDIC_DIGITS[Number(digit)]);
+}
+
 export function isRtl(): boolean {
   return locale === 'ar';
 }
@@ -62,7 +98,11 @@ export function missedKeys(): string[] {
 
 function fill(text: string, values?: Vars): string {
   if (!values) return text;
-  return text.replace(/\{(\w+)\}/g, (placeholder, name: string) => (Object.hasOwn(values, name) ? String(values[name]) : placeholder));
+  return text.replace(/\{(\w+)\}/g, (placeholder, name: string) => {
+    if (!Object.hasOwn(values, name)) return placeholder;
+    const value = values[name];
+    return typeof value === 'number' ? localizeDigits(String(value)) : value;
+  });
 }
 
 function lookup(key: string): Entry | undefined {

@@ -458,6 +458,16 @@ describe('both fixtures (two billing entities in one scope)', () => {
 
 describe('demo dataset: the designed story', () => {
   const analysis = (): Analysis => PIPELINES.demo.analysis;
+  /** The parts of the story that only show in one month or in the small organization. */
+  const story = {} as Record<'august' | 'september' | 'october' | 'labs', Analysis>;
+
+  beforeAll(() => {
+    const monthOf = (from: string, to: string): Analysis => PIPELINES.demo.run({ ...emptyFilters(), dateFrom: dayNum(from), dateTo: dayNum(to) });
+    story.august = monthOf('2026-08-01', '2026-08-31');
+    story.september = monthOf('2026-09-01', '2026-09-30');
+    story.october = monthOf('2026-10-01', '2026-10-31');
+    story.labs = PIPELINES.demo.run({ ...emptyFilters(), orgs: ['northwind-labs'] });
+  });
 
   it('contains every rule the demo is built to show', () => {
     expect(ids(analysis())).toEqual(
@@ -466,9 +476,11 @@ describe('demo dataset: the designed story', () => {
         'overage',
         'pool-exhaustion',
         'budgets',
+        'trend-up',
         'idle-seats',
         'downgrade',
         'cost-center-coverage',
+        'unattributed',
         'model-rightsizing',
         'auto-adoption',
         'long-context',
@@ -483,7 +495,23 @@ describe('demo dataset: the designed story', () => {
         'data-notes',
       ]),
     );
-    for (const id of ['healthy', 'pool-underuse', 'unattributed', 'trend-up']) expect(ids(analysis()), id).not.toContain(id);
+    for (const id of ['healthy', 'pool-underuse', 'trend-down', 'concentration', 'group-balance', 'data-coverage']) expect(ids(analysis()), id).not.toContain(id);
+  });
+
+  it('shows the rest of the story through the month and organization filters', () => {
+    expect(story.august.pool.billed).toBe(0);
+    expect(ids(story.august)).toEqual(expect.arrayContaining(['pool-underuse', 'group-balance']));
+    expect(ids(story.august)).not.toContain('overage');
+    expect(story.september.pool.billed).toBeCloseTo(analysis().pool.billed, 6);
+    expect(ids(story.september)).toEqual(expect.arrayContaining(['overage', 'pool-exhaustion', 'trend-down']));
+    expect(story.october.pool.billed).toBe(0);
+    expect(ids(story.october)).toContain('healthy');
+    expect(ids(story.october)).not.toContain('pool-exhaustion');
+    expect(story.october.recs.filter((recommendation) => recommendation.severity === 'critical' || recommendation.severity === 'high').map((recommendation) => recommendation.id)).toEqual([]);
+    expect(ids(story.labs)).toContain('concentration');
+    const shown = new Set([analysis(), ...Object.values(story)].flatMap(ids));
+    // Only the rule about missing columns needs another file.
+    expect(RULE_IDS.filter((id) => !shown.has(id))).toEqual(['data-coverage']);
   });
 
   it('assigns the expected severities', () => {
@@ -493,16 +521,29 @@ describe('demo dataset: the designed story', () => {
       overage: 'high',
       'pool-exhaustion': 'high',
       budgets: 'high',
+      'trend-up': 'high',
       'model-rightsizing': 'medium',
       'auto-adoption': 'medium',
       'long-context': 'medium',
-      downgrade: 'low',
-      'idle-seats': 'low',
+      downgrade: 'medium',
+      'idle-seats': 'medium',
       'cost-center-coverage': 'low',
+      unattributed: 'low',
+      'multi-org': 'low',
+      lapsed: 'low',
+      spiky: 'low',
+      anomalies: 'low',
+      context: 'low',
+      cache: 'low',
+      'data-notes': 'info',
       'new-users': 'positive',
       champions: 'positive',
     });
-    expect(analysis().headline).toMatchObject({ status: 'action', title: '$123 billed overage and 4 high-priority actions' });
+    expect(analysis().headline).toMatchObject({ status: 'action', title: '$523 billed overage and 5 high-priority actions' });
+    expect(findRecommendation(story.august, 'pool-underuse').severity).toBe('low');
+    expect(findRecommendation(story.september, 'trend-down').severity).toBe('info');
+    expect(findRecommendation(story.october, 'healthy').severity).toBe('positive');
+    expect(findRecommendation(story.labs, 'concentration').severity).toBe('high');
   });
 
   it('counts the cost-center gap from the raw CSV', () => {
@@ -550,15 +591,24 @@ describe('demo dataset: the designed story', () => {
     expect(idle.cashUsd).toBeCloseTo(cashSaving(months, 0, seats.idleValue + seats.unusedValue) / months.length, 6);
     expect(idle.affectedCount).toBe(seats.idle.length + seats.unused.length);
     const down = findRecommendation(analysis(), 'downgrade');
-    expect(down.title).toBe('6 Enterprise users never needed more than the Business allotment');
+    expect(down.title).toBe('14 Enterprise users never needed more than the Business allotment');
     expect(down.impactUsd).toBeCloseTo(seats.downgrade.length * 20, 9);
     expect(down.cashUsd).toBeCloseTo(cashSaving(months, 0, seats.downgradeValue) / months.length, 6);
+    // September used its whole pool, so only the spare credits of August and October turn into cash
+    for (const recommendation of [idle, down]) {
+      expect(recommendation.cashUsd, recommendation.id).toBeGreaterThan(0);
+      expect(recommendation.cashUsd, recommendation.id).toBeLessThan(recommendation.impactUsd);
+    }
   });
 
   it('chooses the idle-seats title from how much cash the removal frees', () => {
     const idle = findRecommendation(analysis(), 'idle-seats');
-    expect(idle.cashUsd).toBeLessThan(0.5);
-    expect(idle.title).toBe('5 idle seats currently fund the pool for heavier users');
+    expect(idle.cashUsd / idle.impactUsd).toBeGreaterThanOrEqual(0.5);
+    expect(idle.title).toBe('Reclaim 15 idle seats to save about $270/month');
+    // In September alone the pool ran out, so removing the seats frees no cash
+    const septemberIdle = findRecommendation(story.september, 'idle-seats');
+    expect(septemberIdle.cashUsd).toBeLessThan(0.5);
+    expect(septemberIdle.title).toBe('16 idle seats currently fund the pool for heavier users');
   });
 
   it('flags the budget gap only while no budget is configured', () => {
@@ -896,10 +946,10 @@ describe('buildHeadline', () => {
 
   it('turns critical or high recommendations into an action headline with the billed overage', () => {
     const context = ctxOf(PIPELINES.demo);
-    expect(buildHeadline(context, [craft('critical')])).toMatchObject({ status: 'action', title: '$123 billed overage and 1 high-priority action' });
+    expect(buildHeadline(context, [craft('critical')])).toMatchObject({ status: 'action', title: '$523 billed overage and 1 high-priority action' });
     expect(buildHeadline(context, [craft('high'), craft('critical'), craft('medium')])).toMatchObject({
       status: 'action',
-      title: '$123 billed overage and 2 high-priority actions',
+      title: '$523 billed overage and 2 high-priority actions',
     });
   });
 
@@ -916,8 +966,8 @@ describe('buildHeadline', () => {
   });
 
   it('shows the pool utilization only for an organization-wide scope with a known pool', () => {
-    expect(buildHeadline(ctxOf(PIPELINES.demo), []).detail).toMatch(/^Pool utilization \d+% · Auto 21% of usage · 60 active users$/);
-    expect(buildHeadline(ctxOf(PIPELINES.demo, { narrowed: true }), []).detail).toBe('Auto 21% of usage · 60 active users');
+    expect(buildHeadline(ctxOf(PIPELINES.demo), []).detail).toMatch(/^Pool utilization \d+% · Auto 24% of usage · 140 active users$/);
+    expect(buildHeadline(ctxOf(PIPELINES.demo, { narrowed: true }), []).detail).toBe('Auto 24% of usage · 140 active users');
     expect(buildHeadline(ctxOf(PIPELINES['fixture B']), []).detail).toBe('Auto 0% of usage · 1 active user');
   });
 

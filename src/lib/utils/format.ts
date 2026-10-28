@@ -1,11 +1,11 @@
-import { tp } from '../../i18n/core';
+import { localizeDigits, tp } from '../../i18n/core';
 
 const usdNoDecimals = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
 const usdTwoDecimals = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const usdFourDecimals = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 4, maximumFractionDigits: 4 });
 const integerFormat = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
 
-export function fmtUSD(amount: number, digits: 0 | 2 | 4 | 'auto' = 'auto'): string {
+function fmtUSDLatin(amount: number, digits: 0 | 2 | 4 | 'auto' = 'auto'): string {
   if (!Number.isFinite(amount)) return '–';
   if (digits === 0) return usdNoDecimals.format(amount);
   if (digits === 2) return usdTwoDecimals.format(amount);
@@ -35,7 +35,7 @@ function withUnit(amount: number, unitCount: number): string {
   }
 }
 
-export function fmtUSDCompact(amount: number): string {
+function fmtUSDCompactLatin(amount: number): string {
   if (!Number.isFinite(amount)) return '–';
   const magnitude = Math.abs(amount);
   if (magnitude === 0) return '$0';
@@ -46,16 +46,16 @@ export function fmtUSDCompact(amount: number): string {
   return `${sign}$${magnitude.toFixed(3)}`;
 }
 
-export function fmtInt(value: number): string {
+function fmtIntLatin(value: number): string {
   return Number.isFinite(value) ? integerFormat.format(value) : '–';
 }
 
-export function fmtNum(value: number, digits = 1): string {
+function fmtNumLatin(value: number, digits = 1): string {
   if (!Number.isFinite(value)) return '–';
   return value.toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits });
 }
 
-export function fmtCompact(value: number): string {
+function fmtCompactLatin(value: number): string {
   if (!Number.isFinite(value)) return '–';
   const magnitude = Math.abs(value);
   const sign = value < 0 ? '-' : '';
@@ -63,13 +63,12 @@ export function fmtCompact(value: number): string {
   return `${sign}${magnitude >= 100 ? Math.round(magnitude) : magnitude.toFixed(magnitude >= 10 ? 1 : 2)}`;
 }
 
-export function fmtPct(fraction: number, digits = 1): string {
+function fmtPctLatin(fraction: number, digits = 1): string {
   if (!Number.isFinite(fraction)) return '–';
   return `${(fraction * 100).toFixed(digits)}%`;
 }
 
-/** Percent with thousands separators for very large values (e.g. 5,012%). */
-export function fmtPctAuto(fraction: number): string {
+function fmtPctAutoLatin(fraction: number): string {
   if (!Number.isFinite(fraction)) return '–';
   const percent = fraction * 100;
   if (Math.abs(percent) >= 100) return `${Math.round(percent).toLocaleString('en-US')}%`;
@@ -79,13 +78,24 @@ export function fmtPctAuto(fraction: number): string {
 export function fmtDelta(current: number, prev: number): { pct: number; text: string } | null {
   if (!Number.isFinite(current) || !Number.isFinite(prev) || prev === 0) return null;
   const pct = (current - prev) / Math.abs(prev);
-  return { pct, text: `${pct >= 0 ? '+' : ''}${(pct * 100).toFixed(Math.abs(pct) >= 1 ? 0 : 1)}%` };
+  return { pct, text: localizeDigits(`${pct >= 0 ? '+' : ''}${(pct * 100).toFixed(Math.abs(pct) >= 1 ? 0 : 1)}%`) };
 }
 
-export function fmtMultiple(factor: number): string {
+function fmtMultipleLatin(factor: number): string {
   if (!Number.isFinite(factor)) return '–';
   return `${factor >= 10 ? factor.toFixed(0) : factor.toFixed(1)}×`;
 }
+
+// Every number the app shows goes through these, so Arabic can show Arabic-Indic digits. CSV files keep Latin digits.
+export const fmtUSD = (amount: number, digits: 0 | 2 | 4 | 'auto' = 'auto'): string => localizeDigits(fmtUSDLatin(amount, digits));
+export const fmtUSDCompact = (amount: number): string => localizeDigits(fmtUSDCompactLatin(amount));
+export const fmtInt = (value: number): string => localizeDigits(fmtIntLatin(value));
+export const fmtNum = (value: number, digits = 1): string => localizeDigits(fmtNumLatin(value, digits));
+export const fmtCompact = (value: number): string => localizeDigits(fmtCompactLatin(value));
+export const fmtPct = (fraction: number, digits = 1): string => localizeDigits(fmtPctLatin(fraction, digits));
+/** Percent with thousands separators for very large values (e.g. 5,012%). */
+export const fmtPctAuto = (fraction: number): string => localizeDigits(fmtPctAutoLatin(fraction));
+export const fmtMultiple = (factor: number): string => localizeDigits(fmtMultipleLatin(factor));
 
 /** "12 users": the count and the word, in the current language (Arabic picks the right plural form). */
 export function pluralize(count: number, one: string, many?: string): string {

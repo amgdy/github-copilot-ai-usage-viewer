@@ -26,6 +26,13 @@ import { FIXTURE_A, FIXTURE_B, analyzeFixtures, readFixture } from './fixtures';
 const makeFilters = (over: Partial<Filters> = {}): Filters => ({ ...emptyFilters(), ...over });
 const dayOf = dayNum;
 
+/** The default demo covers three calendar months: all of August and September, and October up to the 26th. */
+const DEMO_FIRST_DAY = '2026-08-01';
+const DEMO_LAST_DAY = '2026-10-26';
+const DEMO_DAY_COUNT = dayNum(DEMO_LAST_DAY) - dayNum(DEMO_FIRST_DAY) + 1;
+/** The longest range that ends on the last day and still has an equally long window of data before it. */
+const LONGEST_COMPARABLE = Math.floor(DEMO_DAY_COUNT / 2);
+
 const inWindow = (rows: NaiveRow[], from: number, to: number, keep: (row: NaiveRow) => boolean = () => true): NaiveRow[] =>
   rows.filter((row) => {
     const day = dayNum(row.date);
@@ -66,8 +73,9 @@ describe('analyze: date range', () => {
     const analysis = pipeline.analysis;
     expect(analysis.range).toEqual({ start: min, end: max, length: max - min + 1 });
     expect(analysis.range).toBe(analysis.agg.range);
-    expect(isoOf(min)).toBe('2026-09-01');
-    expect(isoOf(max)).toBe('2026-10-26');
+    expect(isoOf(min)).toBe(DEMO_FIRST_DAY);
+    expect(isoOf(max)).toBe(DEMO_LAST_DAY);
+    expect(analysis.range.length).toBe(DEMO_DAY_COUNT);
     expect(analysis.narrowed).toBe(false);
     expect(analysis.segmentFiltered).toBe(false);
     expect(analysis.baseMask).toBeNull();
@@ -92,11 +100,11 @@ describe('analyze: date range', () => {
     const fromOct = pipeline.run(makeFilters({ dateFrom: dayOf('2026-10-01') }));
     expect(fromOct.range).toEqual({ start: dayOf('2026-10-01'), end: max, length: max - dayOf('2026-10-01') + 1 });
     expectTotals({ ...fromOct.agg.totals, credits: fromOct.agg.totals.credits, users: fromOct.agg.totals.users }, naiveTotals(inWindow(rows, dayOf('2026-10-01'), max)));
-    const toSep = pipeline.run(makeFilters({ dateTo: dayOf('2026-09-30') }));
-    expect(toSep.range).toEqual({ start: min, end: dayOf('2026-09-30'), length: 30 });
-    expectTotals(toSep.agg.totals, naiveTotals(inWindow(rows, min, dayOf('2026-09-30'))));
+    const toAug = pipeline.run(makeFilters({ dateTo: dayOf('2026-08-31') }));
+    expect(toAug.range).toEqual({ start: min, end: dayOf('2026-08-31'), length: 31 });
+    expectTotals(toAug.agg.totals, naiveTotals(inWindow(rows, min, dayOf('2026-08-31'))));
     expect(fromOct.narrowed).toBe(false);
-    expect(toSep.narrowed).toBe(false);
+    expect(toAug.narrowed).toBe(false);
   });
 
   it('analyses exactly the days of a range inside the data, and the pool months it touches', () => {
@@ -162,13 +170,13 @@ describe('analyze: date range', () => {
 });
 
 describe('analyze: the previous period', () => {
-  // The data spans 56 days, so an equally long earlier window fits only for ranges of up to 28 days that end on the last day.
-  for (const length of [1, 7, 14, 20, 28, 29, 30, 40, 56]) {
-    it(`the last ${length} days: ${length <= 28 ? 'the window before it is compared' : 'there is no full window before it'}`, () => {
+  // The data spans 87 days, so an equally long earlier window fits only for ranges of up to 43 days that end on the last day.
+  for (const length of [1, 7, 14, 28, 30, LONGEST_COMPARABLE, LONGEST_COMPARABLE + 1, LONGEST_COMPARABLE + 2, 60, DEMO_DAY_COUNT]) {
+    it(`the last ${length} days: ${length <= LONGEST_COMPARABLE ? 'the window before it is compared' : 'there is no full window before it'}`, () => {
       const start = max - length + 1;
       const analysis = pipeline.run(makeFilters({ dateFrom: start }));
       expect(analysis.range.length).toBe(length);
-      if (length > 28) {
+      if (length > LONGEST_COMPARABLE) {
         expect(analysis.previous).toBeNull();
         return;
       }
@@ -183,18 +191,23 @@ describe('analyze: the previous period', () => {
   }
 
   it('the longest comparable range starts the previous window on the first day of the data', () => {
-    const analysis = pipeline.run(makeFilters({ dateFrom: max - 27 }));
-    expect(analysis.previous!.from).toBe(min);
-    expect(pipeline.run(makeFilters({ dateFrom: max - 28 })).previous).toBeNull();
+    // The range and the window before it split the days from the first day into two equal halves. The demo has an odd
+    // number of days (87), so the range ends one day before the last day.
+    const end = (max - min + 1) % 2 === 0 ? max : max - 1;
+    const length = (end - min + 1) / 2;
+    const analysis = pipeline.run(makeFilters({ dateFrom: end - length + 1, dateTo: end }));
+    expect(analysis.range.length).toBe(length);
+    expect(analysis.previous).toMatchObject({ from: min, to: end - length });
+    expect(pipeline.run(makeFilters({ dateFrom: end - length, dateTo: end })).previous).toBeNull();
   });
 
   it('a range in the middle of the data compares with the days just before it', () => {
-    const analysis = pipeline.run(makeFilters({ dateFrom: dayOf('2026-10-01'), dateTo: dayOf('2026-10-10') }));
-    expect(isoOf(analysis.previous!.from)).toBe('2026-09-21');
-    expect(isoOf(analysis.previous!.to)).toBe('2026-09-30');
-    expectTotals(analysis.previous!.totals, naiveTotals(inWindow(rows, dayOf('2026-09-21'), dayOf('2026-09-30'))));
+    const analysis = pipeline.run(makeFilters({ dateFrom: dayOf('2026-09-01'), dateTo: dayOf('2026-09-10') }));
+    expect(isoOf(analysis.previous!.from)).toBe('2026-08-22');
+    expect(isoOf(analysis.previous!.to)).toBe('2026-08-31');
+    expectTotals(analysis.previous!.totals, naiveTotals(inWindow(rows, dayOf('2026-08-22'), dayOf('2026-08-31'))));
     // The window just before a range that starts too early is not fully covered.
-    expect(pipeline.run(makeFilters({ dateFrom: dayOf('2026-09-10'), dateTo: dayOf('2026-09-30') })).previous).toBeNull();
+    expect(pipeline.run(makeFilters({ dateFrom: dayOf('2026-08-10'), dateTo: dayOf('2026-08-31') })).previous).toBeNull();
   });
 
   it('is never set for the whole data, and a clamped range counts as the whole data', () => {

@@ -4,7 +4,7 @@ import { emptyFilters } from '../src/lib/analytics/filters';
 import { prepareStore } from '../src/lib/analytics/prepare';
 import { mergeSettings } from '../src/lib/analytics/settings';
 import { buildStore } from '../src/lib/csv/ingest';
-import { DEMO_FILE_NAME, generateDemo, type DemoResult } from '../src/lib/demo/generate';
+import { DEMO_FILE_NAME, DEMO_SEAT_COUNT, DEMO_SHORTCODE, generateDemo, type DemoResult } from '../src/lib/demo/generate';
 import { PRICE_CARD, type CardEntry } from '../src/lib/pricing/card';
 import { buildModelTable } from '../src/lib/pricing/models';
 import {
@@ -110,10 +110,10 @@ describe('generateDemo: determinism and options', () => {
     expect(generateDemo({ seed: 8 }).csv === generateDemo({ seed: 7 }).csv).toBe(false);
   });
 
-  it('uses seed 20261026 and the range 2026-09-01 .. 2026-10-26 by default', () => {
+  it('uses seed 20261026 and the range 2026-08-01 .. 2026-10-26 by default', () => {
     const defaultDemo = generateDemo();
-    expect(defaultDemo.csv === generateDemo({ seed: 20261026, start: '2026-09-01', end: '2026-10-26' }).csv).toBe(true);
-    expect(defaultDemo.start).toBe('2026-09-01');
+    expect(defaultDemo.csv === generateDemo({ seed: 20261026, start: '2026-08-01', end: '2026-10-26' }).csv).toBe(true);
+    expect(defaultDemo.start).toBe('2026-08-01');
     expect(defaultDemo.end).toBe('2026-10-26');
   });
 
@@ -175,8 +175,19 @@ describe('demo CSV: format', () => {
   });
 
   it('reports the number of rows and of users that really are in the file', () => {
-    expect(demo.rows).toBe(1952);
+    expect(demo.rows).toBe(5770);
     expect(demo.users).toBe(namedUsers(rows).size);
+  });
+
+  it('names users like GitHub Enterprise Managed Users: an Entra ID login name, an underscore and the short code', () => {
+    expect(DEMO_SHORTCODE).toMatch(/^[a-z]{3,8}$/);
+    const pattern = new RegExp(`^[A-Z][a-z]+[A-Z][a-z]+\\d*_${DEMO_SHORTCODE}$`);
+    const logins = [...namedUsers(rows)];
+    expect(logins.filter((login) => !pattern.test(login))).toEqual([]);
+    for (const seed of [1, 42]) {
+      const otherLogins = [...namedUsers(naiveRows(generateDemo({ seed }).csv))];
+      expect(otherLogins.filter((login) => !pattern.test(login)), `seed ${seed}`).toEqual([]);
+    }
   });
 });
 
@@ -192,12 +203,14 @@ describe('demo CSV: the generator follows the billing rules', () => {
     expect(violations(rows, demo.start, demo.end)).toEqual([]);
   });
 
-  it('draws one pool per calendar month: September is exhausted, October is not yet', () => {
+  it('draws one pool per calendar month: only September is exhausted', () => {
     const byMonth = (month: string) => rows.filter((row) => row.date.startsWith(month));
-    const september = byMonth('2026-09');
+    const augustRows = byMonth('2026-08');
+    const septemberRows = byMonth('2026-09');
     const octoberRows = byMonth('2026-10');
-    expect(september.length + octoberRows.length).toBe(rows.length);
-    expect(sum(september.map((row) => numOf(row, 'net_amount')))).toBeGreaterThan(0);
+    expect(augustRows.length + septemberRows.length + octoberRows.length).toBe(rows.length);
+    expect(sum(augustRows.map((row) => numOf(row, 'net_amount')))).toBe(0);
+    expect(sum(septemberRows.map((row) => numOf(row, 'net_amount')))).toBeGreaterThan(0);
     expect(sum(octoberRows.map((row) => numOf(row, 'net_amount')))).toBe(0);
     // The pool restarts on the 1st: the first October rows are covered although September ended billed.
     expect(octoberRows.slice(0, 20).every((row) => numOf(row, 'discount_amount') === numOf(row, 'gross_amount'))).toBe(true);
@@ -253,12 +266,12 @@ describe('demo through the ingest', () => {
     expect(store.hasTokens).toBe(true);
   });
 
-  it('covers September and October 2026 and nothing else', () => {
+  it('covers August, September and October 2026 and nothing else', () => {
     const dates = rows.map((row) => row.date).sort();
     expect(store.minDay).toBe(dayNum(dates[0]));
     expect(store.maxDay).toBe(dayNum(dates[dates.length - 1]));
     expect(isoOf(store.minDay) >= demo.start && isoOf(store.maxDay) <= demo.end).toBe(true);
-    expect(new Set(dates.map((day) => day.slice(0, 7)))).toEqual(new Set(['2026-09', '2026-10']));
+    expect(new Set(dates.map((day) => day.slice(0, 7)))).toEqual(new Set(['2026-08', '2026-09', '2026-10']));
   });
 
   it('keeps the totals of the CSV', () => {
@@ -269,15 +282,16 @@ describe('demo through the ingest', () => {
     expect(columnTotal(store.qty)).toBeCloseTo(sum(rows.map((row) => numOf(row, 'quantity'))), 4);
   });
 
-  it('has as many named users as the generator reports, and every one of the 60 planned seats', () => {
+  it('has as many named users as the generator reports, and every planned seat', () => {
     const inStore = store.dicts.user.values.filter((username) => username !== '');
     expect(inStore.length).toBe(demo.users);
     expect(new Set(inStore)).toEqual(namedUsers(rows));
-    expect(demo.users).toBe(60);
+    expect(DEMO_SEAT_COUNT).toBe(140);
+    expect(demo.users).toBe(DEMO_SEAT_COUNT);
   });
 
   it('gives every planned seat a row for any seed, so the landing page can promise 60 users', () => {
-    for (const seed of [1, 2, 3, 7, 99]) expect(generateDemo({ seed }).users, `seed ${seed}`).toBe(60);
+    for (const seed of [1, 2, 3, 7, 99]) expect(generateDemo({ seed }).users, `seed ${seed}`).toBe(DEMO_SEAT_COUNT);
   });
 });
 
@@ -299,10 +313,14 @@ describe('demo analysis', () => {
     expect(result.analysis.coverage).toMatchObject({ billing: true, quota: true, users: true, models: true, tokens: true });
   });
 
-  it('has two billing months: September complete and exhausted, October partial and projected to run out', () => {
+  it('has three billing months: August under-used, September exhausted, October partial and within the pool', () => {
     const { pool } = result.analysis;
-    expect(pool.months.map((month) => month.key)).toEqual(['2026-09', '2026-10']);
-    const [september, october] = pool.months;
+    expect(pool.months.map((month) => month.key)).toEqual(['2026-08', '2026-09', '2026-10']);
+    const [august, september, october] = pool.months;
+    expect(august.complete).toBe(true);
+    expect(august.net).toBeCloseTo(0, 6);
+    expect(august.exhaustedOn).toBeNull();
+    expect(august.gross / august.capacity).toBeLessThan(0.6);
     expect(september.complete).toBe(true);
     expect(september.net).toBeGreaterThan(0);
     expect(september.exhaustedOn).not.toBeNull();
@@ -312,10 +330,10 @@ describe('demo analysis', () => {
     expect(october.exhaustedOn).toBeNull();
     const projection = october.projection!;
     expect(projection).not.toBeNull();
-    expect(projection.exhaustionDate).not.toBeNull();
-    expect(projection.exhaustionDate!).toBeGreaterThan(projection.asOf);
-    expect(projection.exhaustionDate!).toBeLessThanOrEqual(october.monthEnd);
-    expect(projection.projNet).toBeGreaterThan(october.net);
+    expect(projection.exhaustionDate).toBeNull();
+    expect(projection.projNet).toBeCloseTo(0, 6);
+    expect(projection.projGross).toBeGreaterThan(october.gross);
+    expect(projection.projGross).toBeLessThan(october.capacity);
     expect(pool.capacityExceeded).toBe(false);
     expect(pool.monthsExhausted).toBe(1);
     expect(pool.billed).toBeCloseTo(result.analysis.agg.totals.net, 6);
@@ -326,7 +344,8 @@ describe('demo analysis', () => {
     const daily = new Map<string, number>();
     for (const row of rows) daily.set(row.date, (daily.get(row.date) ?? 0) + numOf(row, 'net_amount'));
     const first = [...daily.entries()].filter(([, net]) => net > 1e-6).map(([day]) => day).sort()[0];
-    expect(isoOf(result.analysis.pool.months[0].exhaustedOn!)).toBe(first);
+    const september = result.analysis.pool.months.find((month) => month.key === '2026-09')!;
+    expect(isoOf(september.exhaustedOn!)).toBe(first);
   });
 
   it('is quick: an analysis of the whole demo takes well under half a second', () => {

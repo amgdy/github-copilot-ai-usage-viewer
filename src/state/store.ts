@@ -8,6 +8,9 @@ import { t, type Vars } from '../i18n/core';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
 
+/** The color set, like GitHub's own appearance choices: the default GitHub colors, high contrast, or colorblind friendly. */
+export type ColorPalette = 'default' | 'contrast' | 'colorblind';
+
 export interface Dataset {
   store: DataStore;
   prep: Prepared;
@@ -32,6 +35,7 @@ export interface LoadingState {
 }
 
 const THEME_KEY = 'ghcu.theme';
+const PALETTE_KEY = 'ghcu.palette';
 const SHOW_CALC_KEY = 'ghcu.showCalc';
 
 function loadShowCalc(): boolean {
@@ -51,6 +55,20 @@ function loadTheme(): ThemeMode {
   } catch {
     return 'system';
   }
+}
+
+function loadPalette(): ColorPalette {
+  try {
+    const storedPalette = localStorage.getItem(PALETTE_KEY);
+    return storedPalette === 'contrast' || storedPalette === 'colorblind' ? storedPalette : 'default';
+  } catch {
+    return 'default';
+  }
+}
+
+export function applyPalette(palette: ColorPalette): void {
+  if (palette === 'default') delete document.documentElement.dataset.palette;
+  else document.documentElement.dataset.palette = palette;
 }
 
 export function resolveTheme(mode: ThemeMode): 'light' | 'dark' {
@@ -96,6 +114,8 @@ interface AppState {
 
   theme: ThemeMode;
   setTheme: (theme: ThemeMode) => void;
+  palette: ColorPalette;
+  setPalette: (palette: ColorPalette) => void;
 
   /** Prints the formula of every number under it, in addition to the calculator icon. */
   showCalc: boolean;
@@ -155,6 +175,17 @@ export const useApp = create<AppState>((set, get) => ({
     }
     applyTheme(theme);
     set({ theme });
+  },
+
+  palette: loadPalette(),
+  setPalette: (palette) => {
+    try {
+      localStorage.setItem(PALETTE_KEY, palette);
+    } catch {
+      /* the choice then lasts for this session only */
+    }
+    applyPalette(palette);
+    set({ palette });
   },
 
   showCalc: loadShowCalc(),

@@ -1,21 +1,25 @@
 import { Fragment } from 'react';
-import { Lock } from 'lucide-react';
+import { Lock, Trash2 } from 'lucide-react';
 import { t, tp } from '../../i18n';
 import { useAnalysis } from '../../state/analysis';
 import { navigate, useRoute, type PageId } from '../../state/router';
 import { useApp } from '../../state/store';
+import { GitHubCopilotIcon } from '../icons/brand';
 import { BrandMark } from '../icons/BrandMark';
 import { cx } from '../ui/cx';
 import { groupLabel, NAV, NAV_GROUPS } from './nav';
 
-/** The app name with its mark. The sidebar, the mobile menu and the start page show it. */
+/** The app name with its animated mark. The sidebar, the mobile menu and the start page show it. */
 export function Brand({ className }: { className?: string }) {
   return (
     <div className={cx('flex items-center gap-2.5', className)}>
-      <BrandMark size={28} className="shrink-0 text-fg" />
+      <BrandMark size={32} animated className="shrink-0 text-fg" />
       <div className="min-w-0 leading-none">
-        <div className="text-[11px] font-medium text-fg-muted">{t('GitHub Copilot')}</div>
-        <div className="font-display mt-1 truncate text-[15px] text-fg">{t('Usage report')}</div>
+        <div className="flex items-center gap-1 text-[11px] font-medium text-fg-muted">
+          <GitHubCopilotIcon size={12} className="shrink-0" />
+          <span className="truncate">{t('GitHub Copilot')}</span>
+        </div>
+        <div className="font-display mt-1 truncate text-[15px] text-fg">{t('Usage Lens')}</div>
       </div>
     </div>
   );
@@ -88,6 +92,9 @@ export function Sidebar() {
         <button type="button" className="btn btn-sm w-full" onClick={() => setPickingData(true)}>
           {t('Load other data')}
         </button>
+        <a href="#/settings/data" className="inline-flex items-center gap-1 text-fg-muted underline-offset-2 hover:text-accent hover:underline">
+          <Trash2 size={11} aria-hidden /> {t('Reset or delete saved settings')}
+        </a>
       </div>
     </aside>
   );

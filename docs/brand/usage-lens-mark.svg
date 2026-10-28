@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-labelledby="usage-lens-title usage-lens-description">
+  <title id="usage-lens-title">GitHub Copilot Usage Lens</title>
+  <desc id="usage-lens-description">A coffee mug with a handle holds a shared pool of credits. Blue usage bars rise from the liquid. A magnifying lens brings the bars into focus.</desc>
+  <defs>
+    <clipPath id="usage-lens-vessel">
+      <path d="M59 61H169V177Q169 197 149 197H79Q59 197 59 177Z"/>
+    </clipPath>
+    <clipPath id="usage-lens-focus">
+      <circle cx="158" cy="130" r="41"/>
+    </clipPath>
+    <mask id="usage-lens-clearance" maskUnits="userSpaceOnUse" x="0" y="0" width="256" height="256">
+      <path fill="#fff" d="M0 0H256V256H0Z"/>
+      <g class="usage-lens-scan" fill="#000">
+        <circle cx="158" cy="130" r="59"/>
+        <path d="M193 165L224 196" fill="none" stroke="#000" stroke-width="31" stroke-linecap="round"/>
+      </g>
+    </mask>
+  </defs>
+  <g mask="url(#usage-lens-clearance)">
+    <path d="M51 83H34C6 83 6 143 34 143H51" fill="none" stroke="#1f2328" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <g clip-path="url(#usage-lens-vessel)" fill="#0969da">
+      <g class="usage-lens-liquid">
+        <path opacity=".18" d="M48 143C72 159 96 133 119 141S153 151 178 135V230H48Z"/>
+        <path d="M48 143C72 159 96 133 119 141S153 151 178 135" fill="none" stroke="#0969da" stroke-width="2" opacity=".4"/>
+      </g>
+      <path d="M76 139H94V188H76ZM103 115H121V188H103ZM130 91H148V188H130Z"/>
+    </g>
+    <g fill="none" stroke="#1f2328" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M51 56V177Q51 208 82 208H146Q177 208 177 177V56"/>
+      <ellipse cx="114" cy="56" rx="63" ry="18"/>
+    </g>
+  </g>
+  <g class="usage-lens-scan">
+    <g clip-path="url(#usage-lens-focus)" fill="#0969da">
+      <g class="usage-lens-counter-scan">
+        <g class="usage-lens-liquid">
+          <path opacity=".18" d="M72 135C99 151 124 126 148 135S188 143 230 127V230H72Z"/>
+          <path d="M72 135C99 151 124 126 148 135S188 143 230 127" fill="none" stroke="#0969da" stroke-width="2.5" opacity=".4"/>
+        </g>
+        <path d="M97 156H116V210H97ZM124 132H143V210H124ZM151 108H170V210H151ZM178 84H197V210H178Z"/>
+      </g>
+    </g>
+    <path d="M193 165L224 196" fill="none" stroke="#1f2328" stroke-width="15" stroke-linecap="round"/>
+    <circle cx="158" cy="130" r="48" fill="none" stroke="#1f2328" stroke-width="10"/>
+  </g>
+</svg>

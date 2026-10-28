@@ -9,7 +9,7 @@ import { makeBucketer, stackedSeries, type Bucket, type Bucketer } from '../../l
 import { CATEGORY_COLORS } from '../../lib/analytics/taxonomy';
 import { VENDORS } from '../../lib/pricing/card';
 import type { ModelTable } from '../../lib/pricing/models';
-import { msg, t } from '../../i18n';
+import { localizeDigits, msg, t } from '../../i18n';
 import { CATEGORIES, CREDIT_USD, labelOf, type DataStore, type DimKey } from '../../lib/types';
 import { fmtCompact, fmtInt } from '../../lib/utils/format';
 
@@ -435,7 +435,7 @@ export function budgetTone(burn: number, projectedBurn: number | null): 'good' |
 
 /** A share of the budget as a whole percent with thousands separators, so an extreme overrun stays readable. */
 export function fmtBudgetPct(share: number): string {
-  return Number.isFinite(share) ? `${Math.round(share * 100).toLocaleString('en-US')}%` : '–';
+  return Number.isFinite(share) ? localizeDigits(`${Math.round(share * 100).toLocaleString('en-US')}%`) : '–';
 }
 
 // SKU table

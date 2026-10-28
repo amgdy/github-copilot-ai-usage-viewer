@@ -1,16 +1,27 @@
-# GitHub Copilot AI usage viewer
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/brand/github-copilot-usage-lens-animated-dark.svg" />
+    <img src="docs/brand/github-copilot-usage-lens-animated.svg" alt="GitHub Copilot Usage Lens" width="420" />
+  </picture>
+</p>
 
-[![CI and deploy](https://github.com/amgdy/github-copilot-ai-usage-viewer/actions/workflows/pages.yml/badge.svg)](https://github.com/amgdy/github-copilot-ai-usage-viewer/actions/workflows/pages.yml)
+# GitHub Copilot Usage Lens
 
-A report viewer for the GitHub Copilot **AI credits usage report** (the CSV export from GitHub billing). Drop one or more files in and you get an interactive management view: how much is used and billed, who uses what, how the shared included credits behave, which users and models drive cost, which seats are idle, and a list of recommendations ordered by impact, each with an estimated saving and official GitHub and Microsoft links.
+[![CI and deploy](https://github.com/amgdy/github-copilot-ai-usage-analysis/actions/workflows/pages.yml/badge.svg)](https://github.com/amgdy/github-copilot-ai-usage-analysis/actions/workflows/pages.yml)
 
-**Try it:** [amgdy.github.io/github-copilot-ai-usage-viewer](https://amgdy.github.io/github-copilot-ai-usage-viewer/). Choose **View a sample report** to see every page with made-up data, or drop in your own file.
+**GitHub Copilot Usage Lens** is an analysis tool for the GitHub Copilot **AI credits usage report** (the CSV export from GitHub billing). Drop one or more files in and you get an interactive management view: how much is used and billed, who uses what, how the shared included credits behave, which users and models drive cost, which seats are idle, and a list of recommendations ordered by impact, each with an estimated saving and official GitHub and Microsoft links.
+
+**Try it:** [amgdy.github.io/github-copilot-ai-usage-analysis](https://amgdy.github.io/github-copilot-ai-usage-analysis/). Choose **View a sample report** to see every page with made-up data, or drop in your own file.
+
+![Overview page of the sample report: usage, billed amount, included credits and the top actions](docs/screenshots/overview.png)
+
+More screenshots are in [Screenshots](#screenshots).
 
 Nothing is uploaded. The CSV is read and analyzed in your browser (in a Web Worker). There is no backend and no network call after the page has loaded, except the live price check that you start yourself in Settings.
 
 The app is in **English** (the main language) and **Arabic** (right-to-left), and every number has an info button that explains how it was calculated.
 
-The interface has its own calm look, like a printed company report: ink on warm paper with one petrol color, set in Mona Sans by GitHub and IBM Plex Sans Arabic. Both fonts are bundled, so the report looks the same offline, in light and dark modes.
+The interface has its own calm look, like a printed company report in GitHub colors: Primer grays, GitHub blue for the brand and charts and GitHub green for the main action, set in Mona Sans by GitHub and IBM Plex Sans Arabic. Both fonts are bundled, so the report looks the same offline, in light and dark modes. Settings also offers high contrast and colorblind friendly colors, like GitHub's own appearance settings.
 
 This is an independent open source project. It is not made by, connected to or endorsed by GitHub or Microsoft. GitHub, GitHub Copilot and Microsoft are trademarks of their owners, and their names and logos are used only to name the products.
 
@@ -21,8 +32,8 @@ This is an independent open source project. It is not made by, connected to or e
 ## Quick start
 
 ```bash
-git clone https://github.com/amgdy/github-copilot-ai-usage-viewer.git
-cd github-copilot-ai-usage-viewer
+git clone https://github.com/amgdy/github-copilot-ai-usage-analysis.git
+cd github-copilot-ai-usage-analysis
 npm install
 npm run dev            # http://localhost:5173
 ```
@@ -46,6 +57,18 @@ The start page has two ways in:
 
 - **Drop or choose** one or more usage CSV files (and, in the same drop, a license list).
 - **View a sample report** to see every page before you load your own file. The sample is made up in your browser from invented people, organizations and numbers. It reads no file, and no report data is built into the app. While the sample is open, every page says so, and your saved license list is left out so no real names mix with invented data. Settings and Licenses say so too, and the sample's invented users can't be saved into your license list. Open your own report at any time to replace it.
+
+### What the sample shows
+
+The sample is a made-up company, Northwind, with 140 GitHub Copilot seats over three months. Logins follow the GitHub Enterprise Managed Users pattern: the Microsoft Entra ID login name, an underscore and the enterprise short code, for example `KofiIto_nwind`. The months tell one story, so every recommendation and tip has something to show:
+
+| Month | What happens | Try this view |
+| --- | --- | --- |
+| First month | A careful rollout. Less than half of the included credits are used. | Pick the first month in the date range: the pool is under-used. |
+| Second month | Six people start long agent sessions on costly models. The included credits run out and the rest is billed. The last week is a release freeze. | Pick the second month: overage, budgets and a drop in the last week. |
+| Third month | Session limits calm the heavy users, coaching lifts everyday use and a new team of 22 people joins. | Pick the third month: a healthy pool. The whole range shows the new users and the rise in the last week. |
+
+The sample also has idle and lapsed seats, people in two organizations, repository scans with no user, a cost center that is missing for some people, and one small research team (`northwind-labs`) where one person uses most of the credits. Filter on that organization to see it. Only one recommendation needs your own data: the one about missing columns in the file.
 
 The same generator can write the sample as a file for tests and for people who work on the app: `npm run gen:demo` (or `npm run gen:demo -- --random`) writes `demo-data/demo-usage-report.csv`. The folder is ignored by Git and holds made-up data only.
 
@@ -108,7 +131,7 @@ The parser handles the UTF-8 BOM, quoted fields, CRLF, and numbers in scientific
 | **Recommendations** | Recommendations ordered by impact, with filters, a **what-if simulator** that recomputes cost live, seat actions, the playbook and official links for each step. |
 | **Licenses** | Seats from your license list: who uses them, who does not, last activity, seats you can free up and what they cost, and seats with no usage in the report. |
 | **Data** | File quality (rows read, kept, duplicates, bad cells), integrity checks, coverage, the license list, other GitHub exports you can add, a row explorer and a CSV download of the filtered rows. |
-| **Settings** | Theme, monthly budget, every threshold behind the groups with live previews, seat list and extra seats, model price overrides, a live price check, import and export of settings, and a glossary. |
+| **Settings** | Theme, colors (GitHub, high contrast, colorblind friendly), Arabic digits, monthly budget, every threshold behind the groups with live previews, seat list and extra seats, model price overrides, a live price check, import and export of settings, and a glossary. |
 | **Methodology** | Every calculation in one searchable list: what it is, the formula, the inputs, an example, the limits and official links. The same text opens from the info button next to each number. |
 
 The language button at the top switches between English and Arabic. Dropdowns are sorted A to Z, lists that rate something go from best to worst, and recommendations and tiles go from most to least impact.
@@ -131,6 +154,21 @@ Charts and tables are clickable: clicking a bar, slice, cell or row narrows the 
 From **Export** in the top bar: an executive summary in Markdown (copy or download), per-user action list (CSV), recommendations (CSV), and print or save as PDF (light colors, navigation hidden, filters and data source printed at the top). Charts have a PNG download, tables have CSV download. Downloaded files are named `github-copilot-...`.
 
 CSV downloads are UTF-8 with a byte order mark, so Excel opens them with the right characters. A text cell that starts with `=`, `+`, `-` or `@` gets a leading `'`, so a spreadsheet shows it as text instead of running it as a formula.
+
+## Screenshots
+
+All screenshots use the made-up sample report. No real data is shown.
+
+| | |
+| --- | --- |
+| ![Overview: headline verdict, key figures and top actions](docs/screenshots/overview.png) | ![Recommendations ordered by impact, with savings and steps](docs/screenshots/recommendations.png) |
+| **Overview** | **Recommendations** |
+| ![Usage and pool: included credits burn-down per month](docs/screenshots/usage-and-pool.png) | ![Users: rankings, concentration and users who need attention](docs/screenshots/users.png) |
+| **Usage and pool** | **Users** |
+| ![Models: ranking, Auto use and the Auto discount](docs/screenshots/models.png) | ![Efficiency: scorecard, savings levers and cache reuse](docs/screenshots/efficiency.png) |
+| **Models** | **Efficiency** |
+| ![Overview in Arabic, right to left, in dark mode](docs/screenshots/overview-arabic-dark.png) | ![User drawer: profile, trend, models and personal tips](docs/screenshots/user-drawer.png) |
+| **Arabic, dark mode** | **User details** |
 
 ## How the numbers work
 
@@ -184,11 +222,11 @@ Levers in the plan: right-size models, use Auto, cache discipline, leaner contex
 - Unusual days use a robust z-score (3.5 or more and at least 1.5 times the median) and need at least 10 days with usage.
 - Trend figures (last 7 days vs the 7 before) need at least 14 days of data.
 - Seat prices are public prices and do not include discounts or enterprise agreements.
-- In Arabic, numbers use Latin digits, and the column names of the original export stay in English. Product and vendor logos belong to their owners and are used only to name the product.
+- In Arabic, numbers use Arabic-Indic digits (١٢٣) by default, or Latin digits if you choose them in Settings; downloaded CSV files always use Latin digits. The column names of the original export stay in English. Product and vendor logos belong to their owners and are used only to name the product.
 
 ## Privacy
 
-The file never leaves your machine. Settings (thresholds, seat list, budget), the theme and the language are stored in `localStorage` under `ghcu.settings.v1`, `ghcu.theme` and `ghcu.locale`; the data itself is kept in memory only and is gone when you reload or close the tab. The single-file build contains no external resources and makes no network requests unless you start the live price check. No real customer data is built into the app or used by the tests.
+The file never leaves your machine. Settings (thresholds, seat list, budget), the theme, color set, language and Arabic digits are stored in `localStorage` under keys that start with `ghcu.`. To remove them all, use **Reset or delete saved settings** in the sidebar (or **Delete saved settings** on the start page, or Settings > Data on this device); other sites are not touched. The data itself is kept in memory only and is gone when you reload or close the tab. The single-file build contains no external resources and makes no network requests unless you start the live price check. No real customer data is built into the app or used by the tests.
 
 ## Project layout
 
