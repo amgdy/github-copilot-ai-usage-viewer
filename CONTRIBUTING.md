@@ -18,8 +18,8 @@ Usage reports and license lists contain names and other private details.
 You need Node 26. If you use nvm or fnm, run `nvm use` or `fnm use` in the project folder. Both read the `.nvmrc` file.
 
 ```bash
-git clone https://github.com/amgdy/github-copilot-ai-usage-analysis.git
-cd github-copilot-ai-usage-analysis
+git clone https://github.com/amgdy/github-copilot-usage-lens.git
+cd github-copilot-usage-lens
 npm install
 npm run dev
 ```

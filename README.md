@@ -7,11 +7,11 @@
 
 # GitHub Copilot Usage Lens
 
-[![CI and deploy](https://github.com/amgdy/github-copilot-ai-usage-analysis/actions/workflows/pages.yml/badge.svg)](https://github.com/amgdy/github-copilot-ai-usage-analysis/actions/workflows/pages.yml)
+[![CI and deploy](https://github.com/amgdy/github-copilot-usage-lens/actions/workflows/pages.yml/badge.svg)](https://github.com/amgdy/github-copilot-usage-lens/actions/workflows/pages.yml)
 
 **GitHub Copilot Usage Lens** is an analysis tool for the GitHub Copilot **AI credits usage report** (the CSV export from GitHub billing). Drop one or more files in and you get an interactive management view: how much is used and billed, who uses what, how the shared included credits behave, which users and models drive cost, which seats are idle, and a list of recommendations ordered by impact, each with an estimated saving and official GitHub and Microsoft links.
 
-**Try it:** [amgdy.github.io/github-copilot-ai-usage-analysis](https://amgdy.github.io/github-copilot-ai-usage-analysis/). Choose **View a sample report** to see every page with made-up data, or drop in your own file.
+**Try it:** [amgdy.com/github-copilot-usage-lens](https://amgdy.com/github-copilot-usage-lens/). Choose **View a sample report** to see every page with made-up data, or drop in your own file.
 
 ![Overview page of the sample report: usage, billed amount, included credits and the top actions](docs/screenshots/overview.png)
 
@@ -32,8 +32,8 @@ This is an independent open source project. It is not made by, connected to or e
 ## Quick start
 
 ```bash
-git clone https://github.com/amgdy/github-copilot-ai-usage-analysis.git
-cd github-copilot-ai-usage-analysis
+git clone https://github.com/amgdy/github-copilot-usage-lens.git
+cd github-copilot-usage-lens
 npm install
 npm run dev            # http://localhost:5173
 ```

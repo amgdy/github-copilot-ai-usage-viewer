@@ -1,20 +1,20 @@
 {
-  "name": "github-copilot-ai-usage-analysis",
+  "name": "github-copilot-usage-lens",
   "private": true,
   "version": "1.0.0",
-  "description": "Interactive analysis of the GitHub Copilot AI credits usage report (CSV): filters, rankings, user groups and cost-saving recommendations. Runs only in the browser.",
+  "description": "Browser-only analysis of the GitHub Copilot AI credits usage report (CSV). See usage, billed cost, users, models, idle seats and savings tips. English and Arabic. Nothing is uploaded.",
   "license": "MIT",
   "author": {
     "name": "amgdy",
     "url": "https://github.com/amgdy"
   },
-  "homepage": "https://amgdy.github.io/github-copilot-ai-usage-analysis/",
+  "homepage": "https://amgdy.com/github-copilot-usage-lens/",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/amgdy/github-copilot-ai-usage-analysis.git"
+    "url": "git+https://github.com/amgdy/github-copilot-usage-lens.git"
   },
   "bugs": {
-    "url": "https://github.com/amgdy/github-copilot-ai-usage-analysis/issues"
+    "url": "https://github.com/amgdy/github-copilot-usage-lens/issues"
   },
   "keywords": [
     "github-copilot",

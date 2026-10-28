@@ -4,7 +4,7 @@
 
 Please do not open a public issue for a security problem.
 
-1. Open the [Security tab](https://github.com/amgdy/github-copilot-ai-usage-analysis/security) of this repository.
+1. Open the [Security tab](https://github.com/amgdy/github-copilot-usage-lens/security) of this repository.
 2. Choose **Report a vulnerability**.
 3. Say what you found, where, and how to repeat it.
 
