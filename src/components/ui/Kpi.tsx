@@ -28,6 +28,8 @@ export interface KpiProps {
   calc?: CalcRef;
   icon?: ReactNode;
   spark?: ArrayLike<number>;
+  /** Another small chart from `MiniCharts`, used when a trend line does not fit the figure. Ignored when `spark` is set. */
+  mini?: ReactNode;
   onClick?: () => void;
   className?: string;
 }
@@ -44,7 +46,7 @@ const VALUE_TONE: Record<Tone, string> = {
 /** True inside a KpiGrid: the figures then share one ruled panel instead of being separate boxes. */
 const InLedger = createContext(false);
 
-export function Kpi({ label, value, sub, delta, goodWhen = 'none', tone = 'neutral', hint, calc, icon, spark, onClick, className }: KpiProps) {
+export function Kpi({ label, value, sub, delta, goodWhen = 'none', tone = 'neutral', hint, calc, icon, spark, mini, onClick, className }: KpiProps) {
   const inLedger = useContext(InLedger);
   const dir = delta ? (delta.pct > 0.005 ? 1 : delta.pct < -0.005 ? -1 : 0) : 0;
   const deltaTone = dir === 0 || goodWhen === 'none' ? 'text-fg-muted' : (dir > 0) === (goodWhen === 'up') ? 'text-good' : 'text-bad';
@@ -68,7 +70,7 @@ export function Kpi({ label, value, sub, delta, goodWhen = 'none', tone = 'neutr
         </div>
         <div className="flex items-end justify-between gap-2">
           <div className={cx('font-display num min-w-0 truncate text-[22px] leading-tight', VALUE_TONE[tone])}>{value}</div>
-          {spark ? <Sparkline className="hidden @min-[200px]:block" values={spark} width={64} height={24} tone={tone === 'neutral' ? 'accent' : tone} /> : null}
+          {spark ? <Sparkline className="hidden @min-[200px]:block" values={spark} width={64} height={24} tone={tone === 'neutral' ? 'accent' : tone} /> : mini ? <div className="hidden @min-[200px]:block">{mini}</div> : null}
         </div>
         <div className="flex min-h-4 flex-wrap items-center gap-x-2 text-xs text-fg-muted">
           {delta ? (

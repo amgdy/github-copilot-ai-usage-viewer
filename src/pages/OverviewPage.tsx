@@ -4,7 +4,7 @@ import { useChartColors } from '../components/charts/EChart';
 import { donutOption, rankBarOption, stackedTimeOption, type TimeSeriesInput } from '../components/charts/helpers';
 import { NoRows } from '../components/NoRows';
 import { RecommendationCard } from '../components/RecommendationCard';
-import { CalcInfo, Callout, Card, ChartCard, DocLinks, EmptyState, Kpi, KpiGrid, PageHeader, ProgressBar, Segmented, TONE_TEXT, cx, taxLookup, type Tone } from '../components/ui';
+import { CalcInfo, Callout, Card, ChartCard, DocLinks, EmptyState, Kpi, KpiGrid, MINI_COLOR, MiniBurnUp, MiniColumns, MiniCompare, MiniRing, MiniSplit, PageHeader, ProgressBar, Segmented, TONE_TEXT, cx, taxLookup, type Tone } from '../components/ui';
 import { FeatureIcon } from '../components/icons';
 import { T, msg, t, tp } from '../i18n';
 import { rollupByCategory } from '../lib/analytics/aggregate';
@@ -64,6 +64,34 @@ function HeadlineBanner() {
   );
 }
 
+/** Running usage total for every day of the month so far. Days without rows keep the total of the day before. */
+function monthToDate(month: { monthStart: number; cumulative: readonly { day: number; gross: number }[] }): number[] {
+  const last = month.cumulative.at(-1);
+  if (!last) return [];
+  const totals = new Array<number>(last.day - month.monthStart + 1).fill(0);
+  let running = 0;
+  let pointIndex = 0;
+  for (let dayOffset = 0; dayOffset < totals.length; dayOffset++) {
+    const point = month.cumulative[pointIndex];
+    if (point && point.day === month.monthStart + dayOffset) {
+      running = point.gross;
+      pointIndex++;
+    }
+    totals[dayOffset] = running;
+  }
+  return totals;
+}
+
+/** Usage of each tenth of users, heaviest first. */
+function usageByTenth(sortedDescending: readonly number[]): number[] {
+  if (sortedDescending.length < 10) return [];
+  const tenths = new Array<number>(10).fill(0);
+  sortedDescending.forEach((gross, index) => {
+    tenths[Math.min(9, Math.floor((index * 10) / sortedDescending.length))] += gross;
+  });
+  return tenths;
+}
+
 function KpiRows() {
   const { analysis, store, settings } = useAnalysis();
   const { agg: aggregates, pool, plan, narrowed, range, trend, users, population, auto } = analysis;
@@ -88,8 +116,22 @@ function KpiRows() {
     const sorted = users.profiles.map((user) => user.gross).sort((a, b) => b - a);
     const total = sorted.reduce((a, b) => a + b, 0);
     const topCount = Math.max(1, Math.ceil(sorted.length * 0.1));
-    return { k: topCount, n: sorted.length, share: total > 0 ? sorted.slice(0, topCount).reduce((a, b) => a + b, 0) / total : 0 };
+    return { k: topCount, n: sorted.length, share: total > 0 ? sorted.slice(0, topCount).reduce((a, b) => a + b, 0) / total : 0, tenths: usageByTenth(sorted) };
   }, [users]);
+
+  // Usage per active user on each day with activity, for the per-user trend.
+  const perUserDaily = useMemo(() => {
+    const values: number[] = [];
+    for (let i = 0; i < aggregates.days.activeUsers.length; i++) {
+      if (aggregates.days.activeUsers[i] > 0) values.push(aggregates.days.gross[i] / aggregates.days.activeUsers[i]);
+    }
+    return values;
+  }, [aggregates]);
+
+  const lastTwoWeeks = Array.from(aggregates.days.gross.slice(-14));
+  const poolMonths = poolKnown ? pool.months.filter((month) => Number.isFinite(month.utilization)) : [];
+  const burnUp = latest && projection ? monthToDate(latest) : [];
+  const monthLimit = latest && poolKnown && !latest.capacityExceeded && latest.capacity > 0 ? latest.capacity : undefined;
 
   const averageDailyUsers = useMemo(() => {
     let sum = 0;
@@ -128,6 +170,7 @@ function KpiRows() {
           sub={cashKnown ? t('cash per month, combined plan') : t('less usage per month')}
           hint={t('What the default levers (model right-sizing, Auto, caching, leaner context, caps) and the seat actions save together. Ideas that overlap are counted once. Open Recommendations to change the assumptions.')}
           calc="savings-plan"
+          mini={cashKnown ? <MiniCompare before={plan.baseCost} after={plan.newCost} /> : <MiniCompare before={plan.levers.baseline} after={plan.levers.final} />}
           onClick={() => navigate('recommendations')}
         />
         <Kpi
@@ -147,6 +190,15 @@ function KpiRows() {
           }
           hint={t('Share of the included credits that was used. A low value means you pay for credits nobody uses. At 100%, extra usage is billed.')}
           calc="pool-utilization"
+          mini={
+            poolMonths.length > 0 ? (
+              <MiniColumns
+                values={poolMonths.map((month) => month.utilization)}
+                reference={1}
+                colorOf={(_index, utilization) => MINI_COLOR[utilization >= 0.999 ? 'warn' : utilization < 0.4 ? 'info' : 'good']}
+              />
+            ) : undefined
+          }
           onClick={() => navigate('spend')}
         />
         <Kpi
@@ -166,6 +218,7 @@ function KpiRows() {
             sub={!cashKnown ? t('month-end usage') : t('≈ {amount} billed', { amount: fmtUSD(projection.projNet) })}
             hint={t('Month-end estimate from the recent daily rate. The Usage and pool page shows the range.')}
             calc="projection"
+            mini={<MiniBurnUp cumulative={burnUp} daysInMonth={latest.daysInMonth} projected={projection.projGross} limit={monthLimit} />}
             onClick={() => navigate('spend')}
           />
         ) : (
@@ -175,6 +228,7 @@ function KpiRows() {
             sub={t('usage per month')}
             hint={t('Usage in the selected period, scaled to a month of 30.4 days.')}
             calc="per-month"
+            mini={pool.months.length > 1 ? <MiniColumns values={pool.months.map((month) => month.gross)} /> : undefined}
             onClick={() => navigate('spend')}
           />
         )}
@@ -204,6 +258,11 @@ function KpiRows() {
           }
           hint={t('Usage of the last 7 days of the period compared with the 7 days before.')}
           calc="week-over-week"
+          mini={
+            trend.reliable && lastTwoWeeks.length === 14 ? (
+              <MiniColumns values={lastTwoWeeks} colorOf={(index) => (index < 7 ? 'var(--fg-subtle)' : MINI_COLOR[trend.change > 0.25 ? 'warn' : 'accent'])} />
+            ) : undefined
+          }
           onClick={() => navigate('patterns')}
         />
         <Kpi
@@ -222,6 +281,7 @@ function KpiRows() {
           }
           hint={t('Share of usage where GitHub Copilot picked the model. The Auto model selection card below shows the discount received and the original price.')}
           calc={['auto-share', 'auto-discount']}
+          mini={analysis.coverage.models ? <MiniRing fraction={auto.share} tone={auto.total > 0 && auto.share < settings.lowAuto ? 'warn' : 'accent'} /> : undefined}
           onClick={() => navigate('models')}
         />
         <Kpi
@@ -230,6 +290,7 @@ function KpiRows() {
           sub={tp(top.n, '{k} of {n} user', '{k} of {n} users', { k: fmtInt(top.k), n: fmtInt(top.n) })}
           hint={t('Share of all usage that comes from the heaviest tenth of users. When it is high, a few users decide the bill.')}
           calc="top-decile-share"
+          mini={top.tenths.length > 0 ? <MiniColumns values={top.tenths} colorOf={(index) => (index === 0 ? MINI_COLOR.accent : 'var(--fg-subtle)')} /> : undefined}
           onClick={() => navigate('users')}
         />
         <Kpi
@@ -239,6 +300,7 @@ function KpiRows() {
           sub={t('usage per active user')}
           hint={t('Average monthly usage of an active user. Compare it with the credits included in a seat ($19 Business, $39 Enterprise).')}
           calc={['per-user-month', 'previous-period']}
+          spark={perUserDaily.length > 1 ? perUserDaily : undefined}
           onClick={() => navigate('users')}
         />
         <Kpi
@@ -267,6 +329,17 @@ function KpiRows() {
           }
           hint={t('Cache read tokens ÷ (input + cache read + cache write tokens). Cache read tokens are text the model has seen before and reads again at a lower price. Cache write tokens are text the model stores so it can read it again later.')}
           calc={['cache-hit', 'tokens-cache-read', 'tokens-cache-write']}
+          mini={
+            Number.isFinite(cacheHit) ? (
+              <MiniSplit
+                parts={[
+                  { value: totals.cacheRead, color: MINI_COLOR[cacheHit < settings.lowCacheHit ? 'warn' : 'good'] },
+                  { value: totals.cacheWrite, color: 'var(--cp-series-3)' },
+                  { value: totals.input, color: 'var(--fg-subtle)' },
+                ]}
+              />
+            ) : undefined
+          }
           onClick={() => navigate('efficiency')}
         />
       </KpiGrid>

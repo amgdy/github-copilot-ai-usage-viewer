@@ -12,3 +12,4 @@ export { Kpi, KpiGrid, type KpiDelta, type KpiProps } from './Kpi';
 export { MultiSelect, type MultiOption } from './MultiSelect';
 export { sortOptions, PINNED_VALUES, type OptionOrder } from './sortOptions';
 export { InfoTip, ProgressBar, Sparkline, type ProgressBarProps, type SparklineProps } from './Viz';
+export { MiniBurnUp, MiniColumns, MiniCompare, MiniRing, MiniSplit, MINI_COLOR, type MiniPart } from './MiniCharts';
