@@ -15,7 +15,7 @@
 
 ![Overview page of the sample report: usage, billed amount, included credits and the top actions](docs/screenshots/overview.png)
 
-More screenshots are in [Screenshots](#screenshots).
+More screenshots are in [Screenshots](#screenshots), and [docs/SCREENSHOTS.md](docs/SCREENSHOTS.md) shows every page with a short explanation.
 
 Nothing is uploaded. The CSV is read and analyzed in your browser (in a Web Worker). There is no backend and no network call after the page has loaded, except the live price check that you start yourself in Settings.
 
@@ -26,6 +26,7 @@ The interface has its own calm look, like a printed company report in GitHub col
 This is an independent open source project. It is not made by, connected to or endorsed by GitHub or Microsoft. GitHub, GitHub Copilot and Microsoft are trademarks of their owners, and their names and logos are used only to name the products.
 
 - [docs/FEATURES.md](docs/FEATURES.md): what the app does and the key values for admins, in plain language.
+- [docs/SCREENSHOTS.md](docs/SCREENSHOTS.md): a screenshot of every page with a short explanation.
 - [CONTRIBUTING.md](CONTRIBUTING.md): how to set up the project and send a change.
 - [AGENTS.md](AGENTS.md): how the project is organized and the rules for changing it.
 
@@ -157,7 +158,7 @@ CSV downloads are UTF-8 with a byte order mark, so Excel opens them with the rig
 
 ## Screenshots
 
-All screenshots use the made-up sample report. No real data is shown.
+All screenshots use the made-up sample report. No real data is shown. See [docs/SCREENSHOTS.md](docs/SCREENSHOTS.md) for every page.
 
 | | |
 | --- | --- |
