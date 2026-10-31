@@ -2,27 +2,43 @@ import { useRef, type ChangeEvent } from 'react';
 import { FileUp } from 'lucide-react';
 import { Callout, ProgressBar, Spinner } from '../../components/ui';
 import { msg, t, tp } from '../../i18n';
-import type { LicenseKind } from '../../lib/licenses';
+import { isGzip, readCollection, readHeadText } from '../../lib/collection';
+import { classifyUpload, type LicenseKind } from '../../lib/licenses';
 import { fmtInt, pluralize } from '../../lib/utils/format';
 import { loadFiles } from '../../state/loadDataset';
 import { navigate } from '../../state/router';
 import { useApp } from '../../state/store';
 import { listNames } from './text';
-import { SNIFF_BYTES, routeUploads, useUploadNotice, type LicenseFileResult, type UploadNotice, type UploadOutcome } from './uploads';
+import { SNIFF_BYTES, routeUploads, useUploadNotice, type CollectionFileResult, type LicenseFileResult, type UploadNotice, type UploadOutcome } from './uploads';
 
-/** File types the pickers accept: usage reports (CSV) and license lists (JSON, CSV or a text list of usernames). */
-export const UPLOAD_ACCEPT = '.csv,.json,.ndjson,.txt,text/csv,application/json,text/plain';
+/**
+ * File types the pickers accept: usage reports (CSV), license lists (JSON, CSV or a text list of usernames) and the
+ * GitHub data file of the collector scripts (NDJSON, usually gzip).
+ */
+export const UPLOAD_ACCEPT = '.csv,.json,.ndjson,.gz,.txt,text/csv,application/json,application/gzip,application/x-ndjson,text/plain';
+
+/**
+ * The start of a file as text. A gzip file is unpacked only when it is a GitHub data file, because the usage report and
+ * license list readers take plain text only.
+ */
+async function readUploadHead(file: File): Promise<string> {
+  if (!(await isGzip(file))) return file.slice(0, SNIFF_BYTES).text();
+  const head = await readHeadText(file, SNIFF_BYTES);
+  return classifyUpload(head, file.name) === 'collection' ? head : '';
+}
 
 /**
  * Sorts the files and sends each one where it belongs: usage reports replace the loaded data, license lists go to the
- * license list in the settings. The result of a license import is kept for the Data page.
+ * license list in the settings, and a GitHub data file is kept next to the report. The result is kept for the Data page.
  */
 export async function takeUploads(files: File[]): Promise<UploadOutcome> {
   useApp.getState().setError(null);
   useUploadNotice.getState().show(null);
   const outcome = await routeUploads(files, {
-    readHead: (file) => file.slice(0, SNIFF_BYTES).text(),
+    readHead: readUploadHead,
     readText: (file) => file.text(),
+    readCollection: (file) => readCollection(file, file.name),
+    setCollection: (collection) => useApp.getState().setCollection(collection),
     loadUsage: loadFiles,
     hasDataset: () => useApp.getState().dataset !== null,
     roster: () => {
@@ -59,7 +75,7 @@ export function LoadButton() {
         disabled={busy}
         onClick={() => input.current?.click()}
         title={t(
-          'A usage report replaces the loaded data. Select every report you want in one go: they are joined, and a row that repeats a row from an earlier file is dropped. A GitHub Copilot license list is added to your license list.',
+          'A usage report replaces the loaded data. Select every report you want in one go: they are joined, and a row that repeats a row from an earlier file is dropped. A GitHub Copilot license list is added to your license list. A GitHub data file from the collector script adds budgets, seats and billing.',
         )}
       >
         <FileUp size={14} /> {t('Load other files')}
@@ -126,6 +142,38 @@ function fileLine(file: LicenseFileResult): string {
   return t('{name}: {kind}, {seats}.', { name: file.name, kind: licenseKindLabel(file.kind), seats: pluralize(file.seats, 'seat') });
 }
 
+/** What the GitHub data file of the batch gave, one sentence per line. */
+function collectionLines(collection: CollectionFileResult): string[] {
+  if (collection.error !== null) return [t('{name}: {problem}', { name: collection.name, problem: collection.error })];
+  const lines = [t('{name}: GitHub data file, {records}.', { name: collection.name, records: pluralize(collection.records, 'record') })];
+  if (!collection.complete) lines.push(t('The file ends early, so some data may be missing. Run the script again and wait until it says the file is saved.'));
+  if (collection.problems > 0) {
+    lines.push(
+      tp(collection.problems, '{n} part of the data failed or came back only in part. The Data page lists it.', '{n} parts of the data failed or came back only in part. The Data page lists them.', {
+        n: fmtInt(collection.problems),
+      }),
+    );
+  }
+  if (collection.older.length > 0) lines.push(t('Only the newest GitHub data file is used. Not used: {names}.', { names: listNames(collection.older) }));
+  return lines;
+}
+
+function noticeTitle(notice: UploadNotice): string {
+  const collection = notice.collection;
+  if (collection !== null) return collection.error === null ? t('GitHub data loaded') : t('The GitHub data file was not loaded');
+  if (notice.mode !== null) return t('License list updated');
+  return notice.files.length > 0 ? t('The license list did not change') : t('Some files were not loaded');
+}
+
+function noticeTone(notice: UploadNotice): 'good' | 'warn' | 'bad' | 'info' {
+  const collection = notice.collection;
+  if (collection?.error) return 'bad';
+  const collectionOk = collection === null || (collection.complete && collection.problems === 0);
+  if (notice.mode !== null) return notice.saved === 'saved' && collectionOk ? 'good' : 'warn';
+  if (collection !== null) return collectionOk && notice.files.length === 0 ? 'good' : 'warn';
+  return notice.files.length > 0 ? 'warn' : 'info';
+}
+
 /** The result of the last batch of files: what each license file gave, how the list changed, and how it was kept. */
 export function UploadNoticeCallout() {
   const notice = useUploadNotice((state) => state.notice);
@@ -134,15 +182,13 @@ export function UploadNoticeCallout() {
 
 function NoticeBody({ notice }: { notice: UploadNotice }) {
   const changed = notice.mode !== null;
-  const tone = !changed ? (notice.files.length > 0 ? 'warn' : 'info') : notice.saved === 'saved' ? 'good' : 'warn';
-  const title = changed ? t('License list updated') : notice.files.length > 0 ? t('The license list did not change') : t('Some files were not loaded');
   const close = () => useUploadNotice.getState().show(null);
 
   return (
     <div role="status" aria-live="polite">
       <Callout
-        tone={tone}
-        title={title}
+        tone={noticeTone(notice)}
+        title={noticeTitle(notice)}
         action={
           <div className="flex flex-wrap gap-1.5">
             {changed ? (
@@ -157,6 +203,7 @@ function NoticeBody({ notice }: { notice: UploadNotice }) {
         }
       >
         <ul className="space-y-0.5">
+          {notice.collection !== null ? collectionLines(notice.collection).map((line) => <li key={line}>{line}</li>) : null}
           {notice.files.map((file) => (
             <li key={file.name}>
               {fileLine(file)}

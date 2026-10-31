@@ -22,6 +22,8 @@ A guide for people and AI coding agents who work on this project. Read it before
 | `npm run build:single` | One self-contained `dist/index.html` that works offline. |
 | `npm run gen:demo` | Write a made-up usage CSV to `demo-data/` for tests and manual tries. |
 | `npm run check:prices` | Compare the built-in price card with the live GitHub Docs pricing page. |
+| `bash scripts/collect.sh` | Read seats, budgets, billing, activity and seat changes from GitHub with the GitHub CLI (`gh`) and save one GitHub data file. Read only. |
+| `pwsh -File scripts/collect.ps1` | The same collector in PowerShell. On Windows: `powershell -ExecutionPolicy Bypass -File scripts\collect.ps1`. |
 
 ## Where things are
 
@@ -34,6 +36,8 @@ src/
                       recommendations, tips; analyze.ts is the one entry point
     licenses/         reading the GitHub Copilot license list (seat assignments) and
                       matching it to the usage report
+    collection/       reading the GitHub data file of the collector scripts and what it adds:
+                      seats, budgets, billing, activity, seat changes (derive.ts)
     pricing/          model price card (card.ts), model groups, live price check (docsParser.ts)
     metrics/          how every number is calculated (docs/*.ts), shown in the app
     demo/             made-up data generator for the sample report, tests and `gen:demo`
@@ -45,7 +49,8 @@ src/
   components/         shared UI: layout, ui kit, charts (ECharts), icons, user drawer
   pages/              one file per page plus a folder of its parts
 tests/                Vitest suites, including guard tests (naming, i18n, metric docs, readable names)
-scripts/              demo data and price check scripts
+scripts/              demo data and price check scripts, and the collector scripts
+                      (collect.sh for bash, collect.ps1 for PowerShell)
 docs/FEATURES.md      what the app does and the value it gives admins
 ```
 
@@ -117,12 +122,22 @@ Pages: Overview, Usage and pool, Users, Segments, Models, Efficiency, Organizati
 - Tests start Node with `--no-experimental-webstorage` (see `vite.config.ts`), so `localStorage` is undefined in tests. A test that needs it must stub it.
 
 ### Data and privacy
-- Never read, copy, bundle or test with real customer exports. Git ignores a local `samples/` folder, `*.csv` and `seats*.json` because they may hold private files: do not open them. Tests use made-up data (`tests/fixtures.ts`, `makeCsv`, `generateDemo`).
+- Never read, copy, bundle or test with real customer exports. Git ignores a local `samples/` folder, `*.csv`, `seats*.json` and the GitHub data files (`usage-lens-data*.ndjson`, `.ndjson.gz`) because they may hold private files: do not open them. Tests use made-up data (`tests/fixtures.ts`, `makeCsv`, `generateDemo`, `tests/collectionLines.ts`).
 - The start page has two ways in: choose or drop your own files, or **View a sample report**. The sample is made up in the browser by `src/state/loadSample.ts`, which loads the generator only when clicked and never reads a file. While the sample is open, every page says so (`SampleNotice`), and the saved license list is left out of the analysis (`withoutRoster`), so real names never mix with invented data. Settings and Licenses say why the list is not used (`SampleListNote`), never compare the list with the sample's users, and turn off the button that fills the list from the loaded report, so invented users are never saved as seats. Any new code that reads `useApp((s) => s.dataset)` directly must check `dataset.sample` in the same way. `tests/landing.test.ts`, `tests/sample-report.test.ts`, `tests/sample-license-list.test.ts` and `tests/data-isolation.test.ts` guard this.
 - The sample generator (`src/lib/demo/generate.ts`) builds a made-up company with `DEMO_SEAT_COUNT` seats over three months. Logins follow the GitHub Enterprise Managed Users pattern: an invented Microsoft Entra ID login name, `_` and the short code `DEMO_SHORTCODE` (for example `KofiIto_nwind`). The months are built so that every recommendation shows in some view (the whole range, one month or the `northwind-labs` organization). Keep it that way when you change the generator; `tests/recommendations.test.ts` checks it.
 - No network calls, except the live price check that the user starts in Settings.
 - The build version (`BuildVersion`) is baked in at build time from the GitHub Actions variables. It links only to github.com runs and commits and never calls the network.
 - Settings are stored in `localStorage` (`ghcu.settings.v1`); the theme, color set, language, Arabic digits and the Show calculations switch in `ghcu.theme`, `ghcu.palette`, `ghcu.locale`, `ghcu.digits` and `ghcu.showCalc`. Every key starts with `ghcu.`: a new key must too, so "Delete saved settings" (`src/state/savedData.ts`, linked from the sidebar, the start page and Settings > Data on this device) removes it. Usage data stays in memory only.
+
+### Collector scripts
+- `scripts/collect.sh` (bash) and `scripts/collect.ps1` (Windows PowerShell 5.1 and PowerShell 7) read data from GitHub with the GitHub CLI (`gh`) and save one GitHub data file. Admins run them from the repository; the README section "Collect more data from GitHub" is their guide. Keep the README, `--help` and `--list-sources` in step.
+- They only read. Send only GET requests and GraphQL queries (`tests/collector.test.ts` checks this), never change anything on GitHub, and never print, save or ask for a token. They talk only to the GitHub host and the report download links it returns.
+- Keep both scripts in step: the same options, sources, requests in the same order, jq filters, messages and records. `tests/collector.test.ts` runs both against the made-up GitHub in `tests/collectorMock.ts` and checks that they write the same data.
+- Keep only the fields the app needs. The jq filters (`SEAT_FILTER`, `AUDIT_FILTER` and the others, `$script:SeatFilter` and so on in PowerShell) leave out names, emails, avatars, locations and user agents.
+- The file format is `github-copilot-usage-lens-data`, version 1 (`COLLECTION_FORMAT` and `COLLECTION_VERSION` in `src/lib/collection/types.ts`, `FORMAT_VERSION` in both scripts). New fields and new kinds need no new version: the reader skips kinds it does not know. Raise the version in all three places only when older apps would read the file wrong.
+- A source that cannot be read must not stop the run. The script writes its result line and goes on, and the app shows what is missing instead of guessing (for example, members without a seat are not counted when the member list is incomplete).
+- `collect.sh` must run on bash 3.2 (the macOS default) with tools that macOS and Linux both have: no associative arrays, `mapfile`, `${name,,}`, GNU-only options or `date -d`, and no `set -u` (empty arrays fail with it in bash 3.2).
+- `collect.ps1` must use ASCII characters only (Windows PowerShell 5.1 reads a file without a byte order mark in the local code page) and must keep working with Windows line ends. `.gitattributes` keeps `*.sh` files with Unix line ends.
 
 ## How to add things
 
@@ -130,6 +145,7 @@ Pages: Overview, Usage and pool, Users, Segments, Models, Efficiency, Organizati
 - **A number:** compute it in `src/lib/analytics/` (pure, tested), add its doc, show it with `CalcInfo`, translate the label.
 - **A recommendation:** add it in `src/lib/analytics/recommendations.ts` with evidence, actions, audience, confidence, saving and official links; savings must follow the pool rules.
 - **A model price:** update `PRICE_CARD` and `CARD_AS_OF` in `src/lib/pricing/card.ts`, then run `npm run check:prices`.
+- **A collector source:** in `scripts/collect.sh`, add it to `ALL_SOURCES`, `show_sources`, `needed_scopes` and `collect_enterprise` or `collect_organization`, with a jq filter that keeps only the needed fields. Do the same in `scripts/collect.ps1` (`$script:AllSources`, `$script:SourceTable`, `Get-NeededScopes`, `Read-Enterprise` or `Read-Organization`). Add the route to `tests/collectorMock.ts`, read the new kind in `src/lib/collection/read.ts`, use it in `derive.ts` with tests, and add a row to the sources table in the README.
 
 ## Before you finish
 

@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { Collection } from '../lib/collection/types';
 import type { DataStore } from '../lib/types';
 import type { Prepared } from '../lib/analytics/prepare';
 import { emptyFilters, type Filters, type ListFilterKey } from '../lib/analytics/filters';
@@ -85,6 +86,12 @@ export function applyTheme(mode: ThemeMode): void {
 interface AppState {
   dataset: Dataset | null;
   setDataset: (dataset: Dataset | null) => void;
+  /**
+   * The GitHub data file of the collector scripts (budgets, seats, billing). Kept in memory only, and kept when another
+   * usage report is loaded. Never used with the sample report.
+   */
+  collection: Collection | null;
+  setCollection: (collection: Collection | null) => void;
   /** True while the landing page is shown on top of an already loaded dataset ("Load other data"). */
   pickingData: boolean;
   setPickingData: (picking: boolean) => void;
@@ -132,6 +139,8 @@ interface AppState {
 export const useApp = create<AppState>((set, get) => ({
   dataset: null,
   setDataset: (dataset) => set({ dataset, pickingData: false, filters: emptyFilters(), selectedUser: null, error: null }),
+  collection: null,
+  setCollection: (collection) => set({ collection }),
   pickingData: false,
   setPickingData: (pickingData) => set({ pickingData }),
   loading: null,

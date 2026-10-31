@@ -56,8 +56,8 @@ export function Landing() {
     const files = Array.from(list);
     if (!files.length) return;
     void takeUploads(files).then((outcome) => {
-      // A license list loaded with (or after) a usage report: show its result on the Data page.
-      if (outcome.notice && outcome.notice.files.length > 0 && useApp.getState().dataset) {
+      // A license list or GitHub data file loaded with (or after) a usage report: show its result on the Data page.
+      if (outcome.notice && (outcome.notice.files.length > 0 || outcome.notice.collection !== null) && useApp.getState().dataset) {
         setPickingData(false);
         navigate('data');
       }

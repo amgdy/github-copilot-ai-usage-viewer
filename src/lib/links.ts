@@ -17,6 +17,9 @@ const DOCS = 'https://docs.github.com/en/enterprise-cloud@latest';
 /** The GitHub repository with the source code of this app. */
 export const APP_REPOSITORY_URL = 'https://github.com/amgdy/github-copilot-usage-lens';
 
+/** The part of the README that explains the collector scripts. */
+export const APP_COLLECTOR_URL = `${APP_REPOSITORY_URL}#collect-more-data-from-github`;
+
 export const LINKS = {
   // Billing and AI credits
   copilotBilling: { label: 'GitHub Copilot billing', url: `${DOCS}/billing/concepts/product-billing/github-copilot-billing`, source: 'GitHub Docs' },

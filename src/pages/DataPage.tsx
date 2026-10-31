@@ -10,6 +10,7 @@ import { DownloadButton } from './data/DownloadButton';
 import { EnrichmentCard } from './data/EnrichmentCard';
 import { scopeIndices } from './data/explorer';
 import { FilesCard } from './data/FilesCard';
+import { GitHubDataCard } from './data/GitHubDataCard';
 import { HelpCard } from './data/HelpCard';
 import { KpiRow } from './data/KpiRow';
 import { LicenseCard } from './data/LicenseCard';
@@ -54,6 +55,7 @@ export default function DataPage() {
         ) : null}
         <KpiRow store={store} scan={scan} gaps={gaps} />
         <LicenseCard report={analysis.licenses} roster={settings.roster} />
+        <GitHubDataCard />
         <FilesCard key={`files-${dataset.loadedAt}`} files={store.files} />
         <QualityCard checks={checks} />
         <ContentsCard store={store} scan={scan} />
