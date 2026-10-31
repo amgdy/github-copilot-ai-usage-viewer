@@ -32,12 +32,12 @@ const arabic: Dict = {
   'The GitHub data file was not loaded': 'لم يُحمَّل ملف بيانات GitHub',
 
   // Recommendations from the GitHub data file
-  'The GitHub data file lists {n} budgets for GitHub Copilot. Check them on the Usage and pool page before you add more.': plural(
-    'يذكر ملف بيانات GitHub ميزانية واحدة لـ GitHub Copilot. راجعها في صفحة الاستخدام والرصيد المشترك قبل أن تضيف غيرها.',
-    'يذكر ملف بيانات GitHub ميزانيتين لـ GitHub Copilot. راجعهما في صفحة الاستخدام والرصيد المشترك قبل أن تضيف غيرهما.',
-    'يذكر ملف بيانات GitHub {n} ميزانيات لـ GitHub Copilot. راجعها في صفحة الاستخدام والرصيد المشترك قبل أن تضيف غيرها.',
-    'يذكر ملف بيانات GitHub {n} ميزانية لـ GitHub Copilot. راجعها في صفحة الاستخدام والرصيد المشترك قبل أن تضيف غيرها.',
-    'يذكر ملف بيانات GitHub {n} ميزانية لـ GitHub Copilot. راجعها في صفحة الاستخدام والرصيد المشترك قبل أن تضيف غيرها.',
+  'The GitHub data file lists {n} budgets for GitHub Copilot. Check them on the Budgets page before you add more.': plural(
+    'يذكر ملف بيانات GitHub ميزانية واحدة لـ GitHub Copilot. راجعها في صفحة الميزانيات قبل أن تضيف غيرها.',
+    'يذكر ملف بيانات GitHub ميزانيتين لـ GitHub Copilot. راجعهما في صفحة الميزانيات قبل أن تضيف غيرهما.',
+    'يذكر ملف بيانات GitHub {n} ميزانيات لـ GitHub Copilot. راجعها في صفحة الميزانيات قبل أن تضيف غيرها.',
+    'يذكر ملف بيانات GitHub {n} ميزانية لـ GitHub Copilot. راجعها في صفحة الميزانيات قبل أن تضيف غيرها.',
+    'يذكر ملف بيانات GitHub {n} ميزانية لـ GitHub Copilot. راجعها في صفحة الميزانيات قبل أن تضيف غيرها.',
   ),
   'As of {day}, when the GitHub data was collected.': 'حتى {day}، يوم جمع بيانات GitHub.',
   'GitHub shows {consumed} of the {amount} budget used ({share}).': 'يُظهر GitHub استخدام {consumed} من ميزانية {amount} ({share}).',
@@ -174,9 +174,12 @@ const arabic: Dict = {
   'It is kept in this browser tab only. Its seats were added to your license list.': 'يُحتفظ به في علامة التبويب هذه فقط. وأُضيفت تراخيصه إلى قائمة التراخيص.',
   'No GitHub data file is loaded.': 'لم يُحمَّل أي ملف بيانات GitHub.',
   'Remove the GitHub data': 'إزالة بيانات GitHub',
-  'The GitHub data file is not used with the sample': 'لا يُستخدم ملف بيانات GitHub مع التقرير التجريبي',
-  'The file holds real budgets, seats and people, so the app never joins it to the made-up sample. It is used when you open your own usage report.':
-    'يضم الملف ميزانيات وتراخيص وأشخاصًا حقيقيين، لذلك لا يربطه التطبيق أبدًا بالتقرير التجريبي الوهمي. ويُستخدم عندما تفتح تقرير الاستخدام الخاص بك.',
+  'The sample has made-up GitHub data': 'يحتوي التقرير التجريبي على بيانات GitHub وهمية',
+  'It shows what a GitHub data file adds: budgets, seats, billing and activity. It was made in this browser from the sample report. It is collected on the day the included credits of the second month ran out, so the budgets have billed usage to show.':
+    'يوضح ما يضيفه ملف بيانات GitHub: الميزانيات والتراخيص والفوترة والنشاط. أُنشئ في هذا المتصفح من التقرير التجريبي. وجُمع في اليوم الذي نفدت فيه الأرصدة المشمولة في الشهر الثاني، لذلك تُظهر الميزانيات استخدامًا مدفوعًا إضافيًا.',
+  'Your own GitHub data file is not used with the sample. It is used when you open your own usage report.':
+    'لا يُستخدم ملف بيانات GitHub الخاص بك مع التقرير التجريبي. ويُستخدم عندما تفتح تقرير الاستخدام الخاص بك.',
+  'It is kept in this browser tab only and is never added to your license list.': 'يُحتفظ به في علامة التبويب هذه فقط، ولا يُضاف أبدًا إلى قائمة التراخيص.',
   'Usage in the report': 'الاستخدام في التقرير',
   'Usage at GitHub': 'الاستخدام في GitHub',
   'Billed in the report': 'المدفوع إضافيًا في التقرير',

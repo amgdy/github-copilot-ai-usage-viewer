@@ -15,7 +15,7 @@ const COMMANDS = [
 ];
 
 /** How to make a GitHub data file with the collector scripts. */
-function HowToCollect() {
+export function HowToCollect() {
   return (
     <div className="space-y-3">
       <p className="text-sm text-fg-muted">
@@ -107,7 +107,7 @@ function SourcesTable({ sources }: { sources: CollectionSource[] }) {
   );
 }
 
-function FileDetails({ collection, problems }: { collection: Collection; problems: number }) {
+function FileDetails({ collection, problems, sample = false }: { collection: Collection; problems: number; sample?: boolean }) {
   const { header, sources } = collection;
   const asked = sources.filter((source) => source.status !== 'skipped').length;
   const complete = sources.filter((source) => source.status === 'ok').length;
@@ -141,8 +141,9 @@ function FileDetails({ collection, problems }: { collection: Collection; problem
       ) : null}
       <SourcesTable sources={sources} />
       <p className="text-xs text-fg-subtle">
-        {t('The script {name} {version} made this file on {host}.', { name: header.collector, version: header.collectorVersion, host: header.host })}{' '}
-        {t('It is kept in this browser tab only. Its seats were added to your license list.')}
+        {sample
+          ? t('It is kept in this browser tab only and is never added to your license list.')
+          : `${t('The script {name} {version} made this file on {host}.', { name: header.collector, version: header.collectorVersion, host: header.host })} ${t('It is kept in this browser tab only. Its seats were added to your license list.')}`}
       </p>
     </div>
   );
@@ -155,26 +156,34 @@ export function GitHubDataCard() {
   const setCollection = useApp((state) => state.setCollection);
   const title = t('GitHub data file');
 
-  if (collection === null) {
+  const remove =
+    collection === null ? undefined : (
+      <button type="button" className="btn btn-sm" onClick={() => setCollection(null)}>
+        {t('Remove the GitHub data')}
+      </button>
+    );
+
+  if (dataset.sample) {
     return (
-      <Card title={title} calc="github-file" subtitle={t('No GitHub data file is loaded.')}>
-        <HowToCollect />
-      </Card>
+      <>
+        <Card title={title} calc="github-file" subtitle={github?.collection.fileName} actions={remove}>
+          <div className="space-y-4">
+            <Callout tone="info" title={t('The sample has made-up GitHub data')}>
+              {t('It shows what a GitHub data file adds: budgets, seats, billing and activity. It was made in this browser from the sample report. It is collected on the day the included credits of the second month ran out, so the budgets have billed usage to show.')}
+              {collection !== null ? ` ${t('Your own GitHub data file is not used with the sample. It is used when you open your own usage report.')}` : null}
+            </Callout>
+            {github !== null ? <FileDetails collection={github.collection} problems={github.problems.length} sample /> : null}
+          </div>
+        </Card>
+        {github !== null ? <MonthCheckCard github={github} /> : null}
+      </>
     );
   }
 
-  const remove = (
-    <button type="button" className="btn btn-sm" onClick={() => setCollection(null)}>
-      {t('Remove the GitHub data')}
-    </button>
-  );
-
-  if (dataset.sample || github === null) {
+  if (collection === null || github === null) {
     return (
-      <Card title={title} calc="github-file" subtitle={collection.fileName} actions={remove}>
-        <Callout tone="info" title={t('The GitHub data file is not used with the sample')}>
-          {t('The file holds real budgets, seats and people, so the app never joins it to the made-up sample. It is used when you open your own usage report.')}
-        </Callout>
+      <Card title={title} calc="github-file" subtitle={t('No GitHub data file is loaded.')}>
+        <HowToCollect />
       </Card>
     );
   }

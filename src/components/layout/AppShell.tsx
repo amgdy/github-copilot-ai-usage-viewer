@@ -18,6 +18,7 @@ import { TopBar } from './TopBar';
 const PAGES: Record<PageId, LazyExoticComponent<ComponentType>> = {
   overview: lazy(() => import('../../pages/OverviewPage')),
   spend: lazy(() => import('../../pages/SpendPage')),
+  budgets: lazy(() => import('../../pages/BudgetsPage')),
   users: lazy(() => import('../../pages/UsersPage')),
   segments: lazy(() => import('../../pages/SegmentsPage')),
   models: lazy(() => import('../../pages/ModelsPage')),

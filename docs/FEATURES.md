@@ -29,14 +29,15 @@ Listed from the most valuable to the least.
 | 13 | **Numbers you can trust** | Every figure has its formula, inputs, an example and its limits, in the app and on the Methodology page. Model prices come from the official GitHub Docs page, with the date of the snapshot, and can be checked live. |
 | 14 | **English and Arabic** | The whole app works in English (the main language) and Arabic, with a right-to-left layout. Switch with the language button at the top. |
 | 15 | **Private and simple to share** | No server and no upload. The app can be built as one HTML file that works offline. |
-| 16 | **Try it first with a sample report** | One click opens a full report made from invented people and numbers, so you can see every page before you load your own file. The sample has 140 people over three months, with logins in the GitHub Enterprise Managed Users style (`KofiIto_nwind`), and it shows every kind of recommendation. Every page says it is a sample, and your saved license list is never mixed in. |
+| 16 | **Try it first with a sample report** | One click opens a full report made from invented people and numbers, so you can see every page before you load your own file. The sample has 140 people over three months, with logins in the GitHub Enterprise Managed Users style (`KofiIto_nwind`), and it shows every kind of recommendation. It also has made-up GitHub data, so the Budgets page has something to show. Every page says it is a sample, and your saved license list is never mixed in. |
 
 ## The pages
 
 | Page | What you see | What it helps you decide |
 | --- | --- | --- |
 | **Overview** | A short verdict, the key numbers with their trend, usage over time, the state of the included credits, savings you can still make, the top recommendations and top users. | Where to look first. |
-| **Usage and pool** | Usage by day and month, how fast the included credits are used, a month-end projection, budget tracking and a plain explanation of how billing works. With the GitHub data file: the whole GitHub Copilot bill and your budgets at GitHub. | Whether you will pay extra this month, and how much. |
+| **Usage and pool** | Usage by day and month, how fast the included credits are used, a month-end projection, budget tracking and a plain explanation of how billing works. With the GitHub data file: the whole GitHub Copilot bill and a short budget summary that links to the Budgets page. | Whether you will pay extra this month, and how much. |
+| **Budgets** | With the GitHub data file: every GitHub Copilot budget, how full it is, which run out this month at the current pace, users stopped or near their limit, billed usage with no budget and recent budget changes. | Which budgets to raise, add or watch before people are stopped. |
 | **Users** | Rankings by any number, how concentrated the usage is, users who need attention, a full table and a profile for each user with personal tips. | Who needs help, training, a limit or a different seat. |
 | **Segments** | Users grouped by persona, usage tier, engagement, lifecycle, usage profile and Auto use, with the rules behind each group and live thresholds. | Which groups to target with training or policies. |
 | **Models** | Model ranking, cost by model group and vendor, Auto vs manual choice, the Auto discount (paid price vs original price), right-sizing ideas and the price card in use. | Which models to allow, and where to push Auto. |

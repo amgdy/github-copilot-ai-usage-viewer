@@ -69,7 +69,7 @@ The sample is a made-up company, Northwind, with 140 GitHub Copilot seats over t
 | Second month | Six people start long agent sessions on costly models. The included credits run out and the rest is billed. The last week is a release freeze. | Pick the second month: overage, budgets and a drop in the last week. |
 | Third month | Session limits calm the heavy users, coaching lifts everyday use and a new team of 22 people joins. | Pick the third month: a healthy pool. The whole range shows the new users and the rise in the last week. |
 
-The sample also has idle and lapsed seats, people in two organizations, repository scans with no user, a cost center that is missing for some people, and one small research team (`northwind-labs`) where one person uses most of the credits. Filter on that organization to see it. Only one recommendation needs your own data: the one about missing columns in the file.
+The sample also has idle and lapsed seats, people in two organizations, repository scans with no user, a cost center that is missing for some people, and one small research team (`northwind-labs`) where one person uses most of the credits. Filter on that organization to see it. Only one recommendation needs your own data: the one about missing columns in the file. The sample also has made-up GitHub data (seats, budgets, billing and seat changes), so the Budgets page and the GitHub data cards have something to show. Your own GitHub data file is never used with the sample.
 
 The same generator can write the sample as a file for tests and for people who work on the app: `npm run gen:demo` (or `npm run gen:demo -- --random`) writes `demo-data/demo-usage-report.csv`. The folder is ignored by Git and holds made-up data only.
 
@@ -127,7 +127,7 @@ The usage report shows AI credits only. It has no seat list, no budgets, no seat
 | What the file holds | What the app does with it |
 | --- | --- |
 | Every GitHub Copilot seat: plan (Business or Enterprise), start date, last activity, pending cancellation and team | Fills the license list, so the included credits, the pool size and the seat review use your real seats. |
-| Budgets: the amount, what is used, whether the budget stops usage or only sends alerts, and budgets for single users | Usage and pool shows each budget. The AI credit budget becomes the monthly budget when Settings has none. |
+| Budgets: the amount, what is used, whether the budget stops usage or only sends alerts, and budgets for single users | The Budgets page shows each budget, how full it is and when it runs out. The AI credit budget becomes the monthly budget when Settings has none. |
 | What GitHub billed each month, seats included | Usage and pool shows the whole GitHub Copilot bill. The Data page checks the usage report against GitHub billing, month by month. |
 | Seat totals, the seat policy and the members of each organization | Licenses shows the seats added, pending and inactive this billing cycle, and members without a seat. |
 | Activity per user and day from the GitHub Copilot usage metrics, including code completions | Licenses shows who is active at GitHub but has no usage in the report, so nobody is called idle by mistake. |
@@ -226,6 +226,7 @@ If a request is refused with HTTP 403, check your role, the scopes in the table 
 | --- | --- |
 | **Overview** | Headline verdict, key figures with trend, usage over time (covered vs billed, by tier, vendor or product), included credits status, savings still possible, the Auto discount received, top recommendations, segment mix, top users and model groups. |
 | **Usage and pool** | Usage over time, monthly pool burn-down with a projected month end, monthly table, cost drivers, SKU table, budget tracking and a plain explanation of how billing works. |
+| **Budgets** | With the GitHub data file: every GitHub Copilot budget at GitHub, how full each one is, which run out this month at the current pace, users stopped or near their own limit, billed usage with no budget of its own and budget changes from the audit log. |
 | **Users** | Rankings by any metric, concentration (Lorenz curve and A/B/C classes), usage vs active days, users who need attention (runaway users, most to gain, fading, new), idle seats, a full sortable table with input, output, cache read and cache write tokens, and a **user drawer** with a profile, trend, models, Auto use and personal tips. |
 | **Segments** | User groups side by side (persona, usage tier, engagement, lifecycle, usage profile, Auto use), a cross-group matrix, pool flow (who lends and who borrows credits) and the rules behind each group with live thresholds. |
 | **Models** | Model ranking, model group and vendor split, models over time, Auto vs hand-picked models, the Auto discount (paid price vs original price), a model table with tokens, right-sizing ideas, and the price card in use with its date. |

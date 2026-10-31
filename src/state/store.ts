@@ -22,6 +22,8 @@ export interface Dataset {
   loadedAt: number;
   /** True for the made-up sample report. The app then says so on every page. */
   sample?: boolean;
+  /** The made-up GitHub data of the sample report. A GitHub data file you load is never used with the sample. */
+  sampleGitHub?: Collection;
 }
 
 /** The dataset name in the current language. File names are shown as they are. */

@@ -763,7 +763,7 @@ describe('rules that need the GitHub data file', () => {
     const everyone = recordLine('budget', budgetRecord('everyone', { budget_scope: 'multi_user_customer', budget_amount: 20 }));
     const analysis = pipelineOf(PIPELINES.demo.store, { collection: readLines([header(), everyone, END]) }).analysis;
     expect(analysis.budgetSource).toBeNull();
-    const pointer = 'The GitHub data file lists 1 budget for GitHub Copilot. Check it on the Usage and pool page before you add more.';
+    const pointer = 'The GitHub data file lists 1 budget for GitHub Copilot. Check it on the Budgets page before you add more.';
     expect(findRecommendation(analysis, 'budgets').evidence).toContain(pointer);
     expect(findRecommendation(PIPELINES.demo.analysis, 'budgets').evidence).not.toContain(pointer);
   });

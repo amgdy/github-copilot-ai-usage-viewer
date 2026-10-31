@@ -2,6 +2,8 @@ import { msg, t, type Vars } from '../i18n/core';
 import { prepareStore } from '../lib/analytics/prepare';
 import type { TextSource } from '../lib/csv/ingest';
 import { ingestSources } from '../lib/csv/ingestClient';
+import type { Collection } from '../lib/collection/types';
+import type { DataStore } from '../lib/types';
 import { useApp } from './store';
 
 /** A dataset name. With `vars`, `text` is English with {placeholders} that is translated when shown. */
@@ -21,6 +23,8 @@ const nextFrame = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 export interface LoadOptions {
   /** Marks the dataset as the made-up sample report. */
   sample?: boolean;
+  /** Builds the made-up GitHub data of the sample from its usage report. */
+  sampleGitHub?: (store: DataStore) => Collection;
 }
 
 /** Parses the sources, prepares them for analysis and makes them the active dataset. Resolves true on success. */
@@ -41,7 +45,16 @@ export async function loadSources(sources: TextSource[], label: LabelText = labe
     setLoading({ label: t('Preparing the analysis…'), fraction: 1, rows: store.n });
     await nextFrame();
     const prepared = prepareStore(store);
-    setDataset({ store, prep: prepared, label: label.text, labelVars: label.vars, loadedAt: Date.now(), ...(options.sample ? { sample: true } : {}) });
+    const sampleGitHub = options.sample && options.sampleGitHub ? options.sampleGitHub(store) : undefined;
+    setDataset({
+      store,
+      prep: prepared,
+      label: label.text,
+      labelVars: label.vars,
+      loadedAt: Date.now(),
+      ...(options.sample ? { sample: true } : {}),
+      ...(sampleGitHub ? { sampleGitHub } : {}),
+    });
     return true;
   } catch (error) {
     setError(error instanceof Error ? error.message : String(error));

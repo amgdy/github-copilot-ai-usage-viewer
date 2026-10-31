@@ -1,4 +1,5 @@
 import { getLocale, t as translate } from '../../i18n/core.ts';
+import { BUDGETS_DOCS } from './docs/budgets';
 import { CORE_DOCS } from './docs/core';
 import { DATA_DOCS } from './docs/data';
 import { EFFICIENCY_DOCS } from './docs/efficiency';
@@ -21,6 +22,7 @@ export const METRICS: readonly MetricDoc[] = (() => {
     ...CORE_DOCS,
     ...OVERVIEW_DOCS,
     ...SPEND_DOCS,
+    ...BUDGETS_DOCS,
     ...USERS_DOCS,
     ...SEGMENTS_DOCS,
     ...MODELS_DOCS,

@@ -40,7 +40,9 @@ export function AnalysisProvider({ dataset, children }: { dataset: Dataset; chil
   const settings = useDeferredValue(liveSettings);
   const { store, prep: prepared } = dataset;
   // The GitHub data file describes real people and budgets, so it is never mixed with the made-up sample either.
-  const github = useMemo(() => (dataset.sample || collection === null ? null : deriveGitHub(collection, store)), [dataset.sample, collection, store]);
+  // The sample has made-up GitHub data of its own.
+  const shownCollection = dataset.sample ? (dataset.sampleGitHub ?? null) : collection;
+  const github = useMemo(() => (shownCollection === null ? null : deriveGitHub(shownCollection, store)), [shownCollection, store]);
 
   const models = useMemo(() => buildModelTable(store, settings.modelOverrides), [store, settings.modelOverrides]);
   const taxonomy = useMemo(() => buildTaxonomy(settings), [settings]);

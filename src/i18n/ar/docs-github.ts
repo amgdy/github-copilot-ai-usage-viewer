@@ -17,7 +17,8 @@ const arabic: Dict = {
     'يقرأ التطبيق الملف في هذا المتصفح ويحتفظ به في الذاكرة فقط. ويختفي عندما تغلق الصفحة أو تزيله.',
   'When you load several GitHub data files, only the newest is used.': 'عندما تحمّل عدة ملفات بيانات GitHub، يُستخدم أحدثها فقط.',
   'The seats in the file are added to your license list, like a seat list from the REST API.': 'تُضاف التراخيص الموجودة في الملف إلى قائمة التراخيص، مثل قائمة التراخيص من REST API.',
-  'The file is never used with the sample report, because it holds real people.': 'لا يُستخدم الملف أبدًا مع التقرير التجريبي، لأنه يضم أشخاصًا حقيقيين.',
+  'Your own file is never used with the sample report, because it holds real people. The sample has made-up GitHub data of its own.':
+    'لا يُستخدم ملفك أبدًا مع التقرير التجريبي، لأنه يضم أشخاصًا حقيقيين. للتقرير التجريبي بيانات GitHub وهمية خاصة به.',
   'A file that ends early is still read, and this page says so.': 'يُقرأ الملف الذي ينتهي قبل أوانه أيضًا، وتذكر هذه الصفحة ذلك.',
   'The script asked for 20 parts. 18 are complete, the audit log failed because it needs an owner, and the members of one organization came back only in part. The card shows 18 of 20 parts complete.':
     'طلب السكربت 20 جزءًا. اكتمل 18 منها، وفشل سجل التدقيق لأنه يتطلب مالكًا، ووصل أعضاء مؤسسة واحدة جزئيًا. تعرض البطاقة 18 من 20 جزءًا مكتملة.',

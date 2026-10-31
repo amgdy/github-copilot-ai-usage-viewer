@@ -32,7 +32,8 @@ export type PageId =
   | 'recommendations'
   | 'data'
   | 'settings'
-  | 'methodology';
+  | 'methodology'
+  | 'budgets';
 
 export type Severity = 'critical' | 'high' | 'medium' | 'low' | 'info' | 'positive';
 export type RecTheme = 'cost' | 'pool' | 'efficiency' | 'adoption' | 'governance' | 'data';
@@ -736,8 +737,8 @@ export function buildRecommendations(context: RecContext): Recommendation[] {
             ? [
                 tp(
                   context.github.copilotBudgets.length,
-                  'The GitHub data file lists {n} budget for GitHub Copilot. Check it on the Usage and pool page before you add more.',
-                  'The GitHub data file lists {n} budgets for GitHub Copilot. Check them on the Usage and pool page before you add more.',
+                  'The GitHub data file lists {n} budget for GitHub Copilot. Check it on the Budgets page before you add more.',
+                  'The GitHub data file lists {n} budgets for GitHub Copilot. Check them on the Budgets page before you add more.',
                   { n: fmtInt(context.github.copilotBudgets.length) },
                 ),
               ]
@@ -1124,7 +1125,7 @@ export function buildRecommendations(context: RecContext): Recommendation[] {
         affected: who(inReport),
         affectedCount: atLimit.length,
         docs: [DOCS.budgets, DOCS.budgetTuning],
-        jump: inReport.length > 0 ? { page: 'users', label: t('Show these users'), filters: { users: inReport.map((user) => user.name) } } : { page: 'users', label: t('Open Users') },
+        jump: inReport.length > 0 ? { page: 'users', label: t('Show these users'), filters: { users: inReport.map((user) => user.name) } } : { page: 'budgets', label: t('Open the Budgets page') },
       });
     }
 

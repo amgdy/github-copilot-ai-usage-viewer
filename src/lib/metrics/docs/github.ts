@@ -21,11 +21,11 @@ export const GITHUB_DOCS: MetricDoc[] = [
       'The app reads the file in this browser and keeps it in memory only. It is gone when you close the page or remove it.',
       'When you load several GitHub data files, only the newest is used.',
       'The seats in the file are added to your license list, like a seat list from the REST API.',
-      'The file is never used with the sample report, because it holds real people.',
+      'Your own file is never used with the sample report, because it holds real people. The sample has made-up GitHub data of its own.',
       'A file that ends early is still read, and this page says so.',
     ],
     example: 'The script asked for 20 parts. 18 are complete, the audit log failed because it needs an owner, and the members of one organization came back only in part. The card shows 18 of 20 parts complete.',
-    related: ['github-month-check', 'github-bill', 'github-budgets', 'github-seats'],
+    related: ['github-month-check', 'github-bill', 'github-budgets', 'github-seats', 'budget-count'],
     links: ['budgetsApi', 'billingUsageApi', 'seatsApi', 'usageMetricsApi', 'auditLogs'],
   },
   {
